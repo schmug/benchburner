@@ -39,6 +39,22 @@ check that demands Node ≥24. Node 22.20 builds cleanly in practice;
 only asset-size warnings are produced. If a future pinned commit
 actually needs Node 24 at runtime, document here and upgrade.
 
+## Chromium binary
+
+Puppeteer's bundled Chromium is blocked from downloading in this
+environment (the host sandbox prevents egress to storage.googleapis.com).
+We install with `PUPPETEER_SKIP_DOWNLOAD=true` and point Puppeteer at
+the system Chrome via `PUPPETEER_EXECUTABLE_PATH`:
+
+```sh
+export PUPPETEER_SKIP_DOWNLOAD=true
+export PUPPETEER_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+```
+
+On a self-hosted Linux runner this would typically be
+`/usr/bin/google-chrome-stable` or an equivalent installed via
+`apt install google-chrome-stable`.
+
 ## Chromium flags (for M1 and beyond)
 
 - `--disable-background-timer-throttling`
