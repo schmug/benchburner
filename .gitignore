@@ -1,0 +1,26 @@
+# Node / TS
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+
+# Bitburner build output (we rebuild from the pinned submodule each run)
+bitburner/dist/
+bitburner/node_modules/
+
+# Logs
+*.log
+logs/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Puppeteer / Chromium cache
+.chromium-cache/
+
+# Nothing in results/ is ignored; run artifacts are the product.
+# Each run commits its own results/<run_id>/ directory.
