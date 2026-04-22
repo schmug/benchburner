@@ -1,0 +1,35 @@
+{
+  "name": "benchburner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Benchmark that measures LLM orchestration via Bitburner gameplay. See CLAUDE.md for intent, SPEC.md for the contract.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "harness": "node --enable-source-maps dist/harness/index.js",
+    "harness:dev": "tsx harness/index.ts",
+    "aggregator": "node --enable-source-maps dist/aggregator/build.js",
+    "aggregator:dev": "tsx aggregator/build.ts",
+    "test": "node --test --import tsx dist/test/**/*.test.js || true",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "js-yaml": "^4.1.0",
+    "puppeteer": "^23.0.0",
+    "uuid": "^10.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.12.0",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.5.12",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}

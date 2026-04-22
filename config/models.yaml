@@ -1,0 +1,28 @@
+# Model registry. Adding a model here is the only code-free way to plug
+# a new orchestrator or subagent into the harness. SPEC §6.
+#
+# Each entry keys by `id`, which is what `config/run.yaml` references
+# under `orchestrator.model` and `subagent_roster[]`.
+
+- id: llama3:8b
+  adapter: ollama
+  endpoint: http://localhost:11434
+  context_window: 8192
+  # Ollama uses its own model name format; pass it through as `model`
+  # on the invoke() call.
+  model_name: llama3:8b
+
+- id: qwen2.5-coder:7b
+  adapter: ollama
+  endpoint: http://localhost:11434
+  context_window: 32768
+  model_name: qwen2.5-coder:7b
+
+# Example HTTP adapter entry — not wired for the M1 smoke test.
+#
+# - id: llama-3-70b
+#   adapter: http
+#   endpoint: https://api.together.xyz/v1/chat/completions
+#   api_key_env: TOGETHER_API_KEY
+#   context_window: 8192
+#   model_name: meta-llama/Llama-3-70b-chat-hf

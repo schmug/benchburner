@@ -1,0 +1,30 @@
+# Per-run config. Copy to config/run.yaml and edit per the smoke-test
+# recipe in HANDOFF.md §"Smoke Test Recipe". SPEC §10.1.
+#
+# The seed is stored in the DB and in the pinned leaderboard hash, but
+# the harness guarantees it never appears in any prompt shown to the
+# orchestrator model. Keeping the seed opaque avoids seed-specific
+# overfitting — see CLAUDE.md § "Core Constraints" #6.
+
+run_id: auto                        # "auto" → generate UUID at run start
+
+orchestrator:
+  model: llama3:8b                  # must match an id in config/models.yaml
+  polling_interval_seconds: 60
+  history_window: 10                # last-N cycles verbatim in context
+  hang_timeout_seconds: 600         # fail the run if no decision for 10 min
+
+subagent_roster:
+  - qwen2.5-coder:7b                # all must match ids in config/models.yaml
+
+subagent_limits:
+  max_concurrent: 5
+  token_budget_per_instruction: 2000
+  timeout_seconds: 300
+
+game:
+  bitburner_commit: a4b0f22a2e5bcf19826c0bb671373c755fc162ad  # pinned, mirrored in BITBURNER_COMMIT
+  seed: 8675309                     # opaque to the orchestrator model
+
+duration_hours: 1                   # 1 for smoke test; 24 for real runs
+attribution_mode: public            # or 'anonymous'
