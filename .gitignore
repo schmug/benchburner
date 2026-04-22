@@ -25,3 +25,6 @@ logs/
 
 # Nothing in results/ is ignored; run artifacts are the product.
 # Each run commits its own results/<run_id>/ directory.
+
+# run.yaml is per-run and not committed; run.example.yaml is the template.
+config/run.yaml

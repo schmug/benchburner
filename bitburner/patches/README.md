@@ -1,33 +1,56 @@
 # bitburner/patches/
 
-**Status (Milestone 1): empty — no patches needed.**
+Minimal diffs applied to the pinned upstream Bitburner commit before
+each build. The harness re-applies these at build time; the
+`bitburner/src` submodule itself stays pinned to upstream, and the
+applied-state shows as `-dirty` in `git status` (expected).
 
-The spec (SPEC.md §5) anticipates a forked Bitburner with patches for
-(a) RNG seed injection and (b) game-to-harness communication. During
-Phase 1 planning we discovered both can be done without touching the
-Bitburner source:
+## Current patches
 
-| Concern           | Approach (no patch)                                        |
-|-------------------|------------------------------------------------------------|
-| RNG seed          | Puppeteer `page.evaluateOnNewDocument` overrides `Math.random` with a seeded SFC32 PRNG before the app loads. Matches the upstream jest convention in `test/jest/FullSave.test.ts`. |
-| Script submission | Remote File API `pushFile` over WebSocket on localhost:12525 |
-| State export      | `getSaveFile()` for the full serialized game state (hourly snapshots); a harness-pushed helper script (`home/__state-export.ns`) for per-execution metrics not exposed directly by RFA. |
+### `0001-rfa-harness-port.patch`
 
-Because neither hard area needs a fork diff, the `bitburner/`
-submodule tracks upstream `bitburner-official/bitburner-src` at the
-pinned commit in `BITBURNER_COMMIT` with no divergence.
+**What:** Adds ~10 lines to `src/index.tsx` that read
+`globalThis.__BENCHBURNER_RFA_PORT` at boot; if set to a valid port,
+sets `Settings.RemoteFileApiPort` and
+`Settings.RemoteFileApiReconnectionDelay` so the Remote File API
+auto-connects to the harness's WebSocket server.
 
-## When to start patching
+**Why:** RFA is off by default (`Settings.RemoteFileApiPort = 0`).
+Enabling it otherwise requires either clicking through the in-game
+Options → Remote API UI, or pre-seeding a valid save into IndexedDB
+with RFA enabled. Both alternatives are brittle:
+  - UI automation depends on React component selectors that upstream
+    can refactor.
+  - Pre-seeding requires constructing a full save object (hundreds of
+    interdependent fields, version-gated migration logic).
+This patch is the smallest reliable mechanism, and it's the exact
+"state-export bootstrap" the spec (SPEC §5) permits in
+`bitburner/patches/`.
 
-Introduce patches here only when an additional capability is both
-necessary for the benchmark and unreachable via the above mechanisms.
-Document each patch with:
+**Why not monkey-patch via `evaluateOnNewDocument`:** webpack does not
+expose the `Settings` module on `globalThis` in production builds, so
+there's no external handle to mutate. A compile-time patch is required.
 
-- The file patched in upstream.
-- The rationale (what the harness cannot do without it).
-- How to re-apply against a newer upstream commit if we ever move the
-  pin forward.
+**Re-applying against a new pinned commit:**
+```sh
+cd bitburner/src
+git checkout <new-sha>
+git apply ../patches/0001-rfa-harness-port.patch
+# if the patch fails, regenerate it by hand against the new file.
+```
 
-At that point, `bitburner/` stops being a pristine tracking clone and
-becomes a real fork; we branch it off the pinned SHA and point the
-submodule at the fork.
+## Build
+
+The harness build step does (roughly):
+```sh
+cd bitburner/src
+git checkout "$(cat ../../BITBURNER_COMMIT)"
+git apply --check ../patches/*.patch
+git apply ../patches/*.patch
+npm install --ignore-scripts
+npx webpack --mode production
+```
+
+Future patches (seed-injection, additional in-game hooks) will land
+here one file per concern so the delta against upstream stays
+inspectable.

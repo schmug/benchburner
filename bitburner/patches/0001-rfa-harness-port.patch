@@ -1,0 +1,30 @@
+diff --git a/src/index.tsx b/src/index.tsx
+index 836100dc5..60c3c2c32 100644
+--- a/src/index.tsx
++++ b/src/index.tsx
+@@ -6,6 +6,7 @@ import { LoadingScreen } from "./ui/LoadingScreen";
+ import { initElectron } from "./Electron";
+ 
+ import { newRemoteFileApiConnection } from "./RemoteFileAPI/RemoteFileAPI";
++import { Settings } from "./Settings/Settings";
+ 
+ import "./css/font.css";
+ 
+@@ -32,6 +33,17 @@ styleElement.textContent = `#color-popover {
+ }`;
+ document.head.appendChild(styleElement);
+ 
++// Benchburner harness hook: if the host page seeds __BENCHBURNER_RFA_PORT,
++// enable RFA at boot so the harness can push scripts and read state.
++// See bitburner/patches/README.md in the benchburner repo.
++{
++  const benchburnerPort = (globalThis as unknown as { __BENCHBURNER_RFA_PORT?: number }).__BENCHBURNER_RFA_PORT;
++  if (typeof benchburnerPort === "number" && benchburnerPort > 0 && benchburnerPort <= 65535) {
++    Settings.RemoteFileApiPort = benchburnerPort;
++    Settings.RemoteFileApiReconnectionDelay = 2;
++  }
++}
++
+ setTimeout(newRemoteFileApiConnection, 2000);
+ 
+ function rerender(): void {
