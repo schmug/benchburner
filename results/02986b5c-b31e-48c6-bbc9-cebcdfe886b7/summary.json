@@ -1,0 +1,14 @@
+{
+  "run_id": "02986b5c-b31e-48c6-bbc9-cebcdfe886b7",
+  "orchestrator_model": "qwen3.5:4b",
+  "attribution": "public",
+  "final_money": 0,
+  "bitnodes_completed": 0,
+  "augments_installed": 0,
+  "status": "failed",
+  "failure_reason": "game boot failed: dispatcher failed to produce /__state.json within 30s",
+  "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad",
+  "start_time": "2026-04-22T23:55:20.906Z",
+  "end_time": "2026-04-22T23:55:58.232Z",
+  "duration_hours": 1
+}
