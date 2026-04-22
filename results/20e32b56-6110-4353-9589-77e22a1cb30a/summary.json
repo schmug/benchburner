@@ -1,0 +1,14 @@
+{
+  "run_id": "20e32b56-6110-4353-9589-77e22a1cb30a",
+  "orchestrator_model": "qwen3.5:4b",
+  "attribution": "public",
+  "final_money": 0,
+  "bitnodes_completed": 0,
+  "augments_installed": 0,
+  "status": "failed",
+  "failure_reason": "game boot failed: RFA connect timeout after 30000ms",
+  "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad",
+  "start_time": "2026-04-22T23:54:20.866Z",
+  "end_time": "2026-04-22T23:54:56.792Z",
+  "duration_hours": 1
+}
