@@ -7,8 +7,9 @@ dist/
 !.env.example
 
 # Bitburner build output (we rebuild from the pinned submodule each run)
-bitburner/dist/
-bitburner/node_modules/
+bitburner/src/dist/
+bitburner/src/node_modules/
+bitburner/src/.app/
 
 # Logs
 *.log

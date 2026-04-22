@@ -1,0 +1,3 @@
+[submodule "bitburner/src"]
+	path = bitburner/src
+	url = https://github.com/bitburner-official/bitburner-src.git

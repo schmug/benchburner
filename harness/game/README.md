@@ -22,6 +22,23 @@ is the minimum-invasive path. No fork patches needed.
 | `state-exporter.ns.ts`| In-game helper script pushed to `home` via RFA; writes `ns.getPlayer()` + server summary to `/__state.json`, readable via `getFile`. |
 | `mock.ts`             | Dev-only fake; same interface; not used in scored runs |
 
+## Build output paths (verified on pinned commit a4b0f22a2)
+
+```
+bitburner/src/index.html            # served as the page Puppeteer navigates to
+bitburner/src/dist/                 # webpack output (~139 MB)
+bitburner/src/favicon.ico
+bitburner/src/.app/                 # copy used by electron; not needed for harness
+```
+
+Build command (from `bitburner/src/`):
+`npm install --ignore-scripts && npx webpack --mode production`
+
+The `--ignore-scripts` flag sidesteps upstream's `preinstall` engines
+check that demands Node ≥24. Node 22.20 builds cleanly in practice;
+only asset-size warnings are produced. If a future pinned commit
+actually needs Node 24 at runtime, document here and upgrade.
+
 ## Chromium flags (for M1 and beyond)
 
 - `--disable-background-timer-throttling`
