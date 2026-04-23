@@ -1,0 +1,14 @@
+{
+  "run_id": "438f78a2-8fc2-4ded-a0e0-c764cb4cd1ba",
+  "orchestrator_model": "test-hang",
+  "attribution": "public",
+  "final_money": 1000,
+  "bitnodes_completed": 0,
+  "augments_installed": 0,
+  "status": "failed",
+  "failure_reason": "orchestrator hang: no cycle completed for 30s",
+  "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad",
+  "start_time": "2026-04-23T23:37:27.137Z",
+  "end_time": "2026-04-23T23:38:02.224Z",
+  "duration_hours": 1
+}
