@@ -36,7 +36,51 @@ import { randomUUID } from "node:crypto";
 
 const DEFAULT_MAX_ITERATIONS = 3;
 
+/**
+ * Infrastructure budget floor: reasoning-capable models (gpt-oss,
+ * qwen3/qwen3.6) can burn 2000+ tokens inside <think> before emitting
+ * a single character of response. Orchestrators typically don't know
+ * their subagents' reasoning overhead — that's an implementation
+ * detail of the local-model family. Without a floor, an orchestrator
+ * that picks a 200-token budget starves the subagent and we measure
+ * "can the orchestrator guess reasoning overhead" rather than "can
+ * the orchestrator orchestrate."
+ *
+ * The floor is applied to the inference `max_tokens` (which caps both
+ * thinking and response on Ollama). It does NOT widen the
+ * orchestrator's declared instruction budget that the subagent sees
+ * in its prompt — that stays the orchestrator's choice, so the
+ * orchestrator's intent (terse vs verbose code) is preserved.
+ */
+const INFERENCE_MAX_TOKEN_FLOOR = 6000;
+
+/**
+ * JSON schema for the subagent's turn output. Adapters that support
+ * structured output (Ollama, OpenAI format=json_schema) will use this
+ * to force valid parses even on small / quantized models that drift
+ * on large escaped-string content. Adapters that don't support it
+ * ignore the field and rely on the system prompt's template.
+ */
+const TURN_OUTPUT_SCHEMA: Record<string, unknown> = {
+  type: "object",
+  properties: {
+    decision: { type: "string", enum: ["RUN", "DONE"] },
+    code: { type: "string" },
+    notes: { type: "string" },
+  },
+  required: ["decision", "code"],
+};
+
 const SUBAGENT_SYSTEM_PROMPT = `You are a coding subagent on a software team. Your manager has given you a single task. You produce code, you may test it, and you return a final committed version.
+
+Runtime environment (fixed, not negotiable): your code runs in a sandboxed async JavaScript runtime. Every script MUST take the form:
+
+  /** @param {NS} ns */
+  export async function main(ns) {
+    // your code here
+  }
+
+The "ns" object is the environment API — your manager's instructions will tell you what to do with it. Do NOT write Python, shell, pseudocode, or any other language. Only this shape compiles and runs.
 
 On each turn you respond with EXACTLY a JSON object:
 {
@@ -45,7 +89,7 @@ On each turn you respond with EXACTLY a JSON object:
   "notes": "<optional short rationale>"
 }
 
-- RUN: the harness submits your code into a sandboxed environment and runs it. You will see the result (stdout, stderr, exit reason, any side effects the task tracks) on your next turn. Iterate on the code based on what you observed. You have a bounded iteration budget — use it deliberately, not reflexively.
+- RUN: the harness submits your code into the sandbox and runs it. You will see the result (stdout from ns.print / ns.tprint calls, stderr from runtime errors or kill reason, exit_reason, any side effects the task tracks) on your next turn. Iterate on the code based on what you observed. You have a bounded iteration budget — use it deliberately, not reflexively.
 - DONE: commit this code as your final answer. No further inference calls. Use DONE when you're satisfied with the code OR when you've run out of useful probes.
 
 Rules:
@@ -134,10 +178,18 @@ export class SubagentWorker {
       return;
     }
 
-    let resolved: { adapter: import("../types").InferenceAdapter; modelName: string };
+    let resolved: {
+      adapter: import("../types").InferenceAdapter;
+      modelName: string;
+      supportsSchema: boolean;
+    };
     try {
       const r = this.registry.get(model);
-      resolved = { adapter: r.adapter, modelName: r.modelName };
+      resolved = {
+        adapter: r.adapter,
+        modelName: r.modelName,
+        supportsSchema: Boolean(r.config.supports_structured_output),
+      };
     } catch (e) {
       this.publishResult({
         instruction_id: instr.instruction_id,
@@ -163,7 +215,7 @@ export class SubagentWorker {
         raw = await this.invokeWithTimeout(
           resolved,
           turnPrompt,
-          instr.constraints.token_budget,
+          Math.max(instr.constraints.token_budget, INFERENCE_MAX_TOKEN_FLOOR),
         );
       } catch (e) {
         this.publishResult({
@@ -182,6 +234,9 @@ export class SubagentWorker {
 
       const turn = parseTurnOutput(raw.text);
       if (!turn) {
+        console.warn(
+          `[subagent] cycle malformed: model=${resolved.modelName} finish=${raw.finish_reason} tokens=${raw.tokens_used} text_len=${raw.text.length} head=${JSON.stringify(raw.text.slice(0, 300))}`,
+        );
         // Malformed output — commit what we have, or if nothing, error.
         if (lastCode) {
           this.publishResult({
@@ -279,7 +334,11 @@ export class SubagentWorker {
   }
 
   private async invokeWithTimeout(
-    resolved: { adapter: import("../types").InferenceAdapter; modelName: string },
+    resolved: {
+      adapter: import("../types").InferenceAdapter;
+      modelName: string;
+      supportsSchema: boolean;
+    },
     prompt: string,
     maxTokens: number,
   ): Promise<{ text: string; tokens_used: number; finish_reason: "stop" | "length" | "error" }> {
@@ -293,6 +352,11 @@ export class SubagentWorker {
         system: SUBAGENT_SYSTEM_PROMPT,
         max_tokens: maxTokens,
         signal: controller.signal,
+        // Only apply the JSON schema when the model is known to handle
+        // structured output. Reasoning models (gpt-oss, qwen3*) break
+        // under Ollama schema constraints — thinking stream gets
+        // starved, response comes back empty.
+        responseFormat: resolved.supportsSchema ? TURN_OUTPUT_SCHEMA : undefined,
       });
     } finally {
       clearTimeout(t);

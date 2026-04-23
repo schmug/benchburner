@@ -45,6 +45,12 @@ export class OllamaAdapter implements InferenceAdapter {
     if (params.system !== undefined) {
       body.system = params.system;
     }
+    if (params.responseFormat !== undefined) {
+      // Ollama supports `format: "json"` for free-form JSON and
+      // `format: <schema>` for schema-constrained output. Either
+      // improves parse rates dramatically when the model can wander.
+      body.format = params.responseFormat;
+    }
 
     let res: Response;
     try {

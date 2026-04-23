@@ -47,6 +47,46 @@ import type { SubagentPool } from "../subagent/pool";
 import { HistoryBuffer } from "./history";
 import { buildOrchestratorPrompt, detectLeaks } from "./prompt";
 
+/**
+ * JSON schema the orchestrator's per-cycle output must conform to.
+ * Ollama / OpenAI-json-schema adapters will force compliance; other
+ * adapters ignore this and rely on the SPEC §3.3 system-prompt
+ * template.
+ */
+const ORCHESTRATOR_OUTPUT_SCHEMA: Record<string, unknown> = {
+  type: "object",
+  properties: {
+    actions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          action_type: { type: "string", enum: ["spawn", "kill", "instruct", "noop"] },
+          subagent_id: { type: "string" },
+          model_choice: { type: "string" },
+          instruction: {
+            type: "object",
+            properties: {
+              task: { type: "string" },
+              context: { type: "string" },
+              constraints: {
+                type: "object",
+                properties: {
+                  token_budget: { type: "number" },
+                  max_script_size_lines: { type: "number" },
+                },
+              },
+            },
+          },
+        },
+        required: ["action_type"],
+      },
+    },
+    reasoning: { type: "string" },
+  },
+  required: ["actions"],
+};
+
 export interface LoopOptions {
   run_id: string;
   config: RunConfig;
@@ -183,6 +223,12 @@ export class OrchestratorLoop {
         prompt: user,
         system,
         max_tokens: maxTokens,
+        // NOTE: intentionally do NOT force responseFormat on the
+        // orchestrator path. Ollama's schema-constrained output
+        // breaks reasoning models (gpt-oss, qwen3*): the thinking
+        // stream gets starved, response comes back empty. Orchestrators
+        // rely on SPEC §3.3 system-prompt discipline + our lenient
+        // parser (accepts bare JSON / fenced / first-balanced-object).
       });
 
       const parsed = parseOrchestratorOutput(raw.text);

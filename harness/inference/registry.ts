@@ -64,6 +64,9 @@ export function loadModelsYaml(path: string): ModelConfig[] {
     };
     if (typeof e.model_name === "string") cfg.model_name = e.model_name;
     if (typeof e.api_key_env === "string") cfg.api_key_env = e.api_key_env;
+    if (typeof e.supports_structured_output === "boolean") {
+      cfg.supports_structured_output = e.supports_structured_output;
+    }
 
     out.push(cfg);
   }

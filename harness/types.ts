@@ -132,6 +132,13 @@ export interface InferenceInvokeParams {
   stop?: string[];
   /** AbortSignal — adapters that support cancellation should honor it. */
   signal?: AbortSignal;
+  /**
+   * Constrain the model's output. "json" forces any valid JSON; an
+   * object is passed as a JSON schema the response must conform to.
+   * Adapters that don't support structured output should ignore this
+   * and fall back to natural-language prompting.
+   */
+  responseFormat?: "json" | Record<string, unknown>;
 }
 
 export interface InferenceResult {
@@ -152,6 +159,15 @@ export interface ModelConfig {
   context_window: number;
   model_name?: string;
   api_key_env?: string;
+  /**
+   * When true, the subagent worker may pass a JSON schema via
+   * `responseFormat` to constrain this model's output. Known-safe
+   * models (non-reasoning coders like qwen2.5-coder) benefit from
+   * it. Reasoning models (gpt-oss, qwen3*) break when schema is
+   * applied — Ollama starves their `thinking` stream and the
+   * response comes back empty. Default false.
+   */
+  supports_structured_output?: boolean;
 }
 
 // ────────────────────────────────────────────────────────────────────
