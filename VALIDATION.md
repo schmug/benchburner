@@ -21,17 +21,27 @@ Conventions:
 produces `final_money > 1262`. Until then, every leaderboard number
 is noise around a flat line.
 
-- [ ] **P0S1 — Golden-script harness hook.**
-  - Add `BENCHBURNER_GOLDEN_SCRIPT=path` env override in
-    `harness/index.ts`: when set, bypass the orchestrator loop and
-    push+run that one script against the pinned Bitburner instance
-    for `duration_hours`.
-  - Write a hand-tuned `harness/golden/hack-n00dles.js` that roots
-    `n00dles` + `foodnstuff` and runs a `ns.hack(...)` loop.
-  - 30-minute run. Expected: `final_money > 1262`.
-  - **Non-negotiable:** if this fails, the bug is in our game
-    integration and no model choice will ever fix it.
-  - Evidence: (pending)
+- [x] **P0S1 — Golden-script harness hook.**
+  - Added `BENCHBURNER_GOLDEN_SCRIPT=path` env override;
+    `harness/golden/hack-n00dles.js`; `harness/game/dispatcher-light.js`
+    (skips queue processing so the golden script has RAM headroom on
+    home's default 8 GB); `PuppeteerGame.directTerminalRun` +
+    `lightDispatcher` option; periodic golden progress logging that
+    also pulls `/__golden_diag.json` via RFA.
+  - Validated on run **`9acd4539-c2be-4c4d-b3d9-ef795c6e60a7`**
+    (commit `910f1f1`): 10 min, `final_money = 2976` (started at
+    1262, +1714). 11 hack iterations, alternating ~$285 successes
+    and level-1 misses; diag `total_earned` matches player-money
+    delta to the dollar.
+  - **Two bugs fixed during diagnosis and worth remembering:**
+    (1) The full dispatcher is ~4.7 GB; co-residency with a useful
+    golden script needs the light variant at ~3.1 GB. (2) An early
+    golden that included a grow branch with `< 50% maxMoney`
+    threshold stalled forever on n00dles' 4%-of-max starting money —
+    grow doesn't give the player money, only hack does. Validation
+    golden is hack-only.
+  - Evidence: `results/9acd4539-c2be-4c4d-b3d9-ef795c6e60a7/` on
+    `orchestrator/smoke-test`.
 
 - [ ] **P0S2 — Bigger coder subagent.**
   - Pull `qwen3-coder-next:q8_0` (84GB) — box has the memory.

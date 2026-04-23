@@ -46,15 +46,27 @@ export interface PuppeteerGameOptions {
   debugDir?: string;
   /** When true, log verbose console messages from the game. */
   verboseConsole?: boolean;
+  /**
+   * When true, push the lightweight state-only dispatcher instead of
+   * the full queue-processing one. Frees ~1.5 GB of home RAM so
+   * golden / validation scripts can coexist on the default 8-GB home.
+   * The harness can't submit agentic probes or committed scripts in
+   * this mode — state reads only.
+   */
+  lightDispatcher?: boolean;
 }
 
 export class PuppeteerGame implements GameController {
   private readonly opts: Required<
-    Omit<PuppeteerGameOptions, "debugDir" | "chromeExecutable" | "verboseConsole">
+    Omit<
+      PuppeteerGameOptions,
+      "debugDir" | "chromeExecutable" | "verboseConsole" | "lightDispatcher"
+    >
   > & {
     debugDir?: string;
     chromeExecutable?: string;
     verboseConsole: boolean;
+    lightDispatcher: boolean;
   };
   private http?: HttpServer;
   private rfa?: RFAServer;
@@ -75,6 +87,7 @@ export class PuppeteerGame implements GameController {
       debugDir: opts.debugDir,
       chromeExecutable: opts.chromeExecutable,
       verboseConsole: opts.verboseConsole ?? false,
+      lightDispatcher: opts.lightDispatcher ?? false,
     };
   }
 
@@ -158,6 +171,43 @@ export class PuppeteerGame implements GameController {
       })),
       timestamp: new Date().toISOString(),
     };
+  }
+
+  /**
+   * Push a script to home and start it via the in-game terminal. Used
+   * by golden-script validation runs (VALIDATION.md P0S1) which want
+   * a long-running script that doesn't get killed by the dispatcher's
+   * 120s probe-kill timeout. The dispatcher won't see this script at
+   * all since it's not in /__queue.json.
+   */
+  async directTerminalRun(filename: string, code: string): Promise<void> {
+    this.requireReady();
+    await this.rfa!.pushFile(filename, code, "home");
+    if (!this.page) throw new Error("page not initialized");
+    await this.page.waitForSelector("#terminal-input", { timeout: 10_000 });
+    await this.page.click("#terminal-input");
+    await this.page.focus("#terminal-input");
+    await this.page.keyboard.type(`run ${filename}`);
+    await this.page.keyboard.press("Enter");
+    await new Promise((r) => setTimeout(r, 1500));
+    // Diagnostic: dump the last 2KB of terminal text so we can tell
+    // from the harness log whether the run command was accepted.
+    try {
+      const tail = await this.page.evaluate(() => {
+        const terminal = document.getElementById("terminal");
+        const text = terminal?.innerText ?? "(no #terminal element)";
+        return text.slice(-2048);
+      });
+      console.log(`[puppeteer] terminal tail after 'run ${filename}':\n${tail}`);
+    } catch (e) {
+      console.warn(`[puppeteer] terminal dump failed: ${(e as Error).message}`);
+    }
+  }
+
+  /** Raw RFA file read, for harness-level diagnostics. */
+  async readFile(filename: string, server = "home"): Promise<string | null> {
+    if (!this.rfa?.isConnected()) return null;
+    return this.safeGetFile(filename, server);
   }
 
   async readState(): Promise<GameState> {
@@ -250,7 +300,8 @@ export class PuppeteerGame implements GameController {
   }
 
   private async pushDispatcher(): Promise<void> {
-    const dispatcherSrc = readFileSync(path.join(HARNESS_GAME_SRC_DIR, "dispatcher.js"), "utf8");
+    const file = this.opts.lightDispatcher ? "dispatcher-light.js" : "dispatcher.js";
+    const dispatcherSrc = readFileSync(path.join(HARNESS_GAME_SRC_DIR, file), "utf8");
     await this.rfa!.pushFile("/__dispatcher.js", dispatcherSrc, "home");
   }
 
@@ -283,9 +334,9 @@ export class PuppeteerGame implements GameController {
     throw new Error("dispatcher failed to produce /__state.json within 30s");
   }
 
-  private async safeGetFile(filename: string): Promise<string | null> {
+  private async safeGetFile(filename: string, server = "home"): Promise<string | null> {
     try {
-      const r = await this.rfa!.getFile(filename, "home");
+      const r = await this.rfa!.getFile(filename, server);
       return r || null;
     } catch {
       return null;

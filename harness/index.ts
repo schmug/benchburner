@@ -10,7 +10,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { Bus } from "./bus/bus";
@@ -35,6 +35,7 @@ async function main(): Promise<void> {
     ? Number(process.env.BENCHBURNER_DURATION_SEC)
     : undefined;
   const useMock = process.env.BENCHBURNER_USE_MOCK === "1";
+  const goldenScriptPath = process.env.BENCHBURNER_GOLDEN_SCRIPT;
 
   const config = loadRunConfig(configPath);
   const effectiveDurationSec = durationOverrideSec ?? config.duration_hours * 3600;
@@ -46,6 +47,9 @@ async function main(): Promise<void> {
   console.log(`[harness] roster=${config.subagent_roster.join(",")}`);
   console.log(`[harness] duration=${effectiveDurationSec}s (${(effectiveDurationSec / 3600).toFixed(2)}h)`);
   console.log(`[harness] game=${useMock ? "mock" : "puppeteer"}`);
+  if (goldenScriptPath) {
+    console.log(`[harness] GOLDEN-SCRIPT MODE — orchestrator loop bypassed; running ${goldenScriptPath}`);
+  }
   console.log(`[harness] artifacts=${runDir}`);
 
   // ── Boot subsystems ───────────────────────────────────────────
@@ -75,6 +79,10 @@ async function main(): Promise<void> {
     : new PuppeteerGame({
         seed: config.game.seed,
         verboseConsole: Boolean(process.env.BENCHBURNER_VERBOSE_GAME),
+        // Golden/validation mode bypasses the orchestrator, so we don't
+        // need the queue-processing dispatcher. The lighter variant
+        // frees enough home RAM for a second long-running script.
+        lightDispatcher: Boolean(goldenScriptPath),
       });
 
   let fatal: string | null = null;
@@ -128,14 +136,53 @@ async function main(): Promise<void> {
       console.error(`[harness] fatal: ${reason}`);
     },
   });
-  if (!fatal) {
+  if (!fatal && !goldenScriptPath) {
     loop.start(initialState);
+  }
+
+  // Golden-script mode (VALIDATION.md P0S1): push the script into
+  // the game's filesystem and start it directly via the in-game
+  // terminal, bypassing the orchestrator/worker path. Lets us measure
+  // what the game integration can produce on its own, without any LLM
+  // in the loop.
+  if (!fatal && goldenScriptPath && !useMock) {
+    try {
+      const code = readFileSync(goldenScriptPath, "utf8");
+      const filename = "/__golden.js";
+      // Cast to any to reach PuppeteerGame's specific method without a
+      // narrower type import at this layer.
+      await (game as unknown as { directTerminalRun(filename: string, code: string): Promise<void> }).directTerminalRun(filename, code);
+      console.log(`[harness] golden script started: ${filename}`);
+    } catch (e) {
+      fatal = `golden script launch failed: ${(e as Error).message}`;
+      console.error(`[harness] ${fatal}`);
+    }
   }
 
   // ── Wait for duration or fatal ────────────────────────────────
   const deadline = startMs + effectiveDurationSec * 1000;
+  // In golden-script mode, log money every 30s so we can see whether
+  // the script is actually earning. Cheap diagnostic, no benchmark
+  // impact since golden mode skips the orchestrator anyway.
+  const progressInterval = goldenScriptPath ? 30_000 : 0;
+  let lastProgressLog = Date.now();
   while (Date.now() < deadline && !fatal) {
     await sleep(1_000);
+    if (progressInterval && Date.now() - lastProgressLog >= progressInterval) {
+      lastProgressLog = Date.now();
+      try {
+        const s = await game.readState();
+        const elapsed = Math.round((Date.now() - startMs) / 1000);
+        // Pull the golden script's own per-iteration diagnostic too.
+        const diag = await (game as unknown as {
+          readFile?(path: string): Promise<string | null>;
+        }).readFile?.("/__golden_diag.json").catch(() => null);
+        const diagStr = diag ? ` diag=${diag.slice(0, 400)}` : "";
+        console.log(`[golden] t+${elapsed}s state_money=${s.current_money}${diagStr}`);
+      } catch (e) {
+        console.warn(`[golden] readState failed: ${(e as Error).message}`);
+      }
+    }
   }
 
   // ── Shutdown ─────────────────────────────────────────────────
