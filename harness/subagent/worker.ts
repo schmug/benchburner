@@ -1,54 +1,74 @@
 /**
- * SubagentWorker — consumes `instructions` from the bus, calls the
- * configured inference adapter for the target subagent's model,
- * publishes a `Result` back on the bus. Enforces the per-run token
- * budget and timeout. No retries; failures surface as result.status=error.
+ * SubagentWorker — consumes `instructions` from the bus and runs an
+ * *agentic* write-run-observe loop on behalf of each instruction.
  *
- * Concurrency is capped by a semaphore (default 5). When all slots are
- * busy, new instructions queue in arrival order.
+ * Loop shape:
+ *   1. Inference call asks for code + a decision token: either RUN
+ *      (try it in the game, observe the result, iterate) or DONE
+ *      (commit this code as the final answer).
+ *   2. If RUN: harness submits the code via the GameController,
+ *      captures the ExecutionResult, feeds it back into the subagent
+ *      as the next inference turn's context.
+ *   3. Bounded by `max_iterations` (default 3). On exhaustion we commit
+ *      the most recent code with `status: "success"` and whatever the
+ *      final execution looked like.
+ *
+ * This mirrors how a real coding agent works — write, run, read
+ * errors, iterate — so the benchmark measures "orchestrator leading
+ * coding agents" and not "orchestrator synthesizing write-once
+ * output." See SPEC §2.1 addendum in bitburner/patches/README.md
+ * (agentic-subagent decision).
+ *
+ * Concurrency is still capped by `max_concurrent` (default 5).
  */
 
 import type { Bus } from "../bus/bus";
-import type { Instruction, Result, RunConfig } from "../types";
+import type {
+  ExecutionResult,
+  GameController,
+  Instruction,
+  Result,
+  RunConfig,
+} from "../types";
 import type { InferenceRegistry } from "../inference/registry";
 import type { SubagentPool } from "./pool";
+import { randomUUID } from "node:crypto";
 
-const SUBAGENT_SYSTEM_PROMPT = `You are a subagent on a software team. Your manager has given you a single, concrete task. You must output exactly one code block in Netscript (a JavaScript dialect) that accomplishes the task, followed by nothing else.
+const DEFAULT_MAX_ITERATIONS = 3;
+
+const SUBAGENT_SYSTEM_PROMPT = `You are a coding subagent on a software team. Your manager has given you a single task. You produce code, you may test it, and you return a final committed version.
+
+On each turn you respond with EXACTLY a JSON object:
+{
+  "decision": "RUN" | "DONE",
+  "code": "<the full script source — always include it, not just a diff>",
+  "notes": "<optional short rationale>"
+}
+
+- RUN: the harness submits your code into a sandboxed environment and runs it. You will see the result (stdout, stderr, exit reason, any side effects the task tracks) on your next turn. Iterate on the code based on what you observed. You have a bounded iteration budget — use it deliberately, not reflexively.
+- DONE: commit this code as your final answer. No further inference calls. Use DONE when you're satisfied with the code OR when you've run out of useful probes.
 
 Rules:
-- Output ONLY the code. No prose, no explanation, no markdown fences.
-- The code must be valid Netscript and runnable as-is.
+- Output ONLY the JSON. No prose, no markdown fences, no explanation outside it.
+- "code" must be the complete script as a string. The harness replaces whatever you pushed previously with this new code each RUN.
 - Respect the line budget your manager specifies. If you can't fit, simplify; do not truncate mid-statement.
-- You have no memory of previous instructions. Treat each task as standalone.`;
-
-function buildSubagentPrompt(instr: Instruction): string {
-  return [
-    `# Task`,
-    instr.task,
-    ``,
-    `# Context from your manager`,
-    instr.context || "(none provided)",
-    ``,
-    `# Constraints`,
-    `- Maximum lines: ${instr.constraints.max_script_size_lines}`,
-    `- Token budget: ${instr.constraints.token_budget}`,
-    ``,
-    `Output the code now.`,
-  ].join("\n");
-}
-
-function stripCodeFences(text: string): string {
-  const fencePattern = /```(?:[a-zA-Z0-9_-]+)?\n?([\s\S]*?)```/;
-  const m = text.match(fencePattern);
-  if (m) return m[1].trim();
-  return text.trim();
-}
+- You have no memory between tasks; only within this one conversation.`;
 
 export interface WorkerOptions {
   bus: Bus;
   registry: InferenceRegistry;
   pool: SubagentPool;
   limits: RunConfig["subagent_limits"];
+  /** Game controller used to run code during subagent iterations. */
+  game: GameController;
+  /** Max write-run-observe iterations per instruction. Default 3. */
+  maxIterations?: number;
+}
+
+interface TurnOutput {
+  decision: "RUN" | "DONE";
+  code: string;
+  notes?: string;
 }
 
 export class SubagentWorker {
@@ -56,6 +76,8 @@ export class SubagentWorker {
   private readonly registry: InferenceRegistry;
   private readonly pool: SubagentPool;
   private readonly limits: RunConfig["subagent_limits"];
+  private readonly game: GameController;
+  private readonly maxIterations: number;
   private readonly inFlight = new Set<Promise<void>>();
   private queue: Instruction[] = [];
   private stopped = false;
@@ -66,6 +88,8 @@ export class SubagentWorker {
     this.registry = opts.registry;
     this.pool = opts.pool;
     this.limits = opts.limits;
+    this.game = opts.game;
+    this.maxIterations = opts.maxIterations ?? DEFAULT_MAX_ITERATIONS;
   }
 
   start(): void {
@@ -77,15 +101,11 @@ export class SubagentWorker {
     });
   }
 
-  /**
-   * Stop accepting new instructions and wait for all in-flight work to
-   * complete (or its own timeout to expire).
-   */
   async stop(): Promise<void> {
     this.stopped = true;
     this.unsubscribe?.();
     this.unsubscribe = undefined;
-    this.queue = []; // drop anything still waiting
+    this.queue = [];
     await Promise.allSettled([...this.inFlight]);
   }
 
@@ -130,47 +150,152 @@ export class SubagentWorker {
       return;
     }
 
+    const iterations: Array<{ iteration: number; exit_reason?: string; money_gained?: number; stderr?: string }> = [];
+    const transcript: string[] = [buildInitialPrompt(instr)];
+    let totalTokens = 0;
+    let lastCode = "";
+    let lastNotes: string | undefined;
+
+    for (let i = 1; i <= this.maxIterations; i += 1) {
+      const turnPrompt = transcript.join("\n\n---\n\n");
+      let raw: { text: string; tokens_used: number; finish_reason: "stop" | "length" | "error" };
+      try {
+        raw = await this.invokeWithTimeout(
+          resolved,
+          turnPrompt,
+          instr.constraints.token_budget,
+        );
+      } catch (e) {
+        this.publishResult({
+          instruction_id: instr.instruction_id,
+          subagent_id: instr.subagent_id,
+          status: "error",
+          tokens_used: totalTokens,
+          error_message: `iteration ${i}: ${(e as Error).message}`,
+          iterations: i - 1,
+          iteration_summaries: iterations,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+      totalTokens += raw.tokens_used;
+
+      const turn = parseTurnOutput(raw.text);
+      if (!turn) {
+        // Malformed output — commit what we have, or if nothing, error.
+        if (lastCode) {
+          this.publishResult({
+            instruction_id: instr.instruction_id,
+            subagent_id: instr.subagent_id,
+            status: "success",
+            code: lastCode,
+            reasoning: lastNotes,
+            tokens_used: totalTokens,
+            iterations: i - 1,
+            iteration_summaries: iterations,
+            timestamp: new Date().toISOString(),
+          });
+          return;
+        }
+        this.publishResult({
+          instruction_id: instr.instruction_id,
+          subagent_id: instr.subagent_id,
+          status: "error",
+          tokens_used: totalTokens,
+          error_message: `iteration ${i}: malformed turn output; raw prefix=${raw.text.slice(0, 200)}`,
+          iterations: i - 1,
+          iteration_summaries: iterations,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      lastCode = turn.code;
+      lastNotes = turn.notes;
+
+      if (turn.decision === "DONE" || turn.code.length === 0) {
+        this.publishResult({
+          instruction_id: instr.instruction_id,
+          subagent_id: instr.subagent_id,
+          status: "success",
+          code: lastCode,
+          reasoning: lastNotes,
+          tokens_used: totalTokens,
+          iterations: i,
+          iteration_summaries: iterations,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      // RUN: execute in the game, capture result, feed back for next turn.
+      // Use a throw-away probe script_id so probe runs don't collide with
+      // the orchestrator's committed script submissions.
+      const probeId = `probe-${instr.subagent_id}-${i}-${randomUUID().slice(0, 6)}`;
+      let exec: ExecutionResult;
+      try {
+        await this.game.submitScript({ script_id: probeId, code: turn.code });
+        exec = await this.game.runScript({
+          script_id: probeId,
+          subagent_id: instr.subagent_id,
+        });
+      } catch (e) {
+        exec = {
+          script_id: probeId,
+          subagent_id: instr.subagent_id,
+          status: "failed",
+          money_gained: 0,
+          time_elapsed_seconds: 0,
+          error: (e as Error).message,
+          stderr: (e as Error).message,
+          exit_reason: "harness_error",
+          game_state_snapshot: { current_money: 0, bitnode_id: 1, bitnode_complete: false },
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      iterations.push({
+        iteration: i,
+        exit_reason: exec.exit_reason,
+        money_gained: exec.money_gained,
+        stderr: exec.stderr?.slice(0, 500),
+      });
+
+      transcript.push(formatExecutionFeedback(i, turn, exec));
+    }
+
+    // Exhausted iterations without DONE — commit last code.
+    this.publishResult({
+      instruction_id: instr.instruction_id,
+      subagent_id: instr.subagent_id,
+      status: "success",
+      code: lastCode,
+      reasoning: lastNotes ? `${lastNotes} (iteration budget exhausted)` : "iteration budget exhausted",
+      tokens_used: totalTokens,
+      iterations: this.maxIterations,
+      iteration_summaries: iterations,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  private async invokeWithTimeout(
+    resolved: { adapter: import("../types").InferenceAdapter; modelName: string },
+    prompt: string,
+    maxTokens: number,
+  ): Promise<{ text: string; tokens_used: number; finish_reason: "stop" | "length" | "error" }> {
     const controller = new AbortController();
     const timeoutMs = this.limits.timeout_seconds * 1000;
-    const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
-
-    const startedAt = Date.now();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const raw = await resolved.adapter.invoke({
+      return await resolved.adapter.invoke({
         model: resolved.modelName,
-        prompt: buildSubagentPrompt(instr),
+        prompt,
         system: SUBAGENT_SYSTEM_PROMPT,
-        max_tokens: instr.constraints.token_budget,
+        max_tokens: maxTokens,
         signal: controller.signal,
       });
-      clearTimeout(timeoutHandle);
-
-      const code = stripCodeFences(raw.text);
-      const status: Result["status"] = raw.finish_reason === "error" ? "error" : "success";
-
-      this.publishResult({
-        instruction_id: instr.instruction_id,
-        subagent_id: instr.subagent_id,
-        status,
-        code: status === "success" ? code : undefined,
-        reasoning: undefined,
-        tokens_used: raw.tokens_used,
-        error_message: status === "error" ? `finish_reason=error; raw=${raw.text.slice(0, 200)}` : undefined,
-        timestamp: new Date().toISOString(),
-      });
-    } catch (e) {
-      clearTimeout(timeoutHandle);
-      const aborted = controller.signal.aborted;
-      const elapsedMs = Date.now() - startedAt;
-      const status: Result["status"] = aborted && elapsedMs >= timeoutMs - 50 ? "timeout" : "error";
-      this.publishResult({
-        instruction_id: instr.instruction_id,
-        subagent_id: instr.subagent_id,
-        status,
-        tokens_used: 0,
-        error_message: (e as Error).message,
-        timestamp: new Date().toISOString(),
-      });
+    } finally {
+      clearTimeout(t);
     }
   }
 
@@ -178,4 +303,82 @@ export class SubagentWorker {
     if (this.stopped) return;
     this.bus.publish("results", r);
   }
+}
+
+function buildInitialPrompt(instr: Instruction): string {
+  return [
+    `# Task`,
+    instr.task,
+    ``,
+    `# Context from your manager`,
+    instr.context || "(none provided)",
+    ``,
+    `# Constraints`,
+    `- Maximum script lines: ${instr.constraints.max_script_size_lines}`,
+    `- Per-turn token budget: ${instr.constraints.token_budget}`,
+    ``,
+    `Produce the first version of the code. Respond with the JSON object.`,
+  ].join("\n");
+}
+
+function formatExecutionFeedback(iteration: number, turn: TurnOutput, exec: ExecutionResult): string {
+  const stdoutBlock = exec.stdout ? `\n## stdout (truncated to last 2KB)\n${exec.stdout.slice(-2048)}` : "";
+  const stderrBlock = exec.stderr ? `\n## stderr\n${exec.stderr}` : "";
+  const statsBlock = exec.script_stats ? `\n## stats\n${JSON.stringify(exec.script_stats)}` : "";
+  return [
+    `# Iteration ${iteration} result`,
+    `status=${exec.status} exit_reason=${exec.exit_reason ?? "?"} money_gained=${exec.money_gained} elapsed_s=${exec.time_elapsed_seconds}`,
+    stdoutBlock,
+    stderrBlock,
+    statsBlock,
+    ``,
+    `Iterate on your code, or commit it with decision=DONE. Respond with the JSON object.`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function parseTurnOutput(text: string): TurnOutput | null {
+  // Accept bare JSON or ```json``` fenced; find first balanced object.
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const candidate = fence ? fence[1] : text;
+  const obj = extractFirstJsonObject(candidate.trim());
+  if (!obj) return null;
+  try {
+    const parsed = JSON.parse(obj);
+    if (!parsed || typeof parsed !== "object") return null;
+    const decision = parsed.decision === "DONE" ? "DONE" : "RUN";
+    const code = typeof parsed.code === "string" ? parsed.code : "";
+    const notes = typeof parsed.notes === "string" ? parsed.notes : undefined;
+    return { decision, code, notes };
+  } catch {
+    return null;
+  }
+}
+
+function extractFirstJsonObject(s: string): string | null {
+  const start = s.indexOf("{");
+  if (start < 0) return null;
+  let depth = 0;
+  let inStr = false;
+  let escape = false;
+  for (let i = start; i < s.length; i += 1) {
+    const c = s[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (c === "\\" && inStr) {
+      escape = true;
+      continue;
+    }
+    if (c === '"') inStr = !inStr;
+    if (inStr) continue;
+    if (c === "{") depth += 1;
+    else if (c === "}") {
+      depth -= 1;
+      if (depth === 0) return s.slice(start, i + 1);
+    }
+  }
+  return null;
 }

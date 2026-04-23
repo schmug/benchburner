@@ -36,13 +36,21 @@ No prose outside the JSON.`;
  * Tokens that must never appear in the prompt sent to the orchestrator.
  * Case-insensitive substring check on the full rendered prompt.
  */
+/**
+ * Tokens that must never appear in the orchestrator's rendered prompt.
+ * Scope is narrow by design — SPEC §3.3:
+ *   "Intent is not to hide it in code, just not to name it in the prompt."
+ * So we drop "netscript" (it will legitimately appear in subagent-written
+ * code, which the orchestrator should see as a tech lead would). We keep
+ * the game-name tokens so the orchestrator can't use Bitburner-specific
+ * wiki knowledge from its model priors.
+ */
 export const FORBIDDEN_TOKENS: readonly string[] = Object.freeze([
   "bitburner",
+  "bitnode",
+  "hacknet",
+  "augment",
   "seed",
-  "netscript", // the scripting language name is distinctive; treat as leak
-  "bitnode",   // Bitburner-specific world-level concept
-  "augment",   // Bitburner-specific persistent-upgrade concept
-  "hacknet",   // Bitburner-specific
 ]);
 
 export interface BuildPromptResult {
@@ -96,13 +104,25 @@ function scrubInput(input: OrchestratorInput): OrchestratorInput {
       task: scrubText(pair.instruction.task),
       context: scrubText(pair.instruction.context),
     },
-    // Strip the raw Netscript code from the orchestrator's view.
-    // The orchestrator can reason over result.status / tokens_used /
-    // reasoning, but the code itself is a torrent of game-identity
-    // tokens that would leak faster than scrubText can keep up with.
-    // The code stays in storage (scripts table) for artifact purposes.
+    // Keep result.code so the orchestrator can read its team's output
+    // the way a real tech lead would. Per SPEC §3.3 the intent is not
+    // to hide game-adjacent language in code; only to avoid *naming*
+    // the game in the prompt. Scrub forbidden *name* tokens (including
+    // from subagent-authored comments / string literals) while keeping
+    // the code's structure and API calls intact — redacting "Bitburner"
+    // in a JSDoc line is much less information loss than hiding the
+    // whole function.
     result: pair.result
-      ? { ...pair.result, code: pair.result.code ? "[omitted]" : undefined, reasoning: pair.result.reasoning ? scrubText(pair.result.reasoning) : undefined }
+      ? {
+          ...pair.result,
+          code: pair.result.code ? scrubText(pair.result.code) : pair.result.code,
+          reasoning: pair.result.reasoning ? scrubText(pair.result.reasoning) : undefined,
+          error_message: pair.result.error_message ? scrubText(pair.result.error_message) : undefined,
+          iteration_summaries: pair.result.iteration_summaries?.map((s) => ({
+            ...s,
+            stderr: s.stderr ? scrubText(s.stderr) : s.stderr,
+          })),
+        }
       : null,
   }));
   return {

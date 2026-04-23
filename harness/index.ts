@@ -69,8 +69,6 @@ async function main(): Promise<void> {
 
   const bus = new Bus();
   const pool = new SubagentPool();
-  const worker = new SubagentWorker({ bus, registry, pool, limits: config.subagent_limits });
-  worker.start();
 
   const game: GameController = useMock
     ? new MockGame({ seed: config.game.seed })
@@ -86,6 +84,17 @@ async function main(): Promise<void> {
     fatal = `game boot failed: ${(e as Error).message}`;
     console.error(`[harness] ${fatal}`);
   }
+
+  // Worker depends on the game controller for its write-run-observe
+  // iterations, so it's constructed after the game is ready.
+  const worker = new SubagentWorker({
+    bus,
+    registry,
+    pool,
+    limits: config.subagent_limits,
+    game,
+  });
+  if (!fatal) worker.start();
 
   const initialState: GameState = fatal
     ? { current_money: 0, bitnode_id: 1, bitnode_complete: false }

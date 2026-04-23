@@ -33,6 +33,18 @@ export interface Result {
   reasoning?: string;
   tokens_used: number;
   error_message?: string;
+  /** Number of write-run-observe iterations the subagent used (agentic loop). */
+  iterations?: number;
+  /**
+   * Per-iteration execution outcomes the subagent observed. Used by the
+   * orchestrator only in summary form; the full trace stays in storage.
+   */
+  iteration_summaries?: Array<{
+    iteration: number;
+    exit_reason?: string;
+    money_gained?: number;
+    stderr?: string;
+  }>;
   timestamp: string;
 }
 
@@ -52,6 +64,14 @@ export interface ExecutionResult {
   money_gained: number;
   time_elapsed_seconds: number;
   error?: string;
+  /** stdout captured from ns.print / ns.tprint calls. May be truncated. */
+  stdout?: string;
+  /** Runtime error / exception / kill reason from the game-side runner. */
+  stderr?: string;
+  /** "exited" | "killed" | "errored" | "timed_out" — coarse-grained exit class. */
+  exit_reason?: string;
+  /** exp gained + ram usage + online seconds; see dispatcher.js for fields. */
+  script_stats?: Record<string, number | string>;
   game_state_snapshot: GameState;
   timestamp: string;
 }
