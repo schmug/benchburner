@@ -1,0 +1,14 @@
+{
+  "run_id": "e1ece6c6-111d-4a95-ac52-2f03414aadbc",
+  "orchestrator_model": "qwen3.5:4b",
+  "attribution": "public",
+  "final_money": 1262,
+  "bitnodes_completed": 0,
+  "augments_installed": 0,
+  "status": "failed",
+  "failure_reason": "leak policy violated in cycle 5: netscript",
+  "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad",
+  "start_time": "2026-04-23T00:05:07.194Z",
+  "end_time": "2026-04-23T00:13:35.005Z",
+  "duration_hours": 1
+}
