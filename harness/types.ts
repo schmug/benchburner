@@ -154,7 +154,7 @@ export interface InferenceAdapter {
 
 export interface ModelConfig {
   id: string;
-  adapter: "ollama" | "http";
+  adapter: "ollama" | "http" | "test-hang" | "test-scripted";
   endpoint: string;
   context_window: number;
   model_name?: string;

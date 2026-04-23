@@ -13,6 +13,8 @@ import * as yaml from "js-yaml";
 import type { InferenceAdapter, ModelConfig } from "../types";
 import { OllamaAdapter } from "./ollama";
 import { HTTPAdapter } from "./http";
+import { TestHangAdapter } from "./test-hang";
+import { TestScriptedAdapter } from "./test-scripted";
 
 /**
  * Parse a `models.yaml` file into a validated `ModelConfig[]`. Throws
@@ -42,9 +44,9 @@ export function loadModelsYaml(path: string): ModelConfig[] {
     if (typeof id !== "string" || id.length === 0) {
       throw new Error(`models.yaml entry #${i} missing string "id"`);
     }
-    if (adapter !== "ollama" && adapter !== "http") {
+    if (adapter !== "ollama" && adapter !== "http" && adapter !== "test-hang" && adapter !== "test-scripted") {
       throw new Error(
-        `models.yaml entry "${id}" has invalid adapter "${String(adapter)}" (expected "ollama" or "http")`,
+        `models.yaml entry "${id}" has invalid adapter "${String(adapter)}" (expected "ollama", "http", "test-hang", or "test-scripted")`,
       );
     }
     if (typeof endpoint !== "string" || endpoint.length === 0) {
@@ -122,6 +124,10 @@ export class InferenceRegistry {
     if (!adapter) {
       if (config.adapter === "ollama") {
         adapter = new OllamaAdapter({ endpoint: config.endpoint });
+      } else if (config.adapter === "test-hang") {
+        adapter = new TestHangAdapter();
+      } else if (config.adapter === "test-scripted") {
+        adapter = new TestScriptedAdapter();
       } else {
         adapter = new HTTPAdapter({ endpoint: config.endpoint, apiKey });
       }

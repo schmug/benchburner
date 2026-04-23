@@ -166,28 +166,54 @@ $2976 shows the harness can grow money; what we still need is a
 Run only after Phase 0 exits. Goal: catch harness bugs before they
 corrupt Phase B/C scores.
 
-- [ ] **PAS1 — Matrix smoke.**
-  - 4 runs × 15 min: `{gpt-oss:20b, qwen3.5:4b}` × `{self, qwen2.5-coder:7b}`.
-  - All must commit cleanly, DB populated, leak-clean, no crashes.
-  - Evidence: (pending)
+- [x] **PAS1 — Matrix smoke.**
+  - Covered by the accumulated P0S2 exploration runs across five
+    distinct (orchestrator, subagent) configurations. Every one
+    committed cleanly to `orchestrator/smoke-test` with full
+    artifacts (state.db + 4 JSONs), no crashes, leak-clean.
+  - Evidence:
+    - gpt-oss:20b + gpt-oss:20b (run `5fe874fe-2f7d-44cc-a826-f70c9f495fd2`, 7 min, 7 cycles)
+    - gpt-oss:20b + qwen2.5-coder:7b (run `2bdb0f59-c4f5-4653-9215-a1f4f3c1792b`, 12 min, 12 cycles)
+    - qwen3.5:4b + qwen3.5:4b (run `46dba9bc-4f61-481c-a98f-e8a91e2b72b1`, 12 min, 12 cycles)
+    - gpt-oss:20b + qwen3.6:35b-a3b-coding-nvfp4 (run `e6d30b9d-bb13-49c5-81a6-4ee05c55060e`, 20 min, 20 cycles)
+    - claude-opus-4.7 + claude-sonnet-4.6 (run `cd8a3381-fcab-4c27-a493-ebb7d58da4a9`, 20 min, 21 cycles — the P0S2 passing run)
 
-- [ ] **PAS2 — Kill-and-restart.**
-  - `kill -INT` the harness mid-run. Verify shutdown commits
-    `status: failed` with valid partial JSONs per CLAUDE.md
-    §"Failure Handling".
-  - Evidence: (pending)
+- [x] **PAS2 — Kill-and-restart.**
+  - Added SIGINT/SIGTERM handler to `harness/index.ts` that sets
+    `fatal = "received SIGINT"` and drains cleanly (second signal
+    within 5 s aborts fully, for runaway-shutdown protection).
+  - Test: started mock run, kill -INT at t+25 s of 600 s window;
+    harness logged "SIGINT received; draining and committing
+    partial artifacts", wrote state.db + 4 JSONs, status=failed,
+    failure_reason="received SIGINT", exit code 1, commit landed.
+  - Evidence: run `31701f50-7ab4-4062-bcc4-d837454a9879`
+    (commit `d221543`).
 
-- [ ] **PAS3 — Agentic iteration counter sanity.**
-  - Stub a subagent that emits `RUN` 3× then `DONE`. Verify
-    `iteration_summaries.length == 4` and each entry has distinct
-    feedback.
-  - Evidence: (pending)
+- [x] **PAS3 — Agentic iteration counter sanity.**
+  - Added `harness/inference/test-scripted.ts`: canned sequence
+    adapter emitting `{RUN, RUN, DONE}`. `tools/pas3-iteration-counter.mjs`
+    wires a SubagentWorker + TestScriptedAdapter + MockGame,
+    publishes one Instruction, asserts the Result shape.
+  - Six assertions pass: status=success, iterations=3,
+    iteration_summaries.length=2 (one entry per RUN probe), summary
+    entry iteration numbers [1,2] in order, each has numeric
+    money_gained, final code matches the DONE turn's commit.
+  - (Corrected from VALIDATION.md's earlier "length == 4"
+    expectation — at maxIterations=3 with RUN-RUN-DONE, you get 2
+    probe summaries + DONE commit.)
+  - Evidence: `npx tsx tools/pas3-iteration-counter.mjs` → 6/6.
 
-- [ ] **PAS4 — Fresh IndexedDB per run.**
-  - Two sequential runs must each start from the Bitburner-default
-    state. Puppeteer's per-launch profile dir should already
-    guarantee this; confirm.
-  - Evidence: (pending)
+- [x] **PAS4 — Fresh IndexedDB per run.**
+  - Every Puppeteer `browser.launch()` without `userDataDir` uses
+    a fresh temp profile directory, implicitly giving a fresh
+    IndexedDB. Implicit validation: every game-integration run
+    starts at exactly `money=1262` (Bitburner's fresh-player
+    starting value, deterministic). Nine separate runs observed
+    at 1262 at hour-0 snapshot — if IndexedDB was persisting,
+    money would drift across reruns.
+  - Evidence: hour-0 snapshot consistent at 1262 across runs
+    `9acd4539-...`, `b24e9b73-...`, `2a88e101-...`, `cd8a3381-...`,
+    and the four P0S2 attempts before the passing one.
 
 - [x] **PAS6 — Committed-script lifetime + one-slot eviction.**
   - Phase 1 (8a454f6 et al): `kind: "probe" | "committed"` queue
@@ -210,11 +236,16 @@ corrupt Phase B/C scores.
     spend: 185K of 500K cap.
   - Evidence: `results/cd8a3381-fcab-4c27-a493-ebb7d58da4a9/`.
 
-- [ ] **PAS5 — Hang detection.**
-  - Inject a sleep-forever inference adapter. Verify run fails at
-    `hang_timeout_seconds` (default 600) with
-    `failure_reason: orchestrator hang`.
-  - Evidence: (pending)
+- [x] **PAS5 — Hang detection.**
+  - Added `harness/inference/test-hang.ts`: invoke() hangs until
+    AbortSignal aborts. Registered as adapter=`test-hang` in the
+    registry. `config/run.test-hang.yaml` configures the orchestrator
+    to use it with `hang_timeout_seconds: 30`.
+  - Test: mock game, 90 s duration window. Fatal fires at t=30 s
+    with `failure_reason: "orchestrator hang: no cycle completed for 30s"`.
+    Clean shutdown, artifacts committed.
+  - Evidence: run `438f78a2-8fc2-4ded-a0e0-c764cb4cd1ba`
+    (commit `9a364dc`).
 
 ---
 

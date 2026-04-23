@@ -4,6 +4,13 @@
 # Each entry keys by `id`, which is what `config/run.yaml` references
 # under `orchestrator.model` and `subagent_roster[]`.
 
+# ── Test-only stub models (for VALIDATION.md phases) ──────────────
+
+- id: test-hang
+  adapter: test-hang
+  endpoint: none
+  context_window: 8192
+
 # ── Smoke-test models (local Ollama on this machine) ──────────────
 
 - id: qwen3.5:4b

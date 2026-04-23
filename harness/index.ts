@@ -161,6 +161,25 @@ async function main(): Promise<void> {
     }
   }
 
+  // ── SIGINT/SIGTERM: trigger clean shutdown instead of abrupt ──
+  // A second signal within 5s aborts fully (useful if shutdown itself
+  // is hung). CLAUDE.md §"Failure Handling": partial artifacts still
+  // commit with status=failed + failure_reason.
+  let signalledAt = 0;
+  const installSignalHandler = (sig: NodeJS.Signals) => {
+    process.on(sig, () => {
+      if (signalledAt && Date.now() - signalledAt < 5_000) {
+        console.error(`[harness] second ${sig} received, aborting`);
+        process.exit(130);
+      }
+      signalledAt = Date.now();
+      if (!fatal) fatal = `received ${sig}`;
+      console.error(`[harness] ${sig} received; draining and committing partial artifacts`);
+    });
+  };
+  installSignalHandler("SIGINT");
+  installSignalHandler("SIGTERM");
+
   // ── Wait for duration or fatal ────────────────────────────────
   const deadline = startMs + effectiveDurationSec * 1000;
   // In golden-script mode, log money every 30s so we can see whether

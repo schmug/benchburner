@@ -1,0 +1,25 @@
+# VALIDATION.md PAS5 fixture: orchestrator inference hangs forever,
+# hang detector should fire at hang_timeout_seconds and fail the run.
+
+run_id: auto
+
+orchestrator:
+  model: test-hang
+  polling_interval_seconds: 5
+  history_window: 10
+  hang_timeout_seconds: 30
+
+subagent_roster:
+  - test-hang
+
+subagent_limits:
+  max_concurrent: 2
+  token_budget_per_instruction: 200
+  timeout_seconds: 10
+
+game:
+  bitburner_commit: a4b0f22a2e5bcf19826c0bb671373c755fc162ad
+  seed: 8675309
+
+duration_hours: 1
+attribution_mode: public
