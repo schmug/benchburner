@@ -96,7 +96,14 @@ function scrubInput(input: OrchestratorInput): OrchestratorInput {
       task: scrubText(pair.instruction.task),
       context: scrubText(pair.instruction.context),
     },
-    result: pair.result,
+    // Strip the raw Netscript code from the orchestrator's view.
+    // The orchestrator can reason over result.status / tokens_used /
+    // reasoning, but the code itself is a torrent of game-identity
+    // tokens that would leak faster than scrubText can keep up with.
+    // The code stays in storage (scripts table) for artifact purposes.
+    result: pair.result
+      ? { ...pair.result, code: pair.result.code ? "[omitted]" : undefined, reasoning: pair.result.reasoning ? scrubText(pair.result.reasoning) : undefined }
+      : null,
   }));
   return {
     ...input,

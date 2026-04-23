@@ -33,3 +33,6 @@ config/run.yaml
 # state.db itself is what we record once the run checkpoints on close.
 results/**/state.db-wal
 results/**/state.db-shm
+.claude/
+pages/index.html
+pages/leaderboard.json
