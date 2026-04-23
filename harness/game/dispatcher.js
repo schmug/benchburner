@@ -72,6 +72,24 @@ export async function main(ns) {
           } catch (_) {
             stats = null;
           }
+          // If the script already died (stats=null), check the recent-
+          // scripts list — Bitburner keeps logs of recently-killed
+          // scripts, including crash traces.
+          if (!stats) {
+            try {
+              const recent = ns.getRecentScripts();
+              if (Array.isArray(recent)) {
+                for (const r of recent) {
+                  if (r && r.pid === task.pid) {
+                    stats = r;
+                    break;
+                  }
+                }
+              }
+            } catch (_) {
+              /* best effort */
+            }
+          }
           if (timeOut && stillRunning) {
             try {
               ns.kill(task.pid);
@@ -86,11 +104,26 @@ export async function main(ns) {
           task.completedAt = Date.now();
           task.endMoney = ns.getPlayer().money;
 
-          // Tail log (ns.print / ns.tprint buffer) — truncate to keep
-          // the result file manageable.
+          // Log fields: Bitburner stores runtime errors in the script's
+          // log buffer too, so a runtime crash with ns.print("...") or
+          // uncaught exception message shows up in stats.logs. Capture
+          // both stdout (all logs) and, for errored scripts, extract
+          // lines that look like errors into stderr.
           if (stats && Array.isArray(stats.logs)) {
             const joined = stats.logs.join("\n");
             task.stdout = joined.length > 8000 ? joined.slice(-8000) : joined;
+            const errorLines = stats.logs.filter(
+              (l) =>
+                typeof l === "string" &&
+                (l.toLowerCase().includes("error") ||
+                  l.toLowerCase().includes("exception") ||
+                  l.startsWith("RUNTIME") ||
+                  l.includes("is not a function") ||
+                  l.includes("Cannot read")),
+            );
+            if (errorLines.length > 0 && !task.stderr) {
+              task.stderr = errorLines.join("\n").slice(-2000);
+            }
           }
           if (stats) {
             task.script_stats = {
@@ -100,6 +133,9 @@ export async function main(ns) {
               ram_usage: stats.ramUsage ?? 0,
               threads: stats.threads ?? 1,
             };
+          }
+          if (!task.stderr && task.exit_reason === "errored") {
+            task.stderr = "script terminated without logs (likely parse/syntax error or module load failure)";
           }
 
           task.status = "done";
