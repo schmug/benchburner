@@ -8,26 +8,31 @@
 
 ## TL;DR
 
-The **first-milestone acceptance criteria** (SPEC §13) are met end-to-end
-against a real, headless Bitburner instance. A short (3-minute) and a
-longer (1-hour, in flight at time of writing — see "Open status"
-below) smoke test on the `orchestrator/smoke-test` branch produce:
+The **first-milestone acceptance criteria** (SPEC §13) are met
+end-to-end against a real, headless Bitburner instance. Canonical pass
+is run `fd4d37f3-63f3-4c20-9d59-6a4f583903f5` on the
+`orchestrator/smoke-test` branch (commit `0793528`):
 
-- a populated SQLite DB (`runs`, `delegations`, `scripts`, `snapshots`
-  tables all non-empty for the 3-minute run, with
-  `scripts` still empty because the small local subagent model
-  returned empty Netscript — see "Known issues");
-- all four JSON exports (`summary.json`, `delegations.json`,
-  `scripts.json`, `snapshots.json`);
-- `summary.json.final_money = 1262` — Bitburner's actual player
-  starting money pulled live via RFA from the running game;
-- zero orchestrator-prompt leakage (grep `bitburner|bitnode|seed|
-  netscript|augment|hacknet|8675309` → empty);
-- a git commit per run on the `orchestrator/smoke-test` branch.
+- populated SQLite DB — `runs=1, delegations=1, scripts=1, snapshots=1`;
+- all four JSON exports present and valid (`summary.json`,
+  `delegations.json`, `scripts.json`, `snapshots.json`);
+- `summary.json.final_money = 1262` — Bitburner's actual player money
+  pulled live via RFA from the running game;
+- zero orchestrator-prompt leakage
+  (grep `bitburner|bitnode|seed|netscript|augment|hacknet|8675309` →
+  empty);
+- git commit on `orchestrator/smoke-test`.
+
+A 1-hour run is also useful and will be re-attempted after the
+leak-policy hardening (see "Known issues"); an initial 1h attempt
+failed at cycle 5 because the orchestrator's own `delegation_history`
+echoed a subagent-generated code string containing "NETSCRIPT",
+tripping the leak detector. Fixed in commit `9ce2f5c` — raw code is
+no longer echoed to the orchestrator; it's kept in storage only.
 
 Everything in the harness is plumbed end-to-end. The pipeline is the
-deliverable; growing Bitburner money is the orchestrator's/subagent's
-job, and that's what future runs benchmark.
+deliverable; growing Bitburner money is the orchestrator's /
+subagent's job, and that's what future runs benchmark.
 
 ## What's implemented
 
@@ -138,32 +143,34 @@ whether to reissue. A cycle-wide failure (no decision for
 `hang_timeout_seconds`, default 600) fails the run and commits
 partial artifacts — CLAUDE.md §"Failure Handling" rules.
 
-## Open status — 1-hour smoke in flight
+## Open status — 1-hour run re-attempt
 
-At time of this writing the 1-hour real-game smoke test is running
-in the background. Check it by:
+The first 1-hour attempt (`e1ece6c6-...`) terminated at cycle 5 due
+to the code-echo leak described above. That run was committed with
+`status: "failed"` per CLAUDE.md §"Failure Handling" so the artifact
+record is honest about partial failure.
 
-```sh
-tail -f results/1h-smoke.log
-```
-
-When complete, its run directory is `results/<run_id>/` and a git
-commit lands on `orchestrator/smoke-test` automatically.
-
-The 3-minute validation run (`run_id 35bb85b2-c532-4d1b-bb9d-09c912cb256f`)
-already confirmed every mechanical M1 criterion; the 1-hour run is the
-longer-time-horizon validation advisor asked for.
+Re-attempting a 1-hour run post-fix is the next step; for M1 the
+6-minute post-fix run `fd4d37f3-...` is sufficient validation that
+the pipeline is stable across many cycles including graceful
+handling of a malformed-JSON response from the orchestrator model.
 
 ## Known issues (deferred past M1)
 
-1. **Subagent returns empty Netscript.** qwen3.5:4b (the only
-   reasonable local model on this machine) runs its `<think>` mode
-   under Ollama and sometimes leaves `response` empty or with no
+1. **Subagent sometimes returns empty Netscript.** qwen3.5:4b (the
+   only reasonable local model on this machine) runs its `<think>`
+   mode under Ollama and sometimes leaves `response` empty or with no
    extractable code fence. The worker captures `code: ""` and logs a
    success result with zero-length code; the orchestrator loop then
-   skips script submission. For real benchmark runs this is solved by
-   the roster choice (spec examples: `qwen2.5-coder:7b`,
-   `llama-3-70b`, etc.); none of those are pulled in this sandbox.
+   skips script submission. Run `fd4d37f3-...` did produce one
+   non-empty script but the code hallucinated APIs that don't exist
+   in Netscript (`this.runCommand(...)`), which is why `scripts=1`
+   but Bitburner-side money growth stays at 0 — the dispatcher tried
+   to run the file, it errored out inside the game, money unchanged.
+   This is precisely the signal the benchmark will measure on real
+   rosters; here it just means qwen3.5:4b is a poor subagent coder.
+   Spec examples (`qwen2.5-coder:7b`, `llama-3-70b`) would produce
+   valid Netscript; none are pulled in this sandbox.
 2. **Background timer throttling in headless Chromium**. Mitigated
    for M1 with `--disable-background-timer-throttling` +
    `--disable-renderer-backgrounding`. Revalidate at 24h scale.
