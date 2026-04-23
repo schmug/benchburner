@@ -45,6 +45,30 @@ export async function main(ns) {
       if (task.status === "pending") {
         const startMoney = ns.getPlayer().money;
         task.startMoney = startMoney; // record up-front so writeResult can compute money_gained even on failed_to_start
+
+        // Committed scripts are long-running workers; each subagent
+        // keeps one at a time. When a new committed script for
+        // subagent X arrives, evict X's previous committed script so
+        // home RAM is freed for the new version. Without this, every
+        // DONE commit accumulates, home RAM runs out in 2-3 commits,
+        // and every subsequent script gets failed_to_start.
+        if (task.kind === "committed") {
+          for (const other of queue) {
+            if (other === task) continue;
+            if (other.status !== "running") continue;
+            if (other.kind !== "committed") continue;
+            if (other.subagent_id !== task.subagent_id) continue;
+            try { ns.kill(other.pid); } catch (_) { /* ignore */ }
+            other.status = "done";
+            other.exit_reason = "replaced";
+            other.stderr = "replaced by newer committed script from the same subagent";
+            other.completedAt = Date.now();
+            other.endMoney = ns.getPlayer().money;
+            writeResult(ns, other);
+            changed = true;
+          }
+        }
+
         const pid = ns.run(task.path, 1);
         if (pid > 0) {
           task.pid = pid;
