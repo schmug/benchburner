@@ -1,0 +1,100 @@
+[
+  {
+    "script_id": "790b1811-394f-4051-8f65-fab6e4d54901",
+    "subagent_id": "hacker1",
+    "instruction_id": "82841230-f7d6-4f58-ab8d-d99f1253be09",
+    "code": "// @param {NS} ns\nexport async function main(ns) {\n  await ns.hack('darkweb');\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "790b1811-394f-4051-8f65-fab6e4d54901",
+      "subagent_id": "hacker1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0.501,
+      "exit_reason": "errored",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T20:24:50.777Z"
+    },
+    "tokens_used": 1754,
+    "timestamp": "2026-04-23T20:24:49.912Z"
+  },
+  {
+    "script_id": "66cb30d5-b710-4299-9978-501a2809b42d",
+    "subagent_id": "hacker2",
+    "instruction_id": "85507664-b805-4eca-bf69-d81af201972d",
+    "code": "// Identify all servers reachable from the home node\nconst servers = ns.scan('home');\n// Find the server with the highest potential money\nlet targetServer = null;\nlet maxPotentialMoney = 0;\nfor (const server of servers) {\n  const serverInfo = ns.getServer(server);\n  if (serverInfo.hasAdminRights && serverInfo.moneyAvailable > maxPotentialMoney && ns.hackAnalyzeChance(server) > 0.9) {\n    targetServer = server;\n    maxPotentialMoney = serverInfo.moneyAvailable;\n  }\n}\n// Perform a single ns.hack on that server if found\nif (targetServer) {\n  await ns.hack(targetServer);\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "66cb30d5-b710-4299-9978-501a2809b42d",
+      "subagent_id": "hacker2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T20:25:50.467Z"
+    },
+    "tokens_used": 2258,
+    "timestamp": "2026-04-23T20:25:50.456Z"
+  },
+  {
+    "script_id": "38a5432b-3124-4984-bbb9-35cd866f9950",
+    "subagent_id": "hacker3",
+    "instruction_id": "3c1761cf-0100-4626-9057-55e0cb56dbae",
+    "code": "// @param {NS} ns\nexport async function main(ns) {\n  const servers = ns.scan('home');\n  let maxMoneyServer = null;\n  for (const server of servers) {\n    if (ns.hasAdminAccess(server)) {\n      if (!maxMoneyServer || ns.getServerMaxMoney(server) > ns.getServerMaxMoney(maxMoneyServer)) {\n        maxMoneyServer = server;\n      }\n    }\n  }\n  if (maxMoneyServer) {\n    await ns.hack(maxMoneyServer);\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "38a5432b-3124-4984-bbb9-35cd866f9950",
+      "subagent_id": "hacker3",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0.501,
+      "exit_reason": "errored",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T20:30:53.836Z"
+    },
+    "tokens_used": 2197,
+    "timestamp": "2026-04-23T20:30:52.956Z"
+  },
+  {
+    "script_id": "a6f83d29-66b9-4d05-b5a3-55bf4df2241c",
+    "subagent_id": "hackHighestMoney2",
+    "instruction_id": "0b6d325b-b612-4732-b63f-f615c2c6c628",
+    "code": "// Iterate 1\n/** @param {NS} ns */\nexport async function main(ns) {\n  const servers = ns.scan();\n  let targetServer = null;\n  let highestMoney = 0;\n\n  for (const server of servers) {\n    if (ns.hasRootAccess(server) && ns.getServerMaxMoney(server) > highestMoney) {\n      targetServer = server;\n      highestMoney = ns.getServerMaxMoney(server);\n    }\n  }\n\n  if (targetServer) {\n    await ns.hack(targetServer);\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "a6f83d29-66b9-4d05-b5a3-55bf4df2241c",
+      "subagent_id": "hackHighestMoney2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0.502,
+      "exit_reason": "errored",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T20:42:01.668Z"
+    },
+    "tokens_used": 2179,
+    "timestamp": "2026-04-23T20:42:00.800Z"
+  }
+]
