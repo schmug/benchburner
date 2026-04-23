@@ -6,6 +6,48 @@
 > "Key Decisions" list, what's validated vs. stubbed, how to run a
 > smoke test, and what the next milestone should be.
 
+## Update 2026-04-23 — benchmark realignment + agentic subagents
+
+After the first M1 pass, an audit surfaced drift risk: the
+implementation was artificially hardening the orchestrator's job
+(stripping code from history, treating Netscript API names as leaks)
+and starving subagents of normal dev-loop feedback. Four changes
+landed to realign the benchmark with "measure orchestration of
+coding agents":
+
+1. **Leak policy narrowed** to the four game-naming tokens
+   (`bitburner`, `bitnode`, `hacknet`, `augment`) + `seed`. Removed
+   `netscript` — SPEC §3.3 explicitly permits it in code. Subagent
+   code is again visible to the orchestrator, with only forbidden
+   *name* tokens scrubbed from within comments/string literals.
+2. **Execution results enriched** with stdout / stderr / exit_reason /
+   script_stats. The in-game dispatcher reads `ns.getRunningScript`
+   and tails the log. Orchestrator and subagents now see what a
+   tech lead and their team would normally see.
+3. **Agentic subagents (SPEC §2.5 addendum).** SubagentWorker now
+   runs a bounded write-run-observe loop (default 3 iterations). Each
+   turn the subagent emits `{decision, code, notes}`; on `RUN` the
+   harness executes against the GameController and feeds the
+   ExecutionResult back; on `DONE` the code commits. Orchestrator
+   sees only the final outcome + a compact per-iteration summary.
+4. **Aggregator now reports mean ± std over multiple runs per
+   orchestrator.** Ollama is not bit-deterministic; a single run is
+   a noisy score. Sample-size / completed-run count visible on the
+   leaderboard.
+
+Validated via run `46dba9bc-...` (12 minutes, 12 cycles, status
+completed, leak-clean): four subagent delegations, one reached
+`DONE` after 3 iterations — and the iteration_summaries show the
+subagent did see three distinct `ns.run returned 0` feedback cycles
+and committed its best effort anyway. That's exactly the signal the
+benchmark exists to measure (how well does each orchestrator route
+around a failing subagent).
+
+One dispatcher bug fixed as a side-effect: `money_gained` was
+reporting the full `current_money` in the `failed_to_start` branch
+because `task.startMoney` wasn't persisted before the early return.
+Now set unconditionally when the task transitions from `pending`.
+
 ## TL;DR
 
 The **first-milestone acceptance criteria** (SPEC §13) are met

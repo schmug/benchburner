@@ -77,9 +77,20 @@ All messages pass through the in-memory bus. Every message carries `instruction_
   "reasoning": "string (optional, subagent's explanation)",
   "tokens_used": 1823,
   "error_message": "string (present iff status=error)",
+  "iterations": 2,
+  "iteration_summaries": [
+    { "iteration": 1, "exit_reason": "errored", "money_gained": 0, "stderr": "..." },
+    { "iteration": 2, "exit_reason": "exited", "money_gained": 45000 }
+  ],
   "timestamp": "2026-04-22T14:03:12Z"
 }
 ```
+
+`iterations` and `iteration_summaries` are present when the subagent
+ran the agentic write-run-observe loop (see §2.5). The orchestrator
+sees only the final committed code, not the intermediate probe code —
+the iterative refinement is the subagent's own tool-use within a
+single instruction.
 
 ### 2.3 Backend → Orchestrator (Game Execution Result)
 
@@ -93,6 +104,16 @@ Emitted after the harness runs a subagent-generated script in the game.
   "money_gained": 5000000,
   "time_elapsed_seconds": 620,
   "error": "string (if failed)",
+  "stdout": "string (ns.print/ns.tprint buffer, truncated to last ~8KB)",
+  "stderr": "string (runtime error, kill reason, or harness error)",
+  "exit_reason": "exited | errored | killed | timed_out | failed_to_start | harness_error",
+  "script_stats": {
+    "online_running_time_seconds": 12.4,
+    "online_exp_gained": 340,
+    "online_money_made": 5000000,
+    "ram_usage": 4.2,
+    "threads": 1
+  },
   "game_state_snapshot": {
     "current_money": 5200000,
     "bitnode_id": 1,
@@ -101,6 +122,42 @@ Emitted after the harness runs a subagent-generated script in the game.
   "timestamp": "2026-04-22T14:13:32Z"
 }
 ```
+
+`stdout` / `stderr` / `exit_reason` / `script_stats` are the normal
+dev-loop feedback a coding team has. Giving them to the subagent
+during its agentic loop (§2.5) and to the orchestrator via the final
+result keeps the benchmark measuring orchestration, not
+debugging-blind.
+
+### 2.5 Subagent agentic loop
+
+Each instruction triggers a bounded write-run-observe loop inside the
+subagent. On each turn the subagent receives the task + any prior
+iterations' execution feedback and emits JSON of the form:
+
+```json
+{
+  "decision": "RUN" | "DONE",
+  "code": "<full script source>",
+  "notes": "<optional short rationale>"
+}
+```
+
+- `RUN`: the harness runs the code against the GameController, reads
+  the enriched `ExecutionResult`, and feeds it back as the next turn's
+  context. Probe runs use a throw-away `script_id` so they don't
+  collide with the orchestrator-submitted committed script record.
+- `DONE`: commits the code as the final `Result.code` the orchestrator
+  will see. No further inference calls for this instruction.
+
+Bounded by `max_iterations` (default 3) and
+`token_budget_per_instruction` per turn. On iteration-budget
+exhaustion the last code is committed.
+
+This shape is deliberately close to how modern coding agents work
+(write → run → observe → iterate) so the benchmark measures the
+orchestrator's ability to direct *agentic* coding subagents, not
+one-shot completion subagents.
 
 ### 2.4 Backend → Orchestrator (Hourly Snapshot)
 

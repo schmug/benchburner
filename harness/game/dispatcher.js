@@ -44,12 +44,12 @@ export async function main(ns) {
     for (const task of queue) {
       if (task.status === "pending") {
         const startMoney = ns.getPlayer().money;
+        task.startMoney = startMoney; // record up-front so writeResult can compute money_gained even on failed_to_start
         const pid = ns.run(task.path, 1);
         if (pid > 0) {
           task.pid = pid;
           task.status = "running";
           task.startedAt = Date.now();
-          task.startMoney = startMoney;
           changed = true;
         } else {
           task.status = "done";
