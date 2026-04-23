@@ -182,10 +182,22 @@ export interface GameController {
   submitScript(params: { script_id: string; code: string }): Promise<void>;
 
   /**
-   * Run a previously-submitted script and return the execution result
-   * (money gained, time elapsed, errors, resulting game state).
+   * Run a previously-submitted script and return the execution result.
+   *
+   * `kind: "probe"` (default) is used by subagent agentic iterations —
+   * dispatcher bounds it at ~120 s so one bad iteration can't stall the
+   * queue, and runScript blocks until the probe result arrives.
+   *
+   * `kind: "committed"` is used for orchestrator-accepted final scripts
+   * that should run until shutdown. runScript returns as soon as the
+   * dispatcher confirms the script started (or failed_to_start); money
+   * earned flows into game_state snapshots for the rest of the run.
    */
-  runScript(params: { script_id: string; subagent_id: string }): Promise<ExecutionResult>;
+  runScript(params: {
+    script_id: string;
+    subagent_id: string;
+    kind?: "probe" | "committed";
+  }): Promise<ExecutionResult>;
 
   /** Pull current distilled game state (for hourly snapshots). */
   readState(): Promise<GameState>;

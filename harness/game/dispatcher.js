@@ -62,7 +62,14 @@ export async function main(ns) {
         }
       } else if (task.status === "running") {
         const stillRunning = ns.isRunning(task.pid || 0);
-        const timeOut = Date.now() - (task.startedAt || 0) > 120_000;
+        // Probes (agentic-loop RUN turns) are bounded at 120s so one
+        // broken probe can't stall the queue. Committed scripts
+        // (orchestrator-accepted DONE output) run until shutdown —
+        // those are the team's actual deliverables and need full
+        // runtime to earn / grow / etc.
+        const probeTimeout = 120_000;
+        const timeOut =
+          task.kind === "probe" && Date.now() - (task.startedAt || 0) > probeTimeout;
         if (!stillRunning || timeOut) {
           // Capture runtime info BEFORE killing (if timeout) so we can
           // include the tail log in the result.

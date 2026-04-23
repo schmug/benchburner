@@ -127,7 +127,15 @@ export class PuppeteerGame implements GameController {
     await this.rfa!.pushFile(filename, code, "home");
   }
 
-  async runScript({ script_id, subagent_id }: { script_id: string; subagent_id: string }): Promise<ExecutionResult> {
+  async runScript({
+    script_id,
+    subagent_id,
+    kind = "probe",
+  }: {
+    script_id: string;
+    subagent_id: string;
+    kind?: "probe" | "committed";
+  }): Promise<ExecutionResult> {
     this.requireReady();
     const resultPath = `/__results/${script_id}.json`;
     // Enqueue the task via RFA by rewriting /__queue.json.
@@ -138,10 +146,59 @@ export class PuppeteerGame implements GameController {
       subagent_id,
       path: this.scriptFilename(script_id),
       status: "pending",
+      kind,
     });
     await this.rfa!.pushFile("/__queue.json", JSON.stringify(queue), "home");
 
-    // Poll for the result file. Dispatcher writes it on completion.
+    if (kind === "committed") {
+      // Committed scripts are long-running. Wait briefly for either a
+      // failed_to_start result (RAM / file issue surfaces in ~1 s) or
+      // confirmation the task transitioned to "running", then return a
+      // placeholder so the orchestrator cycle isn't blocked. The real
+      // money-gained signal flows via game_state snapshots.
+      const startDeadline = Date.now() + 10_000;
+      while (Date.now() < startDeadline) {
+        await sleep(500);
+        const resultContent = await this.safeGetFile(resultPath);
+        if (resultContent) {
+          try {
+            const parsed = JSON.parse(resultContent) as ExecutionResult;
+            await this.rfa!.deleteFile(resultPath, "home");
+            return parsed; // likely a failed_to_start
+          } catch {
+            /* mid-write, retry */
+          }
+        }
+        // Check queue state for a "running" transition.
+        const cur = await this.safeGetFile("/__queue.json");
+        if (cur) {
+          try {
+            const q = JSON.parse(cur) as Array<{ script_id: string; status?: string }>;
+            const me = q.find((t) => t.script_id === script_id);
+            if (me?.status === "running") break;
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      return {
+        script_id,
+        subagent_id,
+        status: "executed",
+        money_gained: 0,
+        time_elapsed_seconds: 0,
+        exit_reason: "running",
+        game_state_snapshot: await this.readState().catch(() => ({
+          current_money: 0,
+          bitnode_id: 1,
+          bitnode_complete: false,
+        })),
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // Probe: wait for the dispatcher to produce a result file within
+    // 120 s + a small buffer for timeout + write.
     const deadline = Date.now() + 180_000;
     while (Date.now() < deadline) {
       await sleep(1_000);
@@ -149,7 +206,6 @@ export class PuppeteerGame implements GameController {
       if (content) {
         try {
           const parsed = JSON.parse(content) as ExecutionResult;
-          // Clean up the result file so the home fs doesn't grow.
           await this.rfa!.deleteFile(resultPath, "home");
           return parsed;
         } catch {

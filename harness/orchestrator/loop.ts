@@ -408,7 +408,11 @@ export class OrchestratorLoop {
     if (!r.code) return;
     try {
       await this.game.submitScript({ script_id, code: r.code });
-      const exec = await this.game.runScript({ script_id, subagent_id: r.subagent_id });
+      const exec = await this.game.runScript({
+        script_id,
+        subagent_id: r.subagent_id,
+        kind: "committed",
+      });
       updateScriptExecution(this.db, script_id, exec);
       this.bus.publish("executions", exec);
     } catch (e) {

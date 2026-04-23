@@ -300,6 +300,7 @@ export class SubagentWorker {
         exec = await this.game.runScript({
           script_id: probeId,
           subagent_id: instr.subagent_id,
+          kind: "probe",
         });
       } catch (e) {
         exec = {
