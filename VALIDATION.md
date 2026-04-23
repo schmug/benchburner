@@ -189,18 +189,26 @@ corrupt Phase B/C scores.
     guarantee this; confirm.
   - Evidence: (pending)
 
-- [ ] **PAS6 — Committed-script lifetime.**
-  - Dispatcher's 120 s kill was sized for agentic RUN probes so
-    one bad probe doesn't stall the queue. Orchestrator-committed
-    scripts (the subagent's final DONE code, auto-submitted after
-    the result arrives) inherit the same kill, which caps earn
-    time at 2-3 hack attempts per commit. Tag queue entries with
-    `kind: "probe" | "committed"`; probes keep the 120 s limit,
-    committed scripts run until the harness shuts down.
-  - Expected effect: P0S2's 1838 becomes substantially larger
-    when the same team is given full run duration for
-    money-earning code.
-  - Evidence: (pending)
+- [x] **PAS6 — Committed-script lifetime + one-slot eviction.**
+  - Phase 1 (8a454f6 et al): `kind: "probe" | "committed"` queue
+    tag end to end. Dispatcher's 120 s kill now only applies to
+    probes.
+  - Phase 2 (8a454f6): each subagent owns exactly one committed-
+    script slot. When a new committed task with the same
+    subagent_id enters "pending", the dispatcher kills any running
+    committed task from that subagent first (exit_reason
+    "replaced") so home RAM frees before ns.run on the new code.
+    Without this, a naive first implementation accumulated commits
+    until home was exhausted — run 1fd5bf58 regressed P0S2 to
+    1262 because every script after the second got
+    failed_to_start.
+  - Validated on run **cd8a3381-fcab-4c27-a493-ebb7d58da4a9**
+    (commit `b2e1adf`): same Opus + Sonnet config as P0S2, same
+    20-min window — final_money **3258** (+1996 over baseline,
+    ~1.77× the pre-PAS6 P0S2 number of 1838). Pool grew to 3 by
+    end, multiple committed earners running simultaneously. Token
+    spend: 185K of 500K cap.
+  - Evidence: `results/cd8a3381-fcab-4c27-a493-ebb7d58da4a9/`.
 
 - [ ] **PAS5 — Hang detection.**
   - Inject a sleep-forever inference adapter. Verify run fails at
