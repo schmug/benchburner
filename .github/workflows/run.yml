@@ -1,0 +1,50 @@
+# Runs the harness for 24 wall-clock hours on a self-hosted runner.
+# Manual dispatch only for now; schedule can be added once the harness
+# is validated end-to-end on a clean runner.
+#
+# Preconditions on the runner:
+#   - Node 22+
+#   - Ollama daemon (or set BENCHBURNER_* envs to point at an HTTP endpoint)
+#   - System Chrome at PUPPETEER_EXECUTABLE_PATH
+#   - Models pulled: see config/models.yaml
+
+name: harness-run
+on:
+  workflow_dispatch:
+    inputs:
+      config_path:
+        description: "Path to run config"
+        default: "config/run.yaml"
+        required: true
+
+jobs:
+  run:
+    runs-on: [self-hosted, benchburner]
+    timeout-minutes: 1500  # 25h headroom over the 24h window
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Apply Bitburner patches
+        run: |
+          cd bitburner/src
+          git apply --check ../patches/*.patch
+          git apply ../patches/*.patch
+      - name: Build Bitburner
+        run: |
+          cd bitburner/src
+          npm install --ignore-scripts
+          npx webpack --mode production
+      - name: Install harness deps
+        run: npm install
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+      - name: Run harness
+        env:
+          # Passed via env to avoid command injection from workflow inputs.
+          BENCHBURNER_CONFIG: ${{ inputs.config_path }}
+        run: npx tsx harness/index.ts
+      - name: Push run artifacts
+        if: always()
+        run: git push origin HEAD

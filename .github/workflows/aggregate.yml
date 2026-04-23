@@ -1,0 +1,33 @@
+# Rebuilds pages/leaderboard.json + pages/index.html from every
+# orchestrator/* branch's most recent run, then pushes to
+# results-published. Scheduled daily.
+
+name: aggregate
+on:
+  schedule:
+    - cron: "0 4 * * *" # 04:00 UTC daily
+  workflow_dispatch: {}
+
+jobs:
+  aggregate:
+    runs-on: [self-hosted, benchburner]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install deps
+        run: npm install
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+      # TODO (post-M1): iterate 'git branch -r | grep orchestrator/',
+      # checkout each, copy results/*/summary.json into a staging dir,
+      # then run aggregator/build.ts against that staging dir.
+      - name: Build leaderboard
+        run: npx tsx aggregator/build.ts
+      - name: Publish to results-published
+        run: |
+          git checkout -B results-published
+          git add pages/
+          git -c user.name=aggregator -c user.email=aggregator@localhost commit -m "aggregate: rebuild leaderboard" || true
+          git push --force origin results-published
