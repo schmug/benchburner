@@ -18,6 +18,12 @@
   context_window: 32768
   model_name: qwen3.5:0.8b
 
+- id: qwen2.5-coder:7b
+  adapter: ollama
+  endpoint: http://localhost:11434
+  context_window: 32768
+  model_name: qwen2.5-coder:7b
+
 - id: qwen3:4b
   adapter: ollama
   endpoint: http://localhost:11434
