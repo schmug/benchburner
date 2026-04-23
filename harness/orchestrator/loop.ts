@@ -127,6 +127,9 @@ export class OrchestratorLoop {
   /** instruction_id → script_id so executions update the right script row. */
   private readonly scriptByInstruction = new Map<string, string>();
 
+  /** Running total of tokens used in orchestrator inference calls.
+   *  Read by the run entry point to enforce a per-run token budget. */
+  public tokensUsedTotal = 0;
   private cycle = 0;
   private startedAt = 0;
   private lastCycleCompletedAt = 0;
@@ -231,6 +234,7 @@ export class OrchestratorLoop {
         // parser (accepts bare JSON / fenced / first-balanced-object).
       });
 
+      this.tokensUsedTotal += raw.tokens_used;
       const parsed = parseOrchestratorOutput(raw.text);
       if (!parsed) {
         console.warn(`[orchestrator] cycle ${this.cycle}: malformed JSON from model; treating as noop`);

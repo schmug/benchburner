@@ -36,6 +36,8 @@ async function main(): Promise<void> {
     : undefined;
   const useMock = process.env.BENCHBURNER_USE_MOCK === "1";
   const goldenScriptPath = process.env.BENCHBURNER_GOLDEN_SCRIPT;
+  const maxTokensEnv = process.env.BENCHBURNER_MAX_TOKENS;
+  const maxTokensCap = maxTokensEnv ? Number(maxTokensEnv) : Number.POSITIVE_INFINITY;
 
   const config = loadRunConfig(configPath);
   const effectiveDurationSec = durationOverrideSec ?? config.duration_hours * 3600;
@@ -166,8 +168,25 @@ async function main(): Promise<void> {
   // impact since golden mode skips the orchestrator anyway.
   const progressInterval = goldenScriptPath ? 30_000 : 0;
   let lastProgressLog = Date.now();
+  let lastTokenLog = Date.now();
+  const TOKEN_LOG_INTERVAL_MS = 120_000;
   while (Date.now() < deadline && !fatal) {
     await sleep(1_000);
+    // Cost cap: sum orchestrator + subagent inference tokens and bail
+    // if we cross BENCHBURNER_MAX_TOKENS. Protects against runaway
+    // hosted-API spend.
+    const tokensSoFar = loop.tokensUsedTotal + worker.tokensUsedTotal;
+    if (Number.isFinite(maxTokensCap) && tokensSoFar > maxTokensCap) {
+      fatal = `token cap exceeded: ${tokensSoFar} > ${maxTokensCap}`;
+      console.error(`[harness] ${fatal}`);
+      break;
+    }
+    if (Date.now() - lastTokenLog >= TOKEN_LOG_INTERVAL_MS) {
+      lastTokenLog = Date.now();
+      console.log(
+        `[tokens] orch=${loop.tokensUsedTotal} sub=${worker.tokensUsedTotal} total=${tokensSoFar}${Number.isFinite(maxTokensCap) ? `/${maxTokensCap}` : ""}`,
+      );
+    }
     if (progressInterval && Date.now() - lastProgressLog >= progressInterval) {
       lastProgressLog = Date.now();
       try {

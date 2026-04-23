@@ -126,6 +126,10 @@ export class SubagentWorker {
   private queue: Instruction[] = [];
   private stopped = false;
   private unsubscribe?: () => void;
+  /** Running total of tokens spent across all subagent inference
+   *  calls (including RUN iterations that didn't reach DONE). Read
+   *  by the run entry point for cost capping. */
+  public tokensUsedTotal = 0;
 
   constructor(opts: WorkerOptions) {
     this.bus = opts.bus;
@@ -231,6 +235,7 @@ export class SubagentWorker {
         return;
       }
       totalTokens += raw.tokens_used;
+      this.tokensUsedTotal += raw.tokens_used;
 
       const turn = parseTurnOutput(raw.text);
       if (!turn) {
