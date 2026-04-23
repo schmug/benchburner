@@ -1,3 +1,22 @@
+diff --git a/src/engine.tsx b/src/engine.tsx
+index 78cf9160c..53ddd285f 100644
+--- a/src/engine.tsx
++++ b/src/engine.tsx
+@@ -387,8 +387,12 @@ const Engine = {
+       Player.reapplyAllAugmentations();
+       resetGoPromises();
+ 
+-      // Start interactive tutorial
+-      iTutorialStart();
++      // Start interactive tutorial — unless the Benchburner harness is
++      // active, in which case we skip it so the terminal is usable
++      // immediately (see bitburner/patches/README.md in benchburner).
++      if (!(globalThis as unknown as { __BENCHBURNER_RFA_PORT?: number }).__BENCHBURNER_RFA_PORT) {
++        iTutorialStart();
++      }
+ 
+       Engine.start(); // Run main game loop and Scripts loop
+     }
 diff --git a/src/index.tsx b/src/index.tsx
 index 836100dc5..60c3c2c32 100644
 --- a/src/index.tsx

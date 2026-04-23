@@ -236,8 +236,8 @@ export class PuppeteerGame implements GameController {
     }
     const seedInjectSrc = readFileSync(path.join(HARNESS_GAME_SRC_DIR, "seed-inject.js"), "utf8");
     const prepared = seedInjectSrc
-      .replace("__BENCHBURNER_SEED__", String(this.opts.seed))
-      .replace("__BENCHBURNER_PORT__", String(this.rfaPortActual));
+      .replaceAll("__BENCHBURNER_SEED__", String(this.opts.seed))
+      .replaceAll("__BENCHBURNER_PORT__", String(this.rfaPortActual));
     await this.page.evaluateOnNewDocument(prepared);
   }
 

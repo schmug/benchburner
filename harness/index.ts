@@ -135,6 +135,11 @@ async function main(): Promise<void> {
   snapshot.stop();
   bus.freeze();
   await worker.stop();
+
+  // Capture final state BEFORE closing the game (the browser/RFA goes
+  // away on stop() and readState would return the fallback zero).
+  const finalState = await safeReadState(game);
+
   try {
     await game.stop();
   } catch (e) {
@@ -142,7 +147,6 @@ async function main(): Promise<void> {
   }
 
   // ── Finalize ────────────────────────────────────────────────
-  const finalState = await safeReadState(game);
   updateRunStatus(db, config.run_id, {
     status: fatal ? "failed" : "completed",
     end_time: new Date().toISOString(),

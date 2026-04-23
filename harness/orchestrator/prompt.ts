@@ -40,6 +40,9 @@ export const FORBIDDEN_TOKENS: readonly string[] = Object.freeze([
   "bitburner",
   "seed",
   "netscript", // the scripting language name is distinctive; treat as leak
+  "bitnode",   // Bitburner-specific world-level concept
+  "augment",   // Bitburner-specific persistent-upgrade concept
+  "hacknet",   // Bitburner-specific
 ]);
 
 export interface BuildPromptResult {
@@ -69,15 +72,57 @@ export function buildOrchestratorPrompt(input: OrchestratorInput, seed: number):
 }
 
 /**
- * Produce a safe-to-log view of the input. Currently a pass-through —
- * the input shape (SPEC §3.1) already contains no seed or identifying
- * fields, but we keep this hook so future additions have one place to
- * redact.
+ * Produce a safe-to-log view of the input. Renames game-identity
+ * fields (SPEC §3.1 uses "bitnode"/"augments" names which leak) to
+ * neutral terms the orchestrator can reason over without learning
+ * the title of the game.
+ *
+ * Mapping:
+ *   bitnode_id         → level_id
+ *   bitnode_complete   → level_complete
+ *   augments_installed → upgrades_installed
+ *
+ * Inside `delegation_history`, the subagent-produced code is
+ * passed through as-is (it'll contain Netscript identifiers; the
+ * orchestrator seeing those is unavoidable if it's to reason over
+ * its team's work, and the spec explicitly notes total leak-proofing
+ * of Netscript is "likely impossible").
  */
 function scrubInput(input: OrchestratorInput): OrchestratorInput {
-  // Defensive copy: remove anything whose key name itself leaks.
-  // (None today, but the hook is useful.)
-  return input;
+  const gs = input.game_state;
+  const cleanedHistory = input.delegation_history.map((pair) => ({
+    instruction: {
+      ...pair.instruction,
+      task: scrubText(pair.instruction.task),
+      context: scrubText(pair.instruction.context),
+    },
+    result: pair.result,
+  }));
+  return {
+    ...input,
+    game_state: {
+      current_money: gs.current_money,
+      level_id: gs.bitnode_id,
+      level_complete: gs.bitnode_complete,
+      upgrades_installed: gs.augments_installed ?? [],
+    } as unknown as OrchestratorInput["game_state"],
+    delegation_history: cleanedHistory,
+  };
+}
+
+/**
+ * Strip forbidden tokens from free-form strings that the orchestrator
+ * itself produced in earlier cycles, before echoing them back. Keeps
+ * the orchestrator's vocabulary from gradually drifting onto
+ * game-identity terms.
+ */
+function scrubText(text: string): string {
+  let out = text;
+  for (const tok of FORBIDDEN_TOKENS) {
+    const re = new RegExp(`\\b${tok}\\b`, "gi");
+    out = out.replace(re, "[redacted]");
+  }
+  return out;
 }
 
 export function detectLeaks(text: string, seed: number): string[] {

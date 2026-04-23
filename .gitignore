@@ -28,3 +28,8 @@ logs/
 
 # run.yaml is per-run and not committed; run.example.yaml is the template.
 config/run.yaml
+
+# SQLite WAL and shared-memory sidecars — not part of the commit artifact;
+# state.db itself is what we record once the run checkpoints on close.
+results/**/state.db-wal
+results/**/state.db-shm
