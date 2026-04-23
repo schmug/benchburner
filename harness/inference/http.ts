@@ -43,10 +43,29 @@ export class HTTPAdapter implements InferenceAdapter {
   private readonly endpoint: string;
   private readonly apiKey?: string;
 
-  constructor(opts: { endpoint: string; apiKey?: string }) {
+  constructor(opts: {
+    endpoint: string;
+    apiKey?: string;
+    /** Extra HTTP headers sent on every request. Used for OpenRouter's
+     *  optional HTTP-Referer / X-Title (shows up in the dashboard) and
+     *  can carry Anthropic's `anthropic-version` header on direct
+     *  anthropic.com targets. */
+    extraHeaders?: Record<string, string>;
+  }) {
     this.endpoint = opts.endpoint.replace(/\/+$/, "");
     this.apiKey = opts.apiKey;
+    const defaults: Record<string, string> = {};
+    if (this.endpoint.includes("openrouter.ai")) {
+      // Auto-set OpenRouter's optional identification headers so runs
+      // show up tagged on the dashboard. Neither is required; they
+      // just make usage easier to audit.
+      defaults["http-referer"] = "https://github.com/thebreakawayguy/benchburner";
+      defaults["x-title"] = "Benchburner";
+    }
+    this.extraHeaders = { ...defaults, ...(opts.extraHeaders ?? {}) };
   }
+
+  private readonly extraHeaders: Record<string, string>;
 
   async invoke(params: InferenceInvokeParams): Promise<InferenceResult> {
     const messages: Array<{ role: "system" | "user"; content: string }> = [];
@@ -64,6 +83,7 @@ export class HTTPAdapter implements InferenceAdapter {
 
     const headers: Record<string, string> = {
       "content-type": "application/json",
+      ...this.extraHeaders,
     };
     if (this.apiKey) {
       headers["authorization"] = `Bearer ${this.apiKey}`;

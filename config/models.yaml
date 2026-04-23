@@ -69,11 +69,44 @@
 #   context_window: 32768
 #   model_name: qwen2.5-coder:7b
 
-# Example HTTP-adapter entry — covers vLLM / Together / HF / OpenAI.
+# ── OpenRouter (hosted frontier models via OpenAI-compatible shim) ──
+# OpenRouter auto-identifies requests with HTTP-Referer / X-Title set
+# by the HTTPAdapter when it sees the openrouter.ai host.
+# Set OPENROUTER_API_KEY in .env before running.
+
+- id: claude-opus-4.7
+  adapter: http
+  endpoint: https://openrouter.ai/api
+  api_key_env: OPENROUTER_API_KEY
+  context_window: 200000
+  model_name: anthropic/claude-opus-4.7
+
+- id: claude-sonnet-4.6
+  adapter: http
+  endpoint: https://openrouter.ai/api
+  api_key_env: OPENROUTER_API_KEY
+  context_window: 200000
+  model_name: anthropic/claude-sonnet-4.6
+
+- id: claude-haiku-4.5
+  adapter: http
+  endpoint: https://openrouter.ai/api
+  api_key_env: OPENROUTER_API_KEY
+  context_window: 200000
+  model_name: anthropic/claude-haiku-4.5
+
+- id: gpt-5
+  adapter: http
+  endpoint: https://openrouter.ai/api
+  api_key_env: OPENROUTER_API_KEY
+  context_window: 128000
+  model_name: openai/gpt-5
+
+# Example Together-direct entry — untested but should just work.
 #
 # - id: llama-3-70b
 #   adapter: http
-#   endpoint: https://api.together.xyz/v1/chat/completions
+#   endpoint: https://api.together.xyz
 #   api_key_env: TOGETHER_API_KEY
 #   context_window: 8192
 #   model_name: meta-llama/Llama-3-70b-chat-hf
