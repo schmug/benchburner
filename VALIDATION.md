@@ -43,7 +43,50 @@ is noise around a flat line.
   - Evidence: `results/9acd4539-c2be-4c4d-b3d9-ef795c6e60a7/` on
     `orchestrator/smoke-test`.
 
-- [!] **P0S2 — Bigger coder subagent.**
+- [x] **P0S2 — LLM team moves money.**
+  - **Pass:** run `2a88e101-a232-46e7-9a8f-4373683a9483` (commit
+    `8b4e0de`) on `orchestrator/smoke-test`.
+    **final_money = 1838** (started 1262, +576 over 20 minutes).
+    Orchestrator: `claude-opus-4.7` via OpenRouter. Subagent:
+    `claude-sonnet-4.6`. Total inference tokens: 143,218 of 500,000
+    cap (under ~$10 at current OpenRouter pricing).
+  - The trajectory itself is a great read of what the benchmark
+    measures: cycle 2 Sonnet wrote a RAM-too-big enumerator
+    (failed_to_start); cycle 3 Opus said "make it smaller," Sonnet
+    emitted a `nuke + hack('n00dles')` loop that ran and earned
+    $287.55 in one 120-s window; cycle 10 Opus told the team to
+    maximize per-window and Sonnet added weaken+grow → RAM too big
+    again; cycle 11 Opus said "revert to the simplest working
+    script"; cycles 12+ the team committed the known-working
+    2-call loop repeatedly.
+  - **Known follow-up (will make P0S2 numbers much larger):**
+    the dispatcher kills committed scripts at 120 s (a safeguard
+    originally sized for agentic RUN probes, not orchestrator-
+    committed scripts that should run for the rest of the run
+    window). With a level-1 ~50 % hack chance and 49-s hack time,
+    that lets only ~2 attempts per window land before the kill.
+    Fix is a `kind: "probe" | "committed"` tag on queue entries;
+    probes keep the 120-s timeout, committed scripts run until
+    shutdown. Tracked below as PAS6 (parallel to Phase A work).
+  - Code changes that made this run possible:
+    - OpenRouter + HTTPAdapter headers (129d6f2)
+    - Dispatcher surfaces runtime errors via `getRecentScripts` +
+      log-line pattern match (a65364b)
+    - Unified leak scrub across subagent_status +
+      delegation_history; detector uses word-boundary regex to
+      match scrubber (4a12e6e)
+    - Runtime + RAM-budget disclosure in both system prompts
+      (4a12e6e)
+  - Evidence: `results/2a88e101-a232-46e7-9a8f-4373683a9483/` on
+    `orchestrator/smoke-test`. Phase 0 GATE **OPEN** — Phase B
+    scoring-discrimination work is unblocked.
+
+- [!] **P0S2-legacy** — informative-fail data from the earlier
+  seven-attempt exploration with local-only Ollama models
+  (gpt-oss:20b + qwen2.5-coder:7b, qwen3.6:35b-a3b-coding-nvfp4
+  etc.). Kept for reference: those configurations ran the pipeline
+  cleanly but never moved money. Hosted Claude Opus + Sonnet was
+  the combination that crossed the line.
   - Seven attempts across different (orchestrator, subagent) combos.
     Canonical: gpt-oss:20b + qwen2.5-coder:7b (run
     `2bdb0f59-c4f5-4653-9215-a1f4f3c1792b`, commit `50a9435`).
@@ -144,6 +187,19 @@ corrupt Phase B/C scores.
   - Two sequential runs must each start from the Bitburner-default
     state. Puppeteer's per-launch profile dir should already
     guarantee this; confirm.
+  - Evidence: (pending)
+
+- [ ] **PAS6 — Committed-script lifetime.**
+  - Dispatcher's 120 s kill was sized for agentic RUN probes so
+    one bad probe doesn't stall the queue. Orchestrator-committed
+    scripts (the subagent's final DONE code, auto-submitted after
+    the result arrives) inherit the same kill, which caps earn
+    time at 2-3 hack attempts per commit. Tag queue entries with
+    `kind: "probe" | "committed"`; probes keep the 120 s limit,
+    committed scripts run until the harness shuts down.
+  - Expected effect: P0S2's 1838 becomes substantially larger
+    when the same team is given full run duration for
+    money-earning code.
   - Evidence: (pending)
 
 - [ ] **PAS5 — Hang detection.**
