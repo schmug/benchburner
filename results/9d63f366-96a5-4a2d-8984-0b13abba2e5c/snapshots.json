@@ -1,0 +1,14 @@
+[
+  {
+    "snapshot_id": "113994e2-554e-452e-b73e-cd6d3f002890",
+    "hour": 0,
+    "game_state": {
+      "current_money": 1262,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "timestamp": "2026-04-24T00:08:23.149Z"
+    },
+    "timestamp": "2026-04-24T00:08:23.652Z"
+  }
+]
