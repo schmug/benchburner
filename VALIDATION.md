@@ -413,6 +413,41 @@ Gate: Phase B confirms discrimination.
     nondeterminism dominates) is itself critical to benchmark
     design and is properly surfaced here.
 
+  - **Follow-up variance battery** (run
+    `tools/pds1-variance-battery.sh`): 3 additional Haiku same-
+    seed repeats + 3 gpt-oss:20b same-seed repeats at seed
+    8675309, to characterize within-seed distributions across
+    two different orchestrator classes (frontier-hosted vs
+    local).
+
+    **Haiku (N=5 at seed 8675309)** `{12423, 1262, 1550, 1262, 1262}`:
+    - mean $3,552, median $1,262, stdev $4,961
+    - Right-skewed with occasional big wins. Most runs plant on
+      the floor; a single outlier carries the mean.
+
+    **gpt-oss:20b (N=4 at seed 8675309)** `{2409, 1262, 4649, 2124}`:
+    - mean $2,611, median $2,266, stdev $1,444
+    - Tighter distribution, no outliers. Consistently produces
+      a modest score.
+
+    **Implication for leaderboard design**: the choice of summary
+    statistic materially changes the ranking.
+    - By **mean**: Haiku > gpt-oss:20b (3552 vs 2611).
+    - By **median**: gpt-oss:20b > Haiku (2266 vs 1262 — 1.8× lead).
+    - By **p95**: Haiku >> gpt-oss (single-run ceiling ~10k vs ~4k).
+
+    "Which orchestrator is better" is genuinely statistic-
+    dependent here, not a measurement issue. A public
+    leaderboard should probably report **median + IQR** rather
+    than mean+stdev, because median is robust to right-skew and
+    rewards consistent orchestrators over lucky-once ones.
+    Alternatively report multiple stats side-by-side and let
+    readers pick.
+
+  - Evidence (variance battery): `{864484cd, 72bfe73b, 16f0cec5}`
+    for Haiku; `{fe12f00f, 70d56a3d, db554466}` for gpt-oss:20b.
+    Commit `1ef7ec8`…`81ff5e5`.
+
 - [x] **PDS2 — Cost / throughput budget.**
   - Scraped subagent-token totals from `delegations` table across
     ~30 logged runs of 20 min each. Orchestrator tokens are only
