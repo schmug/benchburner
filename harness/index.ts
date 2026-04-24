@@ -251,6 +251,8 @@ async function main(): Promise<void> {
       last_bitnode: finalState.bitnode_id,
     },
     failure_reason: fatal ?? undefined,
+    orchestrator_tokens: loop.tokensUsedTotal,
+    subagent_tokens: worker.tokensUsedTotal,
   });
 
   const summary = exportRunArtifacts(db, config.run_id, runDir, config.duration_hours);

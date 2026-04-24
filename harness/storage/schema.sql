@@ -15,7 +15,9 @@ CREATE TABLE IF NOT EXISTS runs (
   final_stats         TEXT,                     -- JSON, null until finalized
   status              TEXT NOT NULL,            -- in_progress | completed | failed
   failure_reason      TEXT,                     -- null unless status=failed
-  attribution_mode    TEXT NOT NULL             -- public | anonymous
+  attribution_mode    TEXT NOT NULL,            -- public | anonymous
+  orchestrator_tokens INTEGER NOT NULL DEFAULT 0, -- PDS2: cumulative orchestrator inference
+  subagent_tokens     INTEGER NOT NULL DEFAULT 0  -- PDS2: cumulative subagent inference
 );
 
 CREATE TABLE IF NOT EXISTS delegations (

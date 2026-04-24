@@ -48,11 +48,13 @@ function stmts(db: Db): Stmts {
     // they care about by passing null for the rest.
     updateRun: db.raw.prepare(`
       UPDATE runs SET
-        status         = COALESCE(@status, status),
-        end_time       = COALESCE(@end_time, end_time),
-        final_money    = COALESCE(@final_money, final_money),
-        final_stats    = COALESCE(@final_stats, final_stats),
-        failure_reason = COALESCE(@failure_reason, failure_reason)
+        status              = COALESCE(@status, status),
+        end_time            = COALESCE(@end_time, end_time),
+        final_money         = COALESCE(@final_money, final_money),
+        final_stats         = COALESCE(@final_stats, final_stats),
+        failure_reason      = COALESCE(@failure_reason, failure_reason),
+        orchestrator_tokens = COALESCE(@orchestrator_tokens, orchestrator_tokens),
+        subagent_tokens     = COALESCE(@subagent_tokens, subagent_tokens)
       WHERE run_id = @run_id
     `),
     insertDelegation: db.raw.prepare(`
@@ -132,6 +134,8 @@ export function updateRunStatus(
     final_money?: number;
     final_stats?: object;
     failure_reason?: string;
+    orchestrator_tokens?: number;
+    subagent_tokens?: number;
   },
 ): void {
   stmts(db).updateRun.run({
@@ -141,6 +145,8 @@ export function updateRunStatus(
     final_money: patch.final_money ?? null,
     final_stats: patch.final_stats !== undefined ? JSON.stringify(patch.final_stats) : null,
     failure_reason: patch.failure_reason ?? null,
+    orchestrator_tokens: patch.orchestrator_tokens ?? null,
+    subagent_tokens: patch.subagent_tokens ?? null,
   });
 }
 

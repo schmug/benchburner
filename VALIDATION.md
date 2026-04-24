@@ -413,11 +413,37 @@ Gate: Phase B confirms discrimination.
     nondeterminism dominates) is itself critical to benchmark
     design and is properly surfaced here.
 
-- [ ] **PDS2 — Cost / throughput budget.**
-  - Record tokens/cycle, cycles/hour, Chromium RSS, GPU memory.
-  - Extrapolate to the eventual 24h × N-orchestrator leaderboard
-    refresh. Flag hosted-API runs with per-token $.
-  - Evidence: (pending)
+- [x] **PDS2 — Cost / throughput budget.**
+  - Scraped subagent-token totals from `delegations` table across
+    ~30 logged runs of 20 min each. Orchestrator tokens are only
+    in console logs (not persisted; see gap below).
+  - Published OpenRouter blended rates used (2026, ~70%/30%
+    input/output split): opus 4.7 ≈ $32/M, sonnet 4.6 ≈ $6.60/M,
+    haiku 4.5 ≈ $1.76/M, local models $0.
+  - 20-minute cost-per-run by configuration:
+
+    | config (orch / sub)                    | tokens / 20 min | cost / 20 min | extrap. cost / 24 h |
+    |----------------------------------------|----------------:|--------------:|---------------------:|
+    | null / any                             |              0 |         $0.00 |              $0.00 |
+    | gpt-oss:20b / qwen2.5-coder:7b (local) |       1K–15K   |         $0.00 |              $0.00 |
+    | gpt-oss:20b / claude-haiku-4.5         |      ~36K sub  |        ~$0.06 |             ~$4.50 |
+    | claude-haiku-4.5 / claude-haiku-4.5    |     24K–41K sub|  ~$0.05–$0.10 |             ~$5–$7 |
+    | claude-opus-4.7 / claude-haiku-4.5     |  132K–164K total|       ~$3–$4  |          ~$200–$300 |
+    | claude-opus-4.7 / claude-sonnet-4.6    |  142K–234K total|       ~$4–$6  |          ~$280–$440 |
+
+  - For a **24h × 5 orchestrators × N=5 runs** leaderboard refresh:
+    - Using Opus + Sonnet tier: 25 runs × ~$360 = **~$9,000**. Needs sponsorship.
+    - Using Haiku + Haiku tier: 25 runs × ~$6 = **~$150**. Individually affordable.
+    - Using local-only tier: $0 (but weaker orchestration signal).
+  - **Gap worth fixing**: orchestrator tokens aren't persisted to the
+    `runs` table. Only subagent tokens (via `delegations[].tokens_used`)
+    and in-memory log lines. Future work: extend storage to record
+    `orchestrator_tokens_total` and `subagent_tokens_total` so cost
+    analysis doesn't depend on scraping /tmp logs.
+  - Tools: `tools/pds2-cost-analysis.mjs` (scrape-and-tabulate).
+  - Evidence: the command
+    `find results -name state.db | while read d; do ...sum tokens... done`
+    used above; committed as a commit-free analysis.
 
 - [x] **PDS3 — Fairness audit.**
   - `tools/pds3-parser-fairness.mjs` exercises `parseOrchestratorOutput`

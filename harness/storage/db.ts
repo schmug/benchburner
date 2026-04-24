@@ -24,6 +24,21 @@ export class Db {
     this.raw.pragma("foreign_keys = ON");
     const schema = readFileSync(SCHEMA_PATH, "utf8");
     this.raw.exec(schema);
+    // Forward-compat migrations. SQLite doesn't support "ADD COLUMN IF
+    // NOT EXISTS" natively, so we try and swallow the already-exists
+    // error. Add new columns here as the schema evolves; old per-run
+    // databases stay readable.
+    for (const alter of [
+      "ALTER TABLE runs ADD COLUMN orchestrator_tokens INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE runs ADD COLUMN subagent_tokens INTEGER NOT NULL DEFAULT 0",
+    ]) {
+      try {
+        this.raw.exec(alter);
+      } catch (e) {
+        const msg = (e as Error).message;
+        if (!/duplicate column/i.test(msg)) throw e;
+      }
+    }
   }
 
   close(): void {
