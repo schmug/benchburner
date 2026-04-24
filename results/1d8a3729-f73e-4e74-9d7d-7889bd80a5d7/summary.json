@@ -1,0 +1,14 @@
+{
+  "run_id": "1d8a3729-f73e-4e74-9d7d-7889bd80a5d7",
+  "orchestrator_model": "claude-opus-4.7",
+  "attribution": "public",
+  "final_money": 1262,
+  "bitnodes_completed": 0,
+  "augments_installed": 0,
+  "status": "failed",
+  "failure_reason": "orchestrator hang: no cycle completed for 901s",
+  "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad",
+  "start_time": "2026-04-24T11:41:46.008Z",
+  "end_time": "2026-04-24T11:56:51.945Z",
+  "duration_hours": 1
+}
