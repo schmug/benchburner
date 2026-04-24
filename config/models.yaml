@@ -99,6 +99,7 @@
   api_key_env: OPENROUTER_API_KEY
   context_window: 200000
   model_name: anthropic/claude-sonnet-4.6
+  supports_structured_output: true
 
 - id: claude-haiku-4.5
   adapter: http
@@ -106,6 +107,7 @@
   api_key_env: OPENROUTER_API_KEY
   context_window: 200000
   model_name: anthropic/claude-haiku-4.5
+  supports_structured_output: true
 
 - id: gpt-5.4
   adapter: http

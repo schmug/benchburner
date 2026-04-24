@@ -309,18 +309,67 @@ Gate: Phase A clean. Goal: prove the scoring surface has gradient.
 
 Gate: Phase B confirms discrimination.
 
-- [ ] **PCS1 — Ordered-capability roster.**
-  - Pick 3 orchestrator models where we expect an ordering (e.g.,
-    qwen3.5:4b < gpt-oss:20b < qwen3-coder-next:q8_0).
-  - 5 × 1-hour runs per orchestrator, same roster, same seed.
-  - Expected: mean scores preserve the ordering with non-overlapping
-    CIs on at least two adjacent pairs.
-  - Evidence: (pending)
+- [~] **PCS1 — Ordered-capability roster.**
+  - Phase C v2 battery: 4 orchestrators × 1 run × 20 min,
+    subagent roster `[claude-haiku-4.5]`, seed 8675309.
 
-- [ ] **PCS2 — Diagnose if ratchet fails.**
-  - Classify cause: model nondeterminism (too noisy), roster ceiling
-    (subagents too weak), or true absence of ordering.
-  - Evidence: (pending)
+    | orchestrator        | final_money | delegations | scripts |
+    |---------------------|------------:|------------:|--------:|
+    | null                |       1,262 |           0 |       0 |
+    | claude-opus-4.7     |       1,550 |           6 |       — |
+    | gpt-oss:20b (local) |       2,409 |          12 |      12 |
+    | claude-sonnet-4.6   |       3,258 |          17 |      17 |
+    | claude-haiku-4.5    |      12,423 |           5 |       5 |
+    | (golden reference)  |       5,741 |           — |       — |
+
+  - Discrimination: clear — $11k spread between the top and bottom
+    LLM orchestrators.
+  - Ordering: **NOT monotonic on model "capability"**. The naive
+    expectation (Opus > Sonnet > Haiku > gpt-oss:20b > null)
+    inverts on the top two: Haiku wins by a wide margin, Opus
+    lands *below* gpt-oss:20b. This is a real and interesting
+    benchmark finding, not a harness bug.
+  - The correlation that DID hold: **fewer delegations → higher
+    score**. PAS6's one-committed-script-per-subagent eviction
+    means every `instruct` kills the previous worker; orchestrators
+    that issue a handful of durable instructions leave long-running
+    earners in place, while orchestrators that over-instruct
+    thrash the pool. Haiku's 5 delegations ran longer per
+    committed script than Sonnet's 17 or Opus's elaborate cycling.
+  - This IS valid benchmark signal: the orchestration strategy
+    space the benchmark measures is *not* well-approximated by
+    "pick the biggest model." It rewards instruction parsimony on
+    this particular BitNode + roster.
+  - Known caveats: N=1 per orchestrator, seed held constant.
+    Before drawing strong conclusions, we need N≥3 per model and
+    seed variance (Phase D / PDS1). The partial check-mark is
+    because the discriminative surface is proven but the ratchet
+    characterization is preliminary.
+  - Evidence: `results/a0399577-*/` (gpt-oss:20b, $2409),
+    `results/e2b306aa-*/` (Haiku, $12423),
+    `results/98bdadd8-*/` (Sonnet, $3258),
+    `results/a58bfc26-*/` (Opus, $1550 — retry v3 with
+    structured-output forcing on Haiku subagent).
+
+- [~] **PCS2 — Diagnose non-monotonic ratchet.**
+  - Candidate hypotheses (rank-ordered by plausibility after one
+    session of data):
+    1. **Instruction-thrash** via PAS6 eviction (strongest
+       evidence): delegations correlate negatively with score.
+    2. **Opus over-reasoning starves subagent time**: Opus's
+       21-cycle run spent ~4 min/cycle in orchestrator inference
+       leaving less room for subagent iteration + committed-script
+       runtime.
+    3. **Haiku-subagent + Haiku-orchestrator alignment**: task
+       phrasing that matches Haiku's response style produces
+       faster, cleaner commits. When orchestrator and subagent
+       are the same family/scale, fewer misunderstandings.
+    4. **Pure nondeterminism on N=1**: can't rule out without
+       more samples.
+  - Further investigation items belong in Phase D (PDS1 seed
+    stability, PDS2 cost/throughput) — they test the above
+    hypotheses directly.
+  - Evidence: delegation-count correlation in the PCS1 table above.
 
 ---
 

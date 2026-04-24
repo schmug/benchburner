@@ -80,6 +80,20 @@ export class HTTPAdapter implements InferenceAdapter {
       max_tokens: params.max_tokens,
       ...(params.stop && params.stop.length > 0 ? { stop: params.stop } : {}),
     };
+    if (params.responseFormat !== undefined) {
+      // OpenAI-schema translation. OpenRouter + Anthropic both accept
+      // response_format in this shape; providers that don't silently
+      // ignore unknown fields. Use "json_schema" when a schema object
+      // is supplied, "json_object" when the caller just says "json".
+      if (params.responseFormat === "json") {
+        body.response_format = { type: "json_object" };
+      } else {
+        body.response_format = {
+          type: "json_schema",
+          json_schema: { name: "response", schema: params.responseFormat, strict: true },
+        };
+      }
+    }
 
     const headers: Record<string, string> = {
       "content-type": "application/json",

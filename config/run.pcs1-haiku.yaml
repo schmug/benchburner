@@ -1,0 +1,11 @@
+run_id: auto
+orchestrator:
+  model: claude-haiku-4.5
+  polling_interval_seconds: 60
+  history_window: 10
+  hang_timeout_seconds: 600
+subagent_roster: [claude-haiku-4.5]
+subagent_limits: { max_concurrent: 2, token_budget_per_instruction: 2000, timeout_seconds: 300 }
+game: { bitburner_commit: a4b0f22a2e5bcf19826c0bb671373c755fc162ad, seed: 8675309 }
+duration_hours: 1
+attribution_mode: public
