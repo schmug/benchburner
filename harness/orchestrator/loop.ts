@@ -221,18 +221,37 @@ export class OrchestratorLoop {
         4096,
       );
 
-      const raw = await resolved.adapter.invoke({
-        model: resolved.modelName,
-        prompt: user,
-        system,
-        max_tokens: maxTokens,
-        // NOTE: intentionally do NOT force responseFormat on the
-        // orchestrator path. Ollama's schema-constrained output
-        // breaks reasoning models (gpt-oss, qwen3*): the thinking
-        // stream gets starved, response comes back empty. Orchestrators
-        // rely on SPEC §3.3 system-prompt discipline + our lenient
-        // parser (accepts bare JSON / fenced / first-balanced-object).
-      });
+      // Bound each orchestrator call at half the hang-detection
+      // window so a single stalled fetch can't exceed the whole
+      // hang_timeout_seconds. Without this, an OpenRouter request
+      // that drops without closing the socket (observed on 4 of 8
+      // Phase C runs) starves cycle progress and the run ends with
+      // status="failed / orchestrator hang" at the detector window.
+      const cycleTimeoutMs = Math.max(
+        30_000,
+        Math.floor(this.config.orchestrator.hang_timeout_seconds * 1000 * 0.5),
+      );
+      const cycleController = new AbortController();
+      const cycleTimer = setTimeout(() => cycleController.abort(), cycleTimeoutMs);
+      let raw;
+      try {
+        raw = await resolved.adapter.invoke({
+          model: resolved.modelName,
+          prompt: user,
+          system,
+          max_tokens: maxTokens,
+          signal: cycleController.signal,
+          // NOTE: intentionally do NOT force responseFormat on the
+          // orchestrator path. Ollama's schema-constrained output
+          // breaks reasoning models (gpt-oss, qwen3*): the thinking
+          // stream gets starved, response comes back empty.
+          // Orchestrators rely on SPEC §3.3 system-prompt discipline
+          // + our lenient parser (accepts bare JSON / fenced /
+          // first-balanced-object).
+        });
+      } finally {
+        clearTimeout(cycleTimer);
+      }
 
       this.tokensUsedTotal += raw.tokens_used;
       const parsed = parseOrchestratorOutput(raw.text);
