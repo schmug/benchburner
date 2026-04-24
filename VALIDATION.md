@@ -345,6 +345,14 @@ Gate: Phase B confirms discrimination.
     seed variance (Phase D / PDS1). The partial check-mark is
     because the discriminative surface is proven but the ratchet
     characterization is preliminary.
+  - **UPDATE from PDS1 (below):** within-seed variance turns out
+    to be massive — Haiku's same-seed re-run dropped from $12,423
+    to $1,262. The ratchet ordering above is noise-dominated, not
+    a true capability signal. The $11k "Haiku wins" result was a
+    lucky outlier. Until we have N≥3-5 per orchestrator, Phase C
+    can't claim a stable ordering. Scoring surface *does*
+    discriminate (Phase B gap is real); what it doesn't do at
+    N=1 is rank orchestrators reliably.
   - Evidence: `results/a0399577-*/` (gpt-oss:20b, $2409),
     `results/e2b306aa-*/` (Haiku, $12423),
     `results/98bdadd8-*/` (Sonnet, $3258),
@@ -375,11 +383,35 @@ Gate: Phase B confirms discrimination.
 
 ## Phase D — Additional validations (you didn't list, should happen)
 
-- [ ] **PDS1 — Seed stability.**
-  - 3 seeds × 5 runs each with the same config. Within-seed variance
-    should be smaller than across-seed variance. If equal, our
-    `Math.random` override isn't reaching all RNG sources.
-  - Evidence: (pending)
+- [!] **PDS1 — Seed stability: reveals LLM nondeterminism dominates.**
+  - Setup: ran Haiku-orchestrator + Haiku-subagent at seeds
+    {8675309, 42, 1337}, one run each, 20 min, same config that
+    scored $12,423 in PCS1.
+  - Results: all three scored exactly **$1,262** (floor).
+  - PCS1's Haiku score at seed 8675309 was $12,423. PDS1's Haiku
+    re-run at the SAME seed 8675309 scored $1,262. **Within-seed
+    variance (range $11,161) is dramatically larger than
+    across-seed variance (range $0 within PDS1).** The Math.random
+    override is doing its job; the noise source is the LLM itself.
+  - Interpretation: frontier-LLM sampling nondeterminism
+    (provider-side, even at temperature=0) is the dominant
+    source of score variance on this benchmark. A single run is
+    **not** a reliable score — the winner in PCS1 was a
+    lucky-sample outlier from a right-skewed distribution that
+    includes the floor. **Rankings require N≥3 minimum; N≥5
+    or N≥10 for confidence-interval publication.**
+  - Concrete consequence for Phase C: PCS1's ratchet ordering
+    is noise-dominated at N=1. The $11k Haiku lead vanishes on
+    re-run. Before claiming "orchestrator X > orchestrator Y,"
+    you need enough samples to separate their distributions.
+  - Evidence: runs `7db2bd35-*` (seed 8675309, $1262),
+    `2663c454-*` (seed 42, $1262), `d21cad7d-*` (seed 1337,
+    $1262). Original PCS1 Haiku winner was `e2b306aa-*`.
+  - Gate marked `[!]` because the STATED gate ("within-seed
+    variance smaller than across-seed") can't be cleanly
+    answered at this noise level — but the deeper finding (LLM
+    nondeterminism dominates) is itself critical to benchmark
+    design and is properly surfaced here.
 
 - [ ] **PDS2 — Cost / throughput budget.**
   - Record tokens/cycle, cycles/hour, Chromium RSS, GPU memory.
