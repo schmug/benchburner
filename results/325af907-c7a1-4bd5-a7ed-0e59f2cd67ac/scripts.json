@@ -1,0 +1,131 @@
+[
+  {
+    "script_id": "a39982f3-3c1e-427c-bf15-9d48fc2b09a6",
+    "subagent_id": "agent1",
+    "instruction_id": "5d814639-d7d9-4acd-aba6-eae4cb42b311",
+    "code": "// Long-running hacking script\n/** @param {NS} ns */\nexport async function main(ns) {\n    const servers = new Set();\n    let timeoutId;\n\n    async function updateServers() {\n        for (const server of ns.getServerNames()) {\n            servers.add(server);\n        }\n        setTimeout(updateServers, 1000);\n    }\n\n    async function hackLoop() {\n        while (true) {\n            const target = Array.from(servers).reduce((a, b) => {\n                if (!ns.hasRootAccess(b)) return a;\n                const money = ns.getServerMoneyAvailable(b);\n                const security = ns.getServerSecurityLevel(b);\n                return money * security > a.money * a.security ? { name: b, money, security } : a;\n            }, { name: '', money: 0, security: Infinity });\n\n            if (target.name) {\n                while (ns.getWeakenTime(target.name) < ns.getHackTime(target.name)) {\n                    await ns.weaken(target.name);\n                }\n                await ns.hack(target.name);\n                ns.grow(target.name);\n            }\n\n            setTimeout(hackLoop, 1000);\n        }\n    }\n\n    updateServers();\n    hackLoop();\n}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "a39982f3-3c1e-427c-bf15-9d48fc2b09a6",
+      "subagent_id": "agent1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-24T01:31:26.202Z"
+    },
+    "tokens_used": 3507,
+    "timestamp": "2026-04-24T01:31:26.071Z"
+  },
+  {
+    "script_id": "3fa5607d-837b-4a2b-82ad-42968c769bcf",
+    "subagent_id": "agent1",
+    "instruction_id": "b6d0688f-ea35-4bae-bbf2-38783c7efcfa",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  while (true) {\n    const servers = ns.scan('home');\n    for (const server of servers) {\n      if (!ns.hasRootAccess(server)) {\n        await ns.nuke(server);\n      }\n      await ns.hack(server);\n      await ns.weaken(server);\n      await ns.grow(server);\n    }\n    await ns.sleep(5000);\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "3fa5607d-837b-4a2b-82ad-42968c769bcf",
+      "subagent_id": "agent1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-24T01:34:19.212Z"
+      },
+      "timestamp": "2026-04-24T01:34:19.558Z"
+    },
+    "tokens_used": 3709,
+    "timestamp": "2026-04-24T01:34:19.054Z"
+  },
+  {
+    "script_id": "3e6c4603-9090-4ee8-8911-83dcc92b45a7",
+    "subagent_id": "agent2",
+    "instruction_id": "22068b68-8661-48ec-af9c-601e935a2d9b",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n    while (true) {\n        const servers = ns.getServerNames();\n        for (const server of servers) {\n            if (ns.hasRootAccess(server)) {\n                const moneyGained = ns.hack(server);\n                if (moneyGained > 0) {\n                    ns.grow(server);\n                    ns.weaken(server);\n                }\n            }\n        }\n        await ns.sleep(100);\n    }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "3e6c4603-9090-4ee8-8911-83dcc92b45a7",
+      "subagent_id": "agent2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-24T01:34:36.274Z"
+    },
+    "tokens_used": 1774,
+    "timestamp": "2026-04-24T01:34:36.059Z"
+  },
+  {
+    "script_id": "30eea0d6-d371-4e37-940b-bff2ed814eb8",
+    "subagent_id": "agent6",
+    "instruction_id": "50dfc026-5de9-4071-a894-74ddd52a7d64",
+    "code": "// @param {NS} ns\n/**\n * This script continuously hacks servers with root access,\n * grows and weakens them if money is stolen.\n */\nexport async function main(ns) {\n    while (true) {\n        const servers = ns.getServerNames();\n        for (const server of servers) {\n            if (!ns.hasRootAccess(server)) {\n                await ns.nuke(server);\n            }\n            if (ns.getServerMaxMoney(server) > 0 && ns.hackAnalyzeChance(server) > 0.5) {\n                const gained = await ns.hack(server);\n                if (gained > 0) {\n                    await ns.grow(server);\n                    await ns.weaken(server);\n                }\n            }\n        }\n        await ns.sleep(1000);\n    }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "30eea0d6-d371-4e37-940b-bff2ed814eb8",
+      "subagent_id": "agent6",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1550,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-24T01:39:37.200Z"
+    },
+    "tokens_used": 2928,
+    "timestamp": "2026-04-24T01:39:37.105Z"
+  },
+  {
+    "script_id": "521af1d5-a073-4d38-89c8-3ff2941ca64a",
+    "subagent_id": "agent7",
+    "instruction_id": "b4c50ef8-8415-4c1a-9541-e8a0ac347c9e",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n    const servers = ns.getServerNames();\n    while (true) {\n        for (const server of servers) {\n            if (!ns.hasRootAccess(server)) {\n                ns.nuke(server);\n            }\n            ns.hack(server);\n            ns.grow(server);\n            ns.weaken(server);\n        }\n        await ns.sleep(1000);\n    }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "521af1d5-a073-4d38-89c8-3ff2941ca64a",
+      "subagent_id": "agent7",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1550,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-24T01:41:40.075Z"
+    },
+    "tokens_used": 2752,
+    "timestamp": "2026-04-24T01:41:39.744Z"
+  }
+]
