@@ -11,6 +11,11 @@
   endpoint: none
   context_window: 8192
 
+- id: null-orchestrator
+  adapter: null-orchestrator
+  endpoint: none
+  context_window: 8192
+
 # ── Smoke-test models (local Ollama on this machine) ──────────────
 
 - id: qwen3.5:4b

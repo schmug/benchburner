@@ -15,6 +15,7 @@ import { OllamaAdapter } from "./ollama";
 import { HTTPAdapter } from "./http";
 import { TestHangAdapter } from "./test-hang";
 import { TestScriptedAdapter } from "./test-scripted";
+import { NullOrchestratorAdapter } from "./null-orchestrator";
 
 /**
  * Parse a `models.yaml` file into a validated `ModelConfig[]`. Throws
@@ -44,9 +45,15 @@ export function loadModelsYaml(path: string): ModelConfig[] {
     if (typeof id !== "string" || id.length === 0) {
       throw new Error(`models.yaml entry #${i} missing string "id"`);
     }
-    if (adapter !== "ollama" && adapter !== "http" && adapter !== "test-hang" && adapter !== "test-scripted") {
+    if (
+      adapter !== "ollama" &&
+      adapter !== "http" &&
+      adapter !== "test-hang" &&
+      adapter !== "test-scripted" &&
+      adapter !== "null-orchestrator"
+    ) {
       throw new Error(
-        `models.yaml entry "${id}" has invalid adapter "${String(adapter)}" (expected "ollama", "http", "test-hang", or "test-scripted")`,
+        `models.yaml entry "${id}" has invalid adapter "${String(adapter)}" (expected "ollama", "http", "test-hang", "test-scripted", or "null-orchestrator")`,
       );
     }
     if (typeof endpoint !== "string" || endpoint.length === 0) {
@@ -128,6 +135,8 @@ export class InferenceRegistry {
         adapter = new TestHangAdapter();
       } else if (config.adapter === "test-scripted") {
         adapter = new TestScriptedAdapter();
+      } else if (config.adapter === "null-orchestrator") {
+        adapter = new NullOrchestratorAdapter();
       } else {
         adapter = new HTTPAdapter({ endpoint: config.endpoint, apiKey });
       }
