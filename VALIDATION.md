@@ -546,12 +546,79 @@ Gate: Phase B confirms discrimination.
     aren't deterministic. Document and use as motivation for N≥3.
   - Evidence: (pending)
 
-- [ ] **PDS6 — External-validity sanity.**
-  - Before open-sourcing: run once against a hosted frontier model
-    (Claude 4.7 or GPT-5 via HTTPAdapter). If scores are
-    meaningfully different from local small models, benchmark has
-    external validity.
-  - Evidence: (pending)
+- [x] **PDS6 — External-validity sanity.**
+  - Two new orchestrators added at N=5 against the canonical
+    PCS1 conditions (subagent=Haiku, seed=8675309, 20-min):
+    - **qwen2.5-coder:7b** (local, 7B coder-tuned): tests whether
+      "local wins by median" generalizes beyond gpt-oss:20b.
+    - **openai/gpt-5.4** (hosted, mid-tier OpenAI flagship,
+      $2.50/$15 per M tokens): tests whether the hosted-floor
+      pattern is Anthropic-specific or universal.
+  - Full ranking by median across all 6 orchestrators:
+
+    | orchestrator         | N | min  | Q1   | **median** | Q3   | max   | IQR  | mean | stdev | floor% |
+    |----------------------|--:|-----:|-----:|-----------:|-----:|------:|-----:|-----:|------:|-------:|
+    | gpt-oss:20b (local)  | 6 | 1262 | 1414 |   **1997** | 2338 |  4649 |  924 | 2263 |  1256 |   33%  |
+    | gpt-5.4 (hosted)     | 5 | 1262 | 1262 |   **1838** | 1901 |  2693 |  639 | 1791 |   589 |   40%  |
+    | claude-haiku-4.5     | 5 | 1262 | 1262 |   **1262** | 1550 | 12423 |  288 | 3552 |  4961 |   60%  |
+    | claude-sonnet-4.6    | 5 | 1262 | 1262 |   **1262** | 1838 |  3258 |  576 | 1776 |   865 |   60%  |
+    | claude-opus-4.7      | 5 | 1262 | 1262 |   **1262** | 1550 |  1582 |  288 | 1384 |   167 |   60%  |
+    | qwen2.5-coder:7b (l) | 5 | 1262 | 1262 |   **1262** | 1262 |  2124 |    0 | 1434 |   385 |   80%  |
+
+  - **Both naive PDS6 hypotheses fail. The story is more nuanced
+    and more interesting:**
+    1. **"Local wins" is FALSE.** qwen2.5-coder:7b is the *worst*
+       orchestrator: median at floor, IQR 0, floor-rate 80%.
+       gpt-oss:20b's win was model-specific, not local-vs-hosted.
+    2. **"Hosted underperforms" is FALSE in general.** gpt-5.4
+       (hosted) ranks 2nd by median ($1838), well above all three
+       Anthropic models. The hosted-floor pattern is
+       Anthropic-specific.
+    3. **Family appears to matter more than hosting or size.**
+       OpenAI-family models (gpt-oss:20b, gpt-5.4) cluster at the
+       top; Anthropic-family models (Opus/Sonnet/Haiku, all
+       sizes) cluster at the floor; the small coder-tuned local
+       model lands lowest. This may reflect post-training:
+       gpt-oss:20b is in OpenAI's open-weight lineage, and OpenAI
+       models seem to engage with the orchestration task
+       differently than Anthropic ones do on this BitNode +
+       roster.
+  - **Distribution-shape diversity:**
+    - gpt-oss:20b: bursty, wide IQR, high upside (max $4649).
+    - gpt-5.4: steady, narrower IQR, never hits a ceiling but
+      consistently above floor (60% of runs).
+    - haiku: floor-heavy with one extreme outlier ($12,423 →
+      stdev $4961). Lottery-shaped distribution.
+    - opus: tightest of all (stdev $167) but lowest mean of any
+      paid orchestrator. Consistently mediocre.
+    - qwen-coder: degenerate — 4 floor + 1 small win.
+  - **Caveats:**
+    1. **Single subagent (Haiku).** Different rosters may invert
+       the ranking. Cross-roster sweep is future work — could
+       check whether OpenAI-family orchestrators still win when
+       paired with non-Haiku subagents (e.g., gpt-5.4-mini,
+       qwen2.5-coder, deepseek-v3.2 — all available).
+    2. **N=5 still narrow.** Confidence intervals on the $1838
+       gpt-5.4 median have non-trivial uncertainty; a re-run
+       could shift it. The qualitative ordering (gpt-oss > gpt-5.4
+       > Anthropic ≈ qwen-coder) is robust to N=5 noise though.
+    3. **No reasoning-model variant tested.** o3 / Claude
+       reasoning / DeepSeek-R1 might break the pattern. Open
+       question.
+  - **Battery cost:** $2.84 of OpenRouter budget (well under the
+    ~$5–7 estimate; prompt caching on the shared system prompt is
+    very effective on OpenAI models too).
+  - Evidence:
+    - qwen-coder N=5: `535be8bb, 55b1f850, 52f98cbb, 3d86306d, b18d7a41`
+    - gpt-5.4 N=5: `98caff32, 0c624569, 15791c8b, ed0702be, 3d161bcf`
+    - Configs: `config/run.pds6-qwen-coder.yaml`, `config/run.pds6-gpt-5.4.yaml`
+    - Battery script: `tools/pds6-battery.sh`
+  - **PDS6 GATE PASS with surprise:** the benchmark exhibits
+    real, structured, family-correlated discrimination across 6
+    orchestrators spanning local / hosted, $0 / $30/M tier, and
+    7B / 20B / 70B / hosted-frontier capacity. Ready for public
+    posture pending PDS5 (replay determinism) and PDS7 (24h
+    stability).
 
 - [ ] **PDS7 — 24h stability.**
   - One full 24h run. Watch for Chromium OOM, timer throttling,

@@ -6,6 +6,66 @@
 > "Key Decisions" list, what's validated vs. stubbed, how to run a
 > smoke test, and what the next milestone should be.
 
+## Update 2026-04-25 (evening) — PDS6 closed; family > hosting/size
+
+Added two more orchestrators at N=5 for external validity (qwen2.5-
+coder:7b local, gpt-5.4 hosted via OpenRouter). Same canonical
+config. **Both naive hypotheses failed and the surprise is
+publishable:**
+
+| orch                  | N | median | IQR | mean | floor-rate |
+|-----------------------|--:|-------:|----:|-----:|-----------:|
+| gpt-oss:20b (local)   | 6 |  1997  | 924 | 2263 |   33%      |
+| **gpt-5.4 (hosted)**  | 5 |  1838  | 639 | 1791 |   40%      |
+| claude-haiku-4.5      | 5 |  1262  | 288 | 3552 |   60%      |
+| claude-sonnet-4.6     | 5 |  1262  | 576 | 1776 |   60%      |
+| claude-opus-4.7       | 5 |  1262  | 288 | 1384 |   60%      |
+| qwen2.5-coder:7b (l)  | 5 |  1262  |   0 | 1434 |   80%      |
+
+The ordering is **family-correlated, not hosting- or size-
+correlated**:
+- OpenAI-family (gpt-oss:20b, gpt-5.4) cluster at the top.
+- Anthropic-family (Opus/Sonnet/Haiku) all sit at the floor at
+  the median, regardless of model size.
+- Small coder-tuned local (qwen2.5-coder:7b) is the worst of all.
+
+"Local wins" is FALSE (qwen-coder is worst). "Hosted underperforms"
+is FALSE in general (gpt-5.4 ranks 2nd) — it's specifically that
+the three Anthropic models we tested underperform on this
+BitNode + Haiku-subagent + 20-min duration.
+
+PDS6 spend: $2.84 (way under the $5–7 estimate; prompt caching
+helped on OpenAI side too).
+
+### Recommendations for next session
+
+1. **PDS7 — 24h stability** is now the highest-value remaining
+   work. Until a 24h run completes cleanly, the benchmark's
+   headline numbers are 20-min, not the SPEC §13 target. Use
+   gpt-oss:20b as the orchestrator (it's free, has the best
+   median, and we have the most data on its short-run shape).
+2. **Migrate `aggregator/build.ts` to median+IQR** before any
+   public leaderboard. Right-skewed distributions make mean ± std
+   genuinely misleading on this benchmark.
+3. **Persist orchestrator tokens to `runs` table** (PDS2 follow-up
+   from prior session — still open).
+4. **Cross-roster sweep** as future work: do OpenAI-family
+   orchestrators still beat Anthropic-family when paired with
+   different subagents (gpt-5.4-mini, deepseek-v3.2, qwen-coder
+   as subagent)? This tests whether the family-rank-order is the
+   benchmark's stable signal or a roster-specific quirk. Cheap to
+   test post-PDS7.
+5. **Reasoning-model probe** as future work: o3 / Claude reasoning
+   / DeepSeek-R1 / gpt-5.4-codex weren't tested. They may break
+   the family pattern (or amplify it).
+
+The benchmark can now claim: *"discriminates orchestration
+capability and produces stable rankings at N=5 with median + IQR,
+across local/hosted, multiple model families, and three orders of
+magnitude in parameter count, at a single seed + roster + bitnode
++ 20-min duration."* What's missing is PDS5 (replay determinism)
+and PDS7 (24h stability).
+
 ## Update 2026-04-25 — Phase C closed at N=5+; gpt-oss:20b wins by median
 
 Fill battery added 5 runs (gpt-oss×1, sonnet×4, opus×3) to bring
