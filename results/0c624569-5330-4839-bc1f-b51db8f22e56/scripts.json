@@ -1,0 +1,926 @@
+[
+  {
+    "script_id": "cb3cac22-bae0-4777-9bda-cda77714d4ef",
+    "subagent_id": "worker1",
+    "instruction_id": "07876752-e284-4324-b219-6f2d2121a98f",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const rootedServers = new Set();\n  const portOpeners = [];\n  \n  // Check for port openers\n  if (ns.fileExists('BruteSSH.exe')) portOpeners.push(() => ns.brutessh);\n  if (ns.fileExists('FTPCrack.exe')) portOpeners.push(() => ns.ftpcrack);\n  if (ns.fileExists('relaySMTP.exe')) portOpeners.push(() => ns.relaysmtp);\n  if (ns.fileExists('HTTPWorm.exe')) portOpeners.push(() => ns.httpworm);\n  if (ns.fileExists('SQLInject.exe')) portOpeners.push(() => ns.sqlinject);\n  \n  let target = 'n00dles';\n  const queue = ['home'];\n  const visited = new Set(['home']);\n  \n  // BFS to discover all servers\n  while (queue.length > 0) {\n    const srv = queue.shift();\n    const neighbors = ns.scan(srv);\n    for (const next of neighbors) {\n      if (!visited.has(next)) {\n        visited.add(next);\n        queue.push(next);\n      }\n    }\n  }\n  \n  // Attempt root on all servers\n  for (const srv of visited) {\n    if (ns.hasRootAccess(srv)) {\n      rootedServers.add(srv);\n    } else {\n      const ports = ns.getServerNumPortsRequired(srv);\n      for (let i = 0; i < Math.min(ports, portOpeners.length); i++) {\n        portOpeners[i]()(srv);\n      }\n      if (ports <= portOpeners.length) {\n        ns.nuke(srv);\n        rootedServers.add(srv);\n      }\n    }\n  }\n  \n  let hackCount = 0, weakenCount = 0, growCount = 0;\n  const minHackLevel = ns.getHackingLevel();\n  \n  while (true) {\n    // Find best rooted target\n    let best = null, bestMoney = 0;\n    for (const srv of rootedServers) {\n      const reqLevel = ns.getServerRequiredHackingLevel(srv);\n      if (reqLevel <= minHackLevel) {\n        const money = ns.getServerMoneyAvailable(srv);\n        if (money > bestMoney) {\n          bestMoney = money;\n          best = srv;\n        }\n      }\n    }\n    \n    if (!best) {\n      target = 'n00dles';\n      best = 'n00dles';\n    } else {\n      target = best;\n    }\n    \n    // Weaken/grow/hack loop\n    const sec = ns.getServerSecurityLevel(target);\n    const minSec = ns.getServerMinSecurityLevel(target);\n    const money = ns.getServerMoneyAvailable(target);\n    const maxMoney = ns.getServerMaxMoney(target);\n    \n    if (sec > minSec + 5) {\n      await ns.weaken(target);\n      weakenCount++;\n    } else if (money < maxMoney * 0.75) {\n      await ns.grow(target);\n      growCount++;\n    } else {\n      await ns.hack(target);\n      hackCount++;\n    }\n    \n    if ((hackCount + weakenCount + growCount) % 10 === 0) {\n      ns.print(`[${target}] hack=${hackCount} weaken=${weakenCount} grow=${growCount}`);\n    }\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "cb3cac22-bae0-4777-9bda-cda77714d4ef",
+      "subagent_id": "worker1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:06:05.534Z"
+    },
+    "tokens_used": 7246,
+    "timestamp": "2026-04-25T21:06:05.461Z"
+  },
+  {
+    "script_id": "e16c19f3-c20d-4985-8ec8-d4e6357dad89",
+    "subagent_id": "worker1",
+    "instruction_id": "c89c7e57-986b-495f-b494-f4786598f6c9",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  let count = 0;\n  while (true) {\n    let sec = ns.getServerSecurityLevel('n00dles');\n    let minSec = ns.getServerMinSecurityLevel('n00dles');\n    let money = ns.getServerMoneyAvailable('n00dles');\n    let maxMoney = ns.getServerMaxMoney('n00dles');\n    \n    if (sec > minSec + 3) {\n      await ns.weaken('n00dles');\n    } else if (money < maxMoney * 0.9) {\n      await ns.grow('n00dles');\n    } else {\n      await ns.hack('n00dles');\n    }\n    \n    count++;\n    if (count % 20 === 0) {\n      ns.print(`sec=${sec.toFixed(1)} minSec=${minSec} money=${(money/1e6).toFixed(2)}M maxMoney=${(maxMoney/1e6).toFixed(2)}M`);\n    }\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "e16c19f3-c20d-4985-8ec8-d4e6357dad89",
+      "subagent_id": "worker1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T21:06:53.192Z"
+      },
+      "timestamp": "2026-04-25T21:06:53.409Z"
+    },
+    "tokens_used": 5679,
+    "timestamp": "2026-04-25T21:06:52.907Z"
+  },
+  {
+    "script_id": "f9c0d925-1b1b-4786-9b7b-ade3b50487c9",
+    "subagent_id": "worker1",
+    "instruction_id": "9f4f8b1c-c09c-412d-a8a3-ca88cb37fa2f",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  if (!ns.hasRootAccess('n00dles')) {\n    try { ns.nuke('n00dles'); } catch(e) {}\n  }\n  if (!ns.hasRootAccess('n00dles')) {\n    ns.print('No root on n00dles');\n    return;\n  }\n  let a = 0;\n  while (true) {\n    let sec = ns.getServerSecurityLevel('n00dles');\n    let minSec = ns.getServerMinSecurityLevel('n00dles');\n    let money = ns.getServerMoneyAvailable('n00dles');\n    let maxMoney = ns.getServerMaxMoney('n00dles');\n    if (sec > minSec + 3) {\n      await ns.weaken('n00dles');\n    } else if (money < maxMoney * 0.9) {\n      await ns.grow('n00dles');\n    } else {\n      await ns.hack('n00dles');\n    }\n    if (++a % 25 === 0) ns.print(`Act:${a}`);\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "f9c0d925-1b1b-4786-9b7b-ade3b50487c9",
+      "subagent_id": "worker1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:08:52.525Z"
+    },
+    "tokens_used": 4893,
+    "timestamp": "2026-04-25T21:08:52.190Z"
+  },
+  {
+    "script_id": "9b8aad05-c70b-47d7-983f-17e4ab199adc",
+    "subagent_id": "worker1",
+    "instruction_id": "0c753d89-576f-4807-a3cf-12bedddc19d9",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const srv = 'n00dles';\n  if (!ns.hasRootAccess(srv)) {\n    try { ns.nuke(srv); } catch (e) {}\n    if (!ns.hasRootAccess(srv)) {\n      ns.tprint('No root on ' + srv);\n      return;\n    }\n  }\n  let acts = 0;\n  while (true) {\n    const sec = ns.getServerSecurityLevel(srv);\n    const minSec = ns.getServerMinSecurityLevel(srv);\n    const money = ns.getServerMoneyAvailable(srv);\n    const maxMoney = ns.getServerMaxMoney(srv);\n    if (sec > minSec + 3) {\n      ns.weaken(srv);\n    } else if (money < maxMoney * 0.9) {\n      ns.grow(srv);\n    } else {\n      ns.hack(srv);\n    }\n    acts++;\n    if (acts % 25 === 0) {\n      ns.tprint(srv + ': sec=' + sec.toFixed(2) + ' money=' + money);\n    }\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "9b8aad05-c70b-47d7-983f-17e4ab199adc",
+      "subagent_id": "worker1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:10:00.230Z"
+    },
+    "tokens_used": 5542,
+    "timestamp": "2026-04-25T21:09:59.901Z"
+  },
+  {
+    "script_id": "eac0f163-f570-4f75-8175-ac769ed324b9",
+    "subagent_id": "worker1",
+    "instruction_id": "623d0c8a-6b94-4bf3-a84a-6f8a15e51afd",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  try { ns.nuke('n00dles'); } catch(e) {}\n  while(true) await ns.hack('n00dles');\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "eac0f163-f570-4f75-8175-ac769ed324b9",
+      "subagent_id": "worker1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:10:52.869Z"
+    },
+    "tokens_used": 3772,
+    "timestamp": "2026-04-25T21:10:52.834Z"
+  },
+  {
+    "script_id": "e9fe1354-5c1b-476d-81c3-2dca01a70879",
+    "subagent_id": "worker2",
+    "instruction_id": "52ff3ed8-db46-4c19-a8c3-1efa37a037d9",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "e9fe1354-5c1b-476d-81c3-2dca01a70879",
+      "subagent_id": "worker2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:11:47.017Z"
+    },
+    "tokens_used": 2444,
+    "timestamp": "2026-04-25T21:11:46.635Z"
+  },
+  {
+    "script_id": "26484057-d64c-4004-a5aa-adf1435cd582",
+    "subagent_id": "worker1",
+    "instruction_id": "1d8b9bc6-e3eb-4b9f-9612-0b6c653e556b",
+    "code": "export async function main(ns){try{ns.nuke('n00dles');}catch(e){}while(true){let sec=ns.getServerSecurityLevel('n00dles');let min=ns.getServerMinSecurityLevel('n00dles');let money=ns.getServerMoneyAvailable('n00dles');let max=ns.getServerMaxMoney('n00dles');if(sec>min+3){await ns.weaken('n00dles');}else if(money<max*0.9){await ns.grow('n00dles');}else{await ns.hack('n00dles');}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "26484057-d64c-4004-a5aa-adf1435cd582",
+      "subagent_id": "worker1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T21:11:52.029Z"
+      },
+      "timestamp": "2026-04-25T21:11:52.251Z"
+    },
+    "tokens_used": 4561,
+    "timestamp": "2026-04-25T21:11:51.749Z"
+  },
+  {
+    "script_id": "93772203-7f41-4d75-ac4f-7154de773bde",
+    "subagent_id": "worker3",
+    "instruction_id": "1904d04d-2ada-4642-b9f2-a73991e2051f",
+    "code": "export async function main(ns){while(true)await ns.sleep(1e9)}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "93772203-7f41-4d75-ac4f-7154de773bde",
+      "subagent_id": "worker3",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:13:49.855Z"
+    },
+    "tokens_used": 3409,
+    "timestamp": "2026-04-25T21:13:49.770Z"
+  },
+  {
+    "script_id": "cdecdd79-9c94-47cc-99c0-60127a19f636",
+    "subagent_id": "worker4",
+    "instruction_id": "377f09b5-0069-41dc-b2fb-8d9f7dad081e",
+    "code": "export async function main(ns){while(true)await ns.hack('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "cdecdd79-9c94-47cc-99c0-60127a19f636",
+      "subagent_id": "worker4",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:13:51.860Z"
+    },
+    "tokens_used": 3688,
+    "timestamp": "2026-04-25T21:13:51.398Z"
+  },
+  {
+    "script_id": "4d3c0bff-1a87-4f0a-9c11-327db37fed43",
+    "subagent_id": "worker2",
+    "instruction_id": "eb1ff592-d480-4b6c-a88a-c725235fb442",
+    "code": "export async function main(ns){}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "4d3c0bff-1a87-4f0a-9c11-327db37fed43",
+      "subagent_id": "worker2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:14:49.515Z"
+    },
+    "tokens_used": 2133,
+    "timestamp": "2026-04-25T21:14:49.121Z"
+  },
+  {
+    "script_id": "404fda7c-8a69-4166-ab1b-d0a89e6fc652",
+    "subagent_id": "worker3",
+    "instruction_id": "56905353-1cef-4f26-bd10-e1d6be186b19",
+    "code": "export async function main(ns){for(;;)await ns.hack('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "404fda7c-8a69-4166-ab1b-d0a89e6fc652",
+      "subagent_id": "worker3",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:14:53.026Z"
+    },
+    "tokens_used": 3342,
+    "timestamp": "2026-04-25T21:14:52.814Z"
+  },
+  {
+    "script_id": "adc4451d-82e1-4eee-bd49-dfd43bdff7d9",
+    "subagent_id": "worker1",
+    "instruction_id": "eecdc4a0-5870-45b4-b990-8cb698ac5005",
+    "code": "/** @param {NS} ns */\nexport async function main(ns){try{ns.nuke('n00dles')}catch(e){}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "adc4451d-82e1-4eee-bd49-dfd43bdff7d9",
+      "subagent_id": "worker1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T21:14:54.028Z"
+      },
+      "timestamp": "2026-04-25T21:14:54.256Z"
+    },
+    "tokens_used": 1041,
+    "timestamp": "2026-04-25T21:14:53.753Z"
+  },
+  {
+    "script_id": "5da8b273-e1f7-4efd-867a-274783d29c9d",
+    "subagent_id": "worker4",
+    "instruction_id": "4d903c34-a5b5-4bf0-b847-94e62105d76d",
+    "code": "export async function main(ns){try{ns.nuke('n00dles')}catch(e){}while(1)await ns.hack('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "5da8b273-e1f7-4efd-867a-274783d29c9d",
+      "subagent_id": "worker4",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T21:14:56.036Z"
+      },
+      "timestamp": "2026-04-25T21:14:56.343Z"
+    },
+    "tokens_used": 3460,
+    "timestamp": "2026-04-25T21:14:55.841Z"
+  },
+  {
+    "script_id": "35bbfc2a-c5c9-4969-b37a-d92974b696d8",
+    "subagent_id": "worker2",
+    "instruction_id": "8b7ee9a4-4878-4fcc-ad4f-604537b8610a",
+    "code": "/** @param {NS} ns */\nexport async function main(ns){for(;;)await ns.hack('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "35bbfc2a-c5c9-4969-b37a-d92974b696d8",
+      "subagent_id": "worker2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:15:50.691Z"
+    },
+    "tokens_used": 3334,
+    "timestamp": "2026-04-25T21:15:50.574Z"
+  },
+  {
+    "script_id": "bfad2472-9b26-4ed8-91b8-c15f135ecc72",
+    "subagent_id": "worker1",
+    "instruction_id": "f546ee38-e201-4e03-87f3-c12005970a32",
+    "code": "export async function main(ns){while(1)await ns.hack('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "bfad2472-9b26-4ed8-91b8-c15f135ecc72",
+      "subagent_id": "worker1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:15:51.695Z"
+    },
+    "tokens_used": 3444,
+    "timestamp": "2026-04-25T21:15:51.229Z"
+  },
+  {
+    "script_id": "229ece16-d468-4a82-9f4d-73e7b4834566",
+    "subagent_id": "worker3",
+    "instruction_id": "6108fbd0-3a73-4073-afb5-6058f16f0d7e",
+    "code": "export async function main(ns){try{ns.nuke('n00dles')}catch(e){}for(;;)await ns.hack('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "229ece16-d468-4a82-9f4d-73e7b4834566",
+      "subagent_id": "worker3",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:15:54.706Z"
+    },
+    "tokens_used": 2205,
+    "timestamp": "2026-04-25T21:15:54.347Z"
+  },
+  {
+    "script_id": "07472393-a712-476e-beef-6f4c2fa5b3a2",
+    "subagent_id": "worker4",
+    "instruction_id": "f3812fc1-0b49-48fb-ae3d-3ec6096fd8c4",
+    "code": "/** @param {NS} ns */\nexport async function main(ns){for(;;)await ns.hack('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "07472393-a712-476e-beef-6f4c2fa5b3a2",
+      "subagent_id": "worker4",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T21:15:58.216Z"
+      },
+      "timestamp": "2026-04-25T21:15:58.432Z"
+    },
+    "tokens_used": 3261,
+    "timestamp": "2026-04-25T21:15:57.930Z"
+  },
+  {
+    "script_id": "6e80a3ae-88e9-4c98-b9f8-800e05e19b40",
+    "subagent_id": "worker2",
+    "instruction_id": "68b1cc1f-90ed-45cf-83bb-a305fb619084",
+    "code": "export async function main(ns){try{ns.nuke('foodnstuff')}catch(e){}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "6e80a3ae-88e9-4c98-b9f8-800e05e19b40",
+      "subagent_id": "worker2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:16:46.345Z"
+    },
+    "tokens_used": 1041,
+    "timestamp": "2026-04-25T21:16:46.087Z"
+  },
+  {
+    "script_id": "17159d4d-9f3a-413c-bb9a-e694e7114700",
+    "subagent_id": "worker3",
+    "instruction_id": "bb97322c-ee20-4335-8548-07d4beb2f313",
+    "code": "export async function main(ns){for(;;)await ns.hack('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "17159d4d-9f3a-413c-bb9a-e694e7114700",
+      "subagent_id": "worker3",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:16:47.349Z"
+    },
+    "tokens_used": 1011,
+    "timestamp": "2026-04-25T21:16:47.155Z"
+  },
+  {
+    "script_id": "578fac1b-7206-42c1-991e-690a0b91fe31",
+    "subagent_id": "worker4",
+    "instruction_id": "356ec46e-1c4c-46bb-a6b1-7f6fc4fa1e03",
+    "code": "export async function main(ns){for(;;)await ns.hack('foodnstuff')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "578fac1b-7206-42c1-991e-690a0b91fe31",
+      "subagent_id": "worker4",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1582,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T21:16:48.352Z"
+      },
+      "timestamp": "2026-04-25T21:16:48.758Z"
+    },
+    "tokens_used": 999,
+    "timestamp": "2026-04-25T21:16:48.256Z"
+  },
+  {
+    "script_id": "54bda7d8-5d95-40c5-af63-2dd1aa6840f5",
+    "subagent_id": "worker1",
+    "instruction_id": "4de83722-d721-4101-87ef-c16512ebfa2d",
+    "code": "export async function main(ns){try{ns.nuke('n00dles')}catch(e){}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "54bda7d8-5d95-40c5-af63-2dd1aa6840f5",
+      "subagent_id": "worker1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1582,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T21:16:50.862Z"
+      },
+      "timestamp": "2026-04-25T21:16:51.170Z"
+    },
+    "tokens_used": 3381,
+    "timestamp": "2026-04-25T21:16:50.669Z"
+  },
+  {
+    "script_id": "1b123c84-9928-45a1-95f5-71a8d3d8a31c",
+    "subagent_id": "worker2",
+    "instruction_id": "e2ef7655-0a08-4d32-8ecb-bc967a258b74",
+    "code": "export async function main(ns){for(;;)await ns.grow('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "1b123c84-9928-45a1-95f5-71a8d3d8a31c",
+      "subagent_id": "worker2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1582,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:17:44.513Z"
+    },
+    "tokens_used": 1007,
+    "timestamp": "2026-04-25T21:17:44.462Z"
+  },
+  {
+    "script_id": "dbf8f7bb-e5e7-4822-95f7-2243879d4572",
+    "subagent_id": "worker3",
+    "instruction_id": "c91b7ccc-f571-4bd5-a491-120e73803a95",
+    "code": "export async function main(ns){for(;;)await ns.weaken('foodnstuff')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "dbf8f7bb-e5e7-4822-95f7-2243879d4572",
+      "subagent_id": "worker3",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1582,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:17:45.517Z"
+    },
+    "tokens_used": 1005,
+    "timestamp": "2026-04-25T21:17:45.384Z"
+  },
+  {
+    "script_id": "c87e6cd9-51d6-4c26-a46f-80ec01f1622b",
+    "subagent_id": "worker4",
+    "instruction_id": "c4d76316-19f1-4140-b0c9-97fd045a4d7f",
+    "code": "export async function main(ns){for(;;)await ns.grow('foodnstuff')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "c87e6cd9-51d6-4c26-a46f-80ec01f1622b",
+      "subagent_id": "worker4",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1582,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:17:47.023Z"
+    },
+    "tokens_used": 1029,
+    "timestamp": "2026-04-25T21:17:46.667Z"
+  },
+  {
+    "script_id": "026da79a-c0c1-4792-ac5d-ae440c5944ca",
+    "subagent_id": "worker1",
+    "instruction_id": "3a4b09ba-79cb-49c9-a9f2-5174369f587b",
+    "code": "export async function main(ns){for(;;)await ns.hack('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "026da79a-c0c1-4792-ac5d-ae440c5944ca",
+      "subagent_id": "worker1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1582,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:18:47.693Z"
+    },
+    "tokens_used": 3421,
+    "timestamp": "2026-04-25T21:18:47.515Z"
+  },
+  {
+    "script_id": "47fb9c74-398d-40b3-9b9a-2e5d3b6b6f00",
+    "subagent_id": "worker5",
+    "instruction_id": "90df993a-e090-4822-a464-ad6061b4861c",
+    "code": "export async function main(ns){for(;;)await ns.hack('foodnstuff')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "47fb9c74-398d-40b3-9b9a-2e5d3b6b6f00",
+      "subagent_id": "worker5",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1582,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:19:41.838Z"
+    },
+    "tokens_used": 1025,
+    "timestamp": "2026-04-25T21:19:41.601Z"
+  },
+  {
+    "script_id": "07a122bf-fd01-4ea0-8a78-b7ccebbd925f",
+    "subagent_id": "worker1",
+    "instruction_id": "0ffa3515-2177-4309-9cff-ee6769670f2b",
+    "code": "export async function main(ns){for(;;)await ns.weaken('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "07a122bf-fd01-4ea0-8a78-b7ccebbd925f",
+      "subagent_id": "worker1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1582,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T21:19:47.856Z"
+      },
+      "timestamp": "2026-04-25T21:19:48.112Z"
+    },
+    "tokens_used": 2305,
+    "timestamp": "2026-04-25T21:19:47.610Z"
+  },
+  {
+    "script_id": "1ebb720f-2ffb-4c0a-ba67-608cee6b7b6d",
+    "subagent_id": "worker3",
+    "instruction_id": "88c5f52e-2969-49bc-b09e-d7c7ac6218de",
+    "code": "export async function main(ns){for(;;)await ns.hack('foodnstuff')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "1ebb720f-2ffb-4c0a-ba67-608cee6b7b6d",
+      "subagent_id": "worker3",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1582,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:20:42.514Z"
+    },
+    "tokens_used": 1016,
+    "timestamp": "2026-04-25T21:20:42.053Z"
+  },
+  {
+    "script_id": "5796d3cf-b758-485f-95fc-5e5a9e296fe9",
+    "subagent_id": "worker1",
+    "instruction_id": "db13631c-937b-4043-bef7-2c2df8ec7d48",
+    "code": "export async function main(ns){for(;;)await ns.hack('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "5796d3cf-b758-485f-95fc-5e5a9e296fe9",
+      "subagent_id": "worker1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1582,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T21:20:48.031Z"
+      },
+      "timestamp": "2026-04-25T21:20:48.510Z"
+    },
+    "tokens_used": 3315,
+    "timestamp": "2026-04-25T21:20:48.006Z"
+  },
+  {
+    "script_id": "8170279d-1751-4874-88ee-e4cab343125d",
+    "subagent_id": "worker1",
+    "instruction_id": "71ebc5a7-4b45-4ed8-89a6-d89397c53e44",
+    "code": "export async function main(ns){for(;;)await ns.weaken('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "8170279d-1751-4874-88ee-e4cab343125d",
+      "subagent_id": "worker1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1582,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T21:21:43.177Z"
+      },
+      "timestamp": "2026-04-25T21:21:43.226Z"
+    },
+    "tokens_used": 1022,
+    "timestamp": "2026-04-25T21:21:42.723Z"
+  },
+  {
+    "script_id": "96338855-fe3a-4cbf-9337-527b8ece1ae6",
+    "subagent_id": "worker2",
+    "instruction_id": "8f831735-ac04-421b-bbd8-c7b03972ce04",
+    "code": "export async function main(ns){for(;;)await ns.hack('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "96338855-fe3a-4cbf-9337-527b8ece1ae6",
+      "subagent_id": "worker2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1582,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:21:43.680Z"
+    },
+    "tokens_used": 997,
+    "timestamp": "2026-04-25T21:21:43.455Z"
+  },
+  {
+    "script_id": "cbefefc5-5e93-49ae-a413-a02f1f120620",
+    "subagent_id": "worker4",
+    "instruction_id": "2705f8f0-ee3f-437f-be92-902e0b9e735f",
+    "code": "export async function main(ns){for(;;)await ns.hack('foodnstuff')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "cbefefc5-5e93-49ae-a413-a02f1f120620",
+      "subagent_id": "worker4",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1582,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:21:49.197Z"
+    },
+    "tokens_used": 2159,
+    "timestamp": "2026-04-25T21:21:48.907Z"
+  },
+  {
+    "script_id": "89b0d56f-e8db-4581-9229-34c242cd84dd",
+    "subagent_id": "worker4",
+    "instruction_id": "31271d05-8592-4d9e-bb30-cf52066e9e04",
+    "code": "export async function main(ns){for(;;)await ns.weaken('foodnstuff')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "89b0d56f-e8db-4581-9229-34c242cd84dd",
+      "subagent_id": "worker4",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1582,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:22:41.838Z"
+    },
+    "tokens_used": 999,
+    "timestamp": "2026-04-25T21:22:41.701Z"
+  },
+  {
+    "script_id": "fca21df3-9ed1-4655-acad-2b221be8081c",
+    "subagent_id": "worker1",
+    "instruction_id": "f9c3a34f-f12f-406a-a4bd-7f609a4431db",
+    "code": "/** @param {NS} ns */\nexport async function main(ns){for(;;)await ns.grow('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "fca21df3-9ed1-4655-acad-2b221be8081c",
+      "subagent_id": "worker1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1582,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T21:22:42.339Z"
+      },
+      "timestamp": "2026-04-25T21:22:42.410Z"
+    },
+    "tokens_used": 1019,
+    "timestamp": "2026-04-25T21:22:41.909Z"
+  },
+  {
+    "script_id": "188bfa17-1a49-419b-ab70-dacd19a4b9e6",
+    "subagent_id": "worker1",
+    "instruction_id": "c143a196-5080-4eaf-8926-e67bcf3a720e",
+    "code": "/** @param {NS} ns */\nexport async function main(ns){for(;;)await ns.hack('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "188bfa17-1a49-419b-ab70-dacd19a4b9e6",
+      "subagent_id": "worker1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1582,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T21:23:41.502Z"
+      },
+      "timestamp": "2026-04-25T21:23:41.712Z"
+    },
+    "tokens_used": 1020,
+    "timestamp": "2026-04-25T21:23:41.210Z"
+  },
+  {
+    "script_id": "96a2f925-73f1-4810-ae53-c9a028497b04",
+    "subagent_id": "worker3",
+    "instruction_id": "f26fe8b0-951c-4fb3-afc2-8550a6078b7f",
+    "code": "/** @param {NS} ns */\nexport async function main(ns){for(;;)await ns.grow('foodnstuff')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "96a2f925-73f1-4810-ae53-c9a028497b04",
+      "subagent_id": "worker3",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1582,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T21:23:45.516Z"
+    },
+    "tokens_used": 2202,
+    "timestamp": "2026-04-25T21:23:45.068Z"
+  }
+]
