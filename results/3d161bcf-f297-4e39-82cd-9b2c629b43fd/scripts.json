@@ -1,0 +1,209 @@
+[
+  {
+    "script_id": "9bc81bca-9ca7-4126-a087-c8b23ff531e4",
+    "subagent_id": "scout1",
+    "instruction_id": "79566219-451a-4142-bc2c-39b4a461a724",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const args = ns.args;\n  const scriptName = \"money.js\";\n  \n  // Worker mode: perform single action\n  if (args.length === 3) {\n    const [action, target, threads] = args;\n    if (action === \"weaken\") await ns.weaken(target, {threads});\n    else if (action === \"grow\") await ns.grow(target, {threads});\n    else if (action === \"hack\") await ns.hack(target, {threads});\n    return;\n  }\n  \n  // Coordinator mode\n  const home = \"home\";\n  const visited = new Set();\n  let servers = [home];\n  \n  // Discover servers via scan\n  function discover(srv) {\n    if (visited.has(srv)) return;\n    visited.add(srv);\n    servers.push(srv);\n    const scanned = ns.scan(srv);\n    for (const next of scanned) discover(next);\n  }\n  \n  discover(home);\n  \n  // Try to nuke servers\n  const portTools = [\n    \"BruteSSH.exe\",\n    \"FTPCrack.exe\",\n    \"RelaySMTP.exe\",\n    \"HTTPWorm.exe\",\n    \"SQLInject.exe\"\n  ];\n  \n  for (const srv of servers) {\n    if (ns.hasRootAccess(srv)) continue;\n    let ports = 0;\n    for (const tool of portTools) {\n      if (ns.fileExists(tool, home)) {\n        ports++;\n        if (tool === \"BruteSSH.exe\") ns.brutessh(srv);\n        else if (tool === \"FTPCrack.exe\") ns.ftpcrack(srv);\n        else if (tool === \"RelaySMTP.exe\") ns.relaysmtp(srv);\n        else if (tool === \"HTTPWorm.exe\") ns.httpworm(srv);\n        else if (tool === \"SQLInject.exe\") ns.sqlinject(srv);\n      }\n    }\n    if (ports >= ns.getServerNumPortsRequired(srv)) ns.nuke(srv);\n  }\n  \n  const hackLvl = ns.getHackingLevel();\n  let bestTarget = null;\n  let bestMoney = 0;\n  \n  // Find best hackable target\n  for (const srv of servers) {\n    if (!ns.hasRootAccess(srv) || srv === home) continue;\n    const req = ns.getServerRequiredHackingLevel(srv);\n    const max = ns.getServerMaxMoney(srv);\n    if (req <= hackLvl && max > 0 && max > bestMoney) {\n      bestTarget = srv;\n      bestMoney = max;\n    }\n  }\n  \n  if (!bestTarget) bestTarget = home;\n  \n  ns.tprint(`Target: ${bestTarget} (max: ${bestMoney})`);\n  \n  let lastLog = Date.now();\n  \n  while (true) {\n    // Re-find best target every iteration\n    let newBest = null;\n    let newMoney = 0;\n    for (const srv of servers) {\n      if (!ns.hasRootAccess(srv)) continue;\n      const req = ns.getServerRequiredHackingLevel(srv);\n      const max = ns.getServerMaxMoney(srv);\n      if (req <= hackLvl && max > 0 && max > newMoney) {\n        newBest = srv;\n        newMoney = max;\n      }\n    }\n    if (newBest) bestTarget = newBest;\n    \n    // Get target info\n    const sec = ns.getServerSecurityLevel(bestTarget);\n    const minSec = ns.getServerMinSecurityLevel(bestTarget);\n    const money = ns.getServerMoneyAvailable(bestTarget);\n    const maxMoney = ns.getServerMaxMoney(bestTarget);\n    \n    // Dispatch work\n    let actCount = 0;\n    for (const srv of servers) {\n      if (!ns.hasRootAccess(srv)) continue;\n      let maxRam = ns.getServerMaxRam(srv);\n      let usedRam = ns.getServerUsedRam(srv);\n      if (srv === home) maxRam *= 0.8; // Reserve 20% on home\n      let freeRam = maxRam - usedRam;\n      if (freeRam <= 0.1) continue;\n      \n      const scriptRam = ns.getScriptRam(scriptName);\n      const threads = Math.floor(freeRam / scriptRam);\n      if (threads <= 0) continue;\n      \n      let action = \"hack\";\n      if (sec > minSec + 5) action = \"weaken\";\n      else if (money < maxMoney * 0.75) action = \"grow\";\n      \n      ns.exec(scriptName, srv, threads, action, bestTarget, threads);\n      actCount++;\n    }\n    \n    const now = Date.now();\n    if (now - lastLog > 5000) {\n      ns.tprint(`Target: ${bestTarget}, Sec: ${sec.toFixed(1)}, \n      Money: ${(money / 1e6).toFixed(1)}M/${(maxMoney / 1e6).toFixed(1)}M, \n      Actions: ${actCount}`);\n      lastLog = now;\n    }\n    \n    await ns.sleep(500);\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "9bc81bca-9ca7-4126-a087-c8b23ff531e4",
+      "subagent_id": "scout1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T22:06:37.788Z"
+    },
+    "tokens_used": 8874,
+    "timestamp": "2026-04-25T22:06:37.333Z"
+  },
+  {
+    "script_id": "f6b363d2-c15b-4d49-8403-311d323b86da",
+    "subagent_id": "scout1",
+    "instruction_id": "e04fc26c-4306-4312-95e0-21c08bc11356",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const args = ns.args;\n  if (args.length === 2) {\n    const mode = args[0];\n    const target = args[1];\n    if (mode === 'g') await ns.grow(target);\n    else if (mode === 'w') await ns.weaken(target);\n    else if (mode === 'h') await ns.hack(target);\n    return;\n  }\n  \n  let target = null;\n  let maxMoney = 0;\n  let scanQueue = ['home'];\n  let visited = new Set(['home']);\n  let loopCount = 0;\n  let threadCount = 256;\n  \n  while (true) {\n    if (!target) {\n      while (scanQueue.length > 0) {\n        const server = scanQueue.shift();\n        const neighbors = ns.scan(server);\n        for (const neighbor of neighbors) {\n          if (!visited.has(neighbor)) {\n            visited.add(neighbor);\n            scanQueue.push(neighbor);\n          }\n        }\n      }\n      \n      for (const server of visited) {\n        if (ns.hasRootAccess(server)) {\n          const reqLevel = ns.getServerRequiredHackingLevel(server);\n          const maxM = ns.getServerMaxMoney(server);\n          if (reqLevel <= ns.getHackingLevel() && maxM > maxMoney) {\n            maxMoney = maxM;\n            target = server;\n          }\n        }\n      }\n      \n      if (!target) {\n        ns.sleep(5000);\n        scanQueue = ['home'];\n        visited = new Set(['home']);\n        continue;\n      }\n    }\n    \n    loopCount++;\n    const available = ns.getServerMoneyAvailable(target);\n    let mode = 'h';\n    \n    if (loopCount % 20 === 0) {\n      mode = 'w';\n    } else if (available < 0.6 * maxMoney) {\n      mode = 'g';\n    }\n    \n    let tries = threadCount;\n    while (tries >= 1) {\n      const pid = ns.exec('home-earner.js', 'home', tries, mode, target);\n      if (pid !== 0) break;\n      tries = Math.floor(tries / 2);\n    }\n    \n    ns.sleep(100);\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "f6b363d2-c15b-4d49-8403-311d323b86da",
+      "subagent_id": "scout1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T22:07:28.965Z"
+    },
+    "tokens_used": 6954,
+    "timestamp": "2026-04-25T22:07:28.692Z"
+  },
+  {
+    "script_id": "1d9f5923-1aff-49a7-9edb-c56e66e8b7af",
+    "subagent_id": "scout1",
+    "instruction_id": "df10f9d4-62f1-48e1-9144-26234de4efda",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const targets = ['n00dles','foodnstuff','sigma-cosmetics','joesguns'];\n  let target = 'n00dles';\n  const level = ns.getHackingLevel();\n  for (const t of targets) {\n    if (ns.getServerRequiredHackingLevel(t) <= level) {\n      target = t;\n      break;\n    }\n  }\n  let cycle = 0;\n  while (true) {\n    const max = ns.getServerMaxMoney(target);\n    const avail = ns.getServerMoneyAvailable(target);\n    if (cycle % 10 === 0) {\n      await ns.weaken(target);\n    } else if (avail < max / 2) {\n      await ns.grow(target);\n    } else {\n      await ns.hack(target);\n    }\n    cycle++;\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "1d9f5923-1aff-49a7-9edb-c56e66e8b7af",
+      "subagent_id": "scout1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T22:09:18.297Z"
+    },
+    "tokens_used": 4422,
+    "timestamp": "2026-04-25T22:09:17.889Z"
+  },
+  {
+    "script_id": "7901d3fe-bd78-4489-8add-c7cd2de3b091",
+    "subagent_id": "tiny1",
+    "instruction_id": "ec2c0c59-d8e5-4aa5-9742-4a437c250be5",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  while (true) {\n    await ns.hack('n00dles');\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "7901d3fe-bd78-4489-8add-c7cd2de3b091",
+      "subagent_id": "tiny1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T22:10:11.946Z"
+    },
+    "tokens_used": 2409,
+    "timestamp": "2026-04-25T22:10:11.444Z"
+  },
+  {
+    "script_id": "182843a3-50fb-40e6-8358-32a0bb6e8019",
+    "subagent_id": "scout1",
+    "instruction_id": "1c00f426-02d5-44af-95d3-4bf85f0bdcae",
+    "code": "export async function main(ns){while(true){await ns.grow('n00dles')}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "182843a3-50fb-40e6-8358-32a0bb6e8019",
+      "subagent_id": "scout1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T22:10:19.969Z"
+    },
+    "tokens_used": 3586,
+    "timestamp": "2026-04-25T22:10:19.869Z"
+  },
+  {
+    "script_id": "0b168821-d7fe-4406-8b79-461ba3050dea",
+    "subagent_id": "scout1",
+    "instruction_id": "76a3b6cd-d95a-4a81-922b-add6e781c75e",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const targets = ['n00dles', 'foodnstuff', 'sigma-cosmetics', 'joesguns'];\n  let target = null;\n  let cycle = 0;\n\n  while (true) {\n    // Pick target on first iteration or every 10 cycles\n    if (!target || cycle % 10 === 0) {\n      target = null;\n      const level = ns.getHackingLevel();\n      for (const t of targets) {\n        if (ns.getServerRequiredHackingLevel(t) <= level && ns.getServerMaxMoney(t) > 0) {\n          // Try to nuke if not already rooted\n          try {\n            if (!ns.hasRootAccess(t)) ns.nuke(t);\n          } catch (e) {}\n          if (ns.hasRootAccess(t)) {\n            target = t;\n            break;\n          }\n        }\n      }\n      if (!target) continue;\n    }\n\n    const maxMoney = ns.getServerMaxMoney(target);\n    const available = ns.getServerMoneyAvailable(target);\n\n    if (available < maxMoney * 0.5) {\n      await ns.grow(target);\n    } else {\n      await ns.hack(target);\n    }\n\n    if (++cycle % 10 === 0) {\n      await ns.weaken(target);\n    }\n  }\n}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "0b168821-d7fe-4406-8b79-461ba3050dea",
+      "subagent_id": "scout1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T22:10:23.476Z"
+      },
+      "timestamp": "2026-04-25T22:10:23.550Z"
+    },
+    "tokens_used": 6276,
+    "timestamp": "2026-04-25T22:10:23.047Z"
+  },
+  {
+    "script_id": "862c69bb-609f-4030-83f4-cc0dbe24e31e",
+    "subagent_id": "diag1",
+    "instruction_id": "03053e04-4fcb-40f5-b0cb-09d9cca67655",
+    "code": "export async function main(ns) {\n  return;\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "862c69bb-609f-4030-83f4-cc0dbe24e31e",
+      "subagent_id": "diag1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T22:12:10.765Z"
+    },
+    "tokens_used": 2302,
+    "timestamp": "2026-04-25T22:12:10.744Z"
+  },
+  {
+    "script_id": "2533b7f1-4bff-4217-98b6-10a6bb8674e9",
+    "subagent_id": "diag2",
+    "instruction_id": "afead5f8-b89e-41ce-8076-75a26b499a97",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  ns.nuke('home');\n  await ns.sleep(1);\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "2533b7f1-4bff-4217-98b6-10a6bb8674e9",
+      "subagent_id": "diag2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T22:12:11.267Z"
+    },
+    "tokens_used": 2297,
+    "timestamp": "2026-04-25T22:12:11.175Z"
+  }
+]
