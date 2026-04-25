@@ -6,6 +6,79 @@
 > "Key Decisions" list, what's validated vs. stubbed, how to run a
 > smoke test, and what the next milestone should be.
 
+## Update 2026-04-24 — Phase 0/A/B/C/D validation; ranking-noise finding
+
+After M1 + the agentic-realignment, the benchmark went through the
+phased validation in `VALIDATION.md`. Read VALIDATION.md as the
+primary source; this is the executive summary.
+
+### What's validated
+
+- **Phase 0** (signal exists): hand-written golden script grew
+  money $1,262 → $2,976 in 10 min. LLM team (Opus + Sonnet) grew
+  $1,262 → $3,258 in 20 min. Pipeline produces real numbers.
+- **Phase A** (harness correctness, 6 items): all pass — matrix
+  smoke across 5 configurations, kill-and-restart with SIGINT
+  handler, agentic iteration counter (6/6 unit-style assertions),
+  fresh IndexedDB per run, hang detection with per-invoke timeout,
+  PAS6 committed-script lifetime + one-slot eviction.
+- **Phase B** (scoring discrimination): null $1,262 < LLM-team
+  $3,258 < golden $5,741 at matched 20-min duration; non-overlapping
+  with room to spare. The benchmark distinguishes orchestration
+  quality from no-orchestration and from naive-script.
+
+### What's partially validated
+
+- **Phase C** ratchet: ran 4 orchestrators at N=1 (Opus, Sonnet,
+  Haiku, gpt-oss:20b). Scores spread $1,550 — $12,423.
+  Discrimination is real. Ordering is N=1 noise — see PDS1.
+- **Phase D — PDS1** seed stability: ran Haiku N=5, gpt-oss N=4
+  at the same seed 8675309. **Within-seed variance dominates.**
+  Haiku same-seed range: [$1,262, $12,423] (mean $3,552, median
+  $1,262, stdev $4,961). gpt-oss same-seed: [$1,262, $4,649]
+  (mean $2,611, median $2,266, stdev $1,444). Math.random override
+  works (game-side RNG is stable); the noise is OpenRouter / model
+  sampling. **Single-run rankings are unreliable.**
+- **Phase D — PDS3** parser fairness: 11/11 dialect outputs parse
+  correctly, no model style privileged.
+- **Phase D — PDS4** failure-mode taxonomy: catalogued 54 runs;
+  no silent-failure modes; every terminal state has a clear
+  `failure_reason` or `exit_reason`.
+
+### What's still open
+
+- **Phase C at N≥5** per orchestrator to produce defensible
+  rankings with median + IQR. Cost estimate at OpenRouter pricing:
+  ~$30-50 on Haiku-only, ~$150-450 if Opus is included. **This is
+  the highest-value next investment** — without it, the benchmark
+  can claim "discriminates" but not "ranks."
+- **PDS2** cost/throughput tracking (orchestrator-token totals
+  exist; cost-per-orchestrator extrapolation pending).
+- **PDS5** replay determinism (quantify sampling variance directly
+  by replaying identical inputs).
+- **PDS6** external-validity sanity (hosted frontier models against
+  open-source local models; partly implicit in Phase C N=1 data,
+  needs N≥5).
+- **PDS7** 24h stability (Chromium memory, RFA reconnect, save
+  bloat).
+
+### Recommendations for next session
+
+1. **Set OpenRouter budget cap before kicking anything off.** Past
+   sessions have cost ~$11-15 each.
+2. **Don't accept N=1 rankings.** PCS1's "Haiku beats Sonnet 3.8×"
+   was the right tail of a right-skewed distribution.
+3. **Report median + IQR**, not mean ± stdev, on the leaderboard.
+   Right-skew + bursty winners makes mean misleading.
+4. **`tools/phase-c-battery.sh`** sequences orchestrator runs;
+   parameterize the model list and N for the next sweep.
+
+Branch is `orchestrator/smoke-test`. Latest commit is the variance
+battery analysis. All scripted validation tools live in `tools/`,
+all run-config fixtures in `config/`.
+
+---
+
 ## Update 2026-04-23 — benchmark realignment + agentic subagents
 
 After the first M1 pass, an audit surfaced drift risk: the
