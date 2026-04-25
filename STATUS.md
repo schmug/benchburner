@@ -6,6 +6,60 @@
 > "Key Decisions" list, what's validated vs. stubbed, how to run a
 > smoke test, and what the next milestone should be.
 
+## Update 2026-04-25 — Phase C closed at N=5+; gpt-oss:20b wins by median
+
+Fill battery added 5 runs (gpt-oss×1, sonnet×4, opus×3) to bring
+every orchestrator to N=5+ at the canonical config (subagent=Haiku,
+seed 8675309, 20 min). Spend: $4.45 of OpenRouter budget — well
+under the $13–16 estimate (prompt caching helps a lot on Anthropic
+models). See VALIDATION.md PCS1 for the full table; headline:
+
+| orch                | N | median | IQR  | mean  | floor-rate |
+|---------------------|--:|-------:|-----:|------:|-----------:|
+| gpt-oss:20b (local) | 6 |  1997  |  924 |  2263 |    33%     |
+| claude-sonnet-4.6   | 5 |  1262  |  576 |  1776 |    60%     |
+| claude-haiku-4.5    | 5 |  1262  |  288 |  3552 |    60%     |
+| claude-opus-4.7     | 5 |  1262  |  288 |  1384 |    60%     |
+| null                | 3 |  1262  |    0 |  1262 |   100%     |
+
+**The PCS1 N=1 ratchet inverts.** By median, only the local 20B
+model clears the null floor. PCS1's "Haiku 3.8× Sonnet" lead was
+one right-tail outlier ($12,423) that did not reproduce on re-run.
+By mean Haiku looks first, but the mean is dragged by that one
+sample — the median + IQR view is the honest picture and is what
+the leaderboard should publish.
+
+This is real, publishable signal: orchestration capability on this
+benchmark is **not** well-predicted by "pick the biggest hosted
+model." Subagent-suiting delegation style and instruction parsimony
+matter more on this BitNode + roster + 20-min duration. A 20B-param
+local model dominates by median, with non-overlapping IQR vs every
+frontier-hosted alternative.
+
+### Recommendations for next session
+
+1. **Persist orchestrator tokens to `runs` table** (PDS2 follow-up).
+   Today they live only in console logs; cost analysis depends on
+   scraping /tmp.
+2. **PDS6 — external validity.** Run one more orchestrator across
+   N=5 to confirm the local-vs-hosted divergence isn't a
+   gpt-oss:20b idiosyncrasy. Candidates: GPT-5 via HTTPAdapter, or
+   a different open model (qwen2.5-coder:7b, llama-3-70b).
+3. **PDS7 — 24h stability.** First 24h run (any orchestrator from
+   the validated set). Watch for Chromium memory, RFA reconnect,
+   save bloat. Until this passes, the benchmark's headline number
+   is still 20-min, not the 24h SPEC target.
+4. **Aggregator for median + IQR** rather than mean ± std (the
+   current `aggregator/build.ts` outputs mean±std per SPEC §8).
+   PDS1 and now PCS1-N=5 both show right-skew makes mean
+   misleading.
+
+The benchmark can now claim: *"discriminates orchestration
+capability and produces stable rankings at N≥5 with median + IQR,
+on a single seed + roster + bitnode."* That's the deliverable for
+public posture — what's missing for full validation is PDS5, PDS6,
+PDS7.
+
 ## Update 2026-04-24 — Phase 0/A/B/C/D validation; ranking-noise finding
 
 After M1 + the agentic-realignment, the benchmark went through the

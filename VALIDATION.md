@@ -309,55 +309,79 @@ Gate: Phase A clean. Goal: prove the scoring surface has gradient.
 
 Gate: Phase B confirms discrimination.
 
-- [~] **PCS1 — Ordered-capability roster.**
-  - Phase C v2 battery: 4 orchestrators × 1 run × 20 min,
-    subagent roster `[claude-haiku-4.5]`, seed 8675309.
+- [x] **PCS1 — Ordered-capability roster (N=5+).**
+  - Phase C fill battery (commit pending): 4 orchestrators ×
+    N=5–6 runs × 20 min each, subagent roster
+    `[claude-haiku-4.5]`, seed 8675309. Median + IQR is the
+    primary statistic per PDS1's right-skew finding.
 
-    | orchestrator        | final_money | delegations | scripts |
-    |---------------------|------------:|------------:|--------:|
-    | null                |       1,262 |           0 |       0 |
-    | claude-opus-4.7     |       1,550 |           6 |       — |
-    | gpt-oss:20b (local) |       2,409 |          12 |      12 |
-    | claude-sonnet-4.6   |       3,258 |          17 |      17 |
-    | claude-haiku-4.5    |      12,423 |           5 |       5 |
-    | (golden reference)  |       5,741 |           — |       — |
+    | orchestrator        |  N |  min |   Q1 | **median** |   Q3 |   max |  IQR |  mean | stdev |
+    |---------------------|---:|-----:|-----:|-----------:|-----:|------:|-----:|------:|------:|
+    | gpt-oss:20b (local) |  6 | 1262 | 1414 |   **1997** | 2338 |  4649 |  924 |  2263 |  1256 |
+    | claude-haiku-4.5    |  5 | 1262 | 1262 |   **1262** | 1550 | 12423 |  288 |  3552 |  4961 |
+    | claude-opus-4.7     |  5 | 1262 | 1262 |   **1262** | 1550 |  1582 |  288 |  1384 |   167 |
+    | claude-sonnet-4.6   |  5 | 1262 | 1262 |   **1262** | 1838 |  3258 |  576 |  1776 |   865 |
+    | null orchestrator   |  3 | 1262 | 1262 |   **1262** | 1262 |  1262 |    0 |  1262 |     0 |
+    | golden script (ref) |  3 | 2976 |    — |   **2976** |    — |  5741 |    — |     — |     — |
 
-  - Discrimination: clear — $11k spread between the top and bottom
-    LLM orchestrators.
-  - Ordering: **NOT monotonic on model "capability"**. The naive
-    expectation (Opus > Sonnet > Haiku > gpt-oss:20b > null)
-    inverts on the top two: Haiku wins by a wide margin, Opus
-    lands *below* gpt-oss:20b. This is a real and interesting
-    benchmark finding, not a harness bug.
-  - The correlation that DID hold: **fewer delegations → higher
-    score**. PAS6's one-committed-script-per-subagent eviction
-    means every `instruct` kills the previous worker; orchestrators
-    that issue a handful of durable instructions leave long-running
-    earners in place, while orchestrators that over-instruct
-    thrash the pool. Haiku's 5 delegations ran longer per
-    committed script than Sonnet's 17 or Opus's elaborate cycling.
-  - This IS valid benchmark signal: the orchestration strategy
+  - **The ratchet ranking inverts entirely from PCS1's N=1 data.**
+    By median, only **gpt-oss:20b** clears the null floor. The
+    three frontier-hosted models all sit at floor at the median.
+    PCS1's "Haiku 3.8× Sonnet" lead was a single right-tail
+    outlier ($12,423) — re-runs at the same seed dropped to
+    floor 4/5 times.
+  - **Floor-rate by orchestrator** (fraction of runs at $1262):
+    Opus 60%, Haiku 60%, Sonnet 60%, **gpt-oss:20b 33%**. The
+    local model is the only one that produces above-floor scores
+    on the majority of runs.
+  - **Opus has the lowest stdev** ($167) — consistently mediocre.
+    Tightest distribution, lowest mean of any paid orchestrator,
+    never reaches even half of golden's 20-min ceiling.
+  - **Haiku is the only orchestrator that ever exceeded golden.**
+    Single $12,423 run vs golden's $5,741 ceiling at 20 min — a
+    real but rare bursty-winner mode. p95-driven leaderboards
+    would rank Haiku highest; median-driven rankings put it
+    last.
+  - **Headline interpretation:** the orchestration-capability
     space the benchmark measures is *not* well-approximated by
-    "pick the biggest model." It rewards instruction parsimony on
-    this particular BitNode + roster.
-  - Known caveats: N=1 per orchestrator, seed held constant.
-    Before drawing strong conclusions, we need N≥3 per model and
-    seed variance (Phase D / PDS1). The partial check-mark is
-    because the discriminative surface is proven but the ratchet
-    characterization is preliminary.
-  - **UPDATE from PDS1 (below):** within-seed variance turns out
-    to be massive — Haiku's same-seed re-run dropped from $12,423
-    to $1,262. The ratchet ordering above is noise-dominated, not
-    a true capability signal. The $11k "Haiku wins" result was a
-    lucky outlier. Until we have N≥3-5 per orchestrator, Phase C
-    can't claim a stable ordering. Scoring surface *does*
-    discriminate (Phase B gap is real); what it doesn't do at
-    N=1 is rank orchestrators reliably.
-  - Evidence: `results/a0399577-*/` (gpt-oss:20b, $2409),
-    `results/e2b306aa-*/` (Haiku, $12423),
-    `results/98bdadd8-*/` (Sonnet, $3258),
-    `results/a58bfc26-*/` (Opus, $1550 — retry v3 with
-    structured-output forcing on Haiku subagent).
+    "pick the biggest hosted model." On this BitNode + roster +
+    duration, parsimony of instructions and subagent-suiting
+    delegation style matter more than orchestrator intelligence.
+    A 20B-parameter local model dominates by median. This is
+    real, publishable signal.
+  - Caveats:
+    1. **Single seed (8675309).** PDS1 showed within-seed
+       variance dominates across-seed, so single-seed data is
+       valid for ranking *at this seed*. Cross-seed
+       generalization is PDS6 / future work.
+    2. **Single bitnode (1) and roster ([haiku]).** Different
+       rosters or bitnodes may invert again. Strategic depth of
+       the benchmark depends on running several roster
+       configurations.
+    3. **20-min duration.** Gives early-game signal only.
+       Late-game (augments, multi-bitnode) untested.
+
+  - Evidence (this fill battery, N=5+ each):
+    - Haiku N=5 (PDS1 variance battery): {1262, 1262, 1262, 1550, 12423}
+      → `e2b306aa, 16f0cec5, 72bfe73b, 7db2bd35, 864484cd`
+    - gpt-oss:20b N=6: {1262, 1262, 1870, 2124, 2409, 4649}
+      → `7bd636a4, fe12f00f, 0e726e1c, db554466, a0399577, 70d56a3d`
+    - Sonnet N=5: {1262, 1262, 1262, 1838, 3258}
+      → `7d05e51d, eebce807, f3b9cb35, ef08951c, 98bdadd8`
+    - Opus N=5: {1262, 1262, 1262, 1550, 1582}
+      → `5403917f, beabb943, cfe04a4a, a58bfc26, fbe90d93`
+
+  - **Superseded by the N=5+ fill battery** (table above). The
+    N=1 ordering shown was noise-dominated; PDS1 below quantifies
+    why and the N=5+ table is the canonical Phase C result. Brief
+    notes on PCS1 lessons preserved:
+    - Discrimination is real (gpt-oss median $1997 vs frontier
+      medians $1262), confirming Phase B's gap finding.
+    - The "fewer delegations → higher score" correlation observed
+      at N=1 dissolves at N=5: Haiku's 5-delegation winning run
+      reverted to floor on re-run, so the apparent
+      delegation-parsimony signal was confounded with the
+      sampling outlier itself.
 
 - [~] **PCS2 — Diagnose non-monotonic ratchet.**
   - Candidate hypotheses (rank-ordered by plausibility after one
