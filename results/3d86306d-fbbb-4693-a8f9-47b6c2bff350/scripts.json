@@ -1,0 +1,52 @@
+[
+  {
+    "script_id": "7c029bff-c4d8-488b-92b2-623c067d4aac",
+    "subagent_id": "haiku1",
+    "instruction_id": "24e94252-0df2-4e31-8bf3-329bad45a0b1",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const servers = ns.scan('home');\n  let best = null, bestChance = 0;\n  for (const s of servers) {\n    if (ns.hasRootAccess(s)) {\n      const chance = ns.getServerRequiredHackingLevel(s) <= ns.getHackingLevel() ? ns.getServerSecurityLevel(s) : 0;\n      if (chance > bestChance) {\n        bestChance = chance;\n        best = s;\n      }\n    }\n  }\n  if (best) {\n    ns.tprint(`Hacking: ${best}`);\n    await ns.hack(best);\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "7c029bff-c4d8-488b-92b2-623c067d4aac",
+      "subagent_id": "haiku1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T20:04:36.753Z"
+      },
+      "timestamp": "2026-04-25T20:04:36.793Z"
+    },
+    "tokens_used": 3795,
+    "timestamp": "2026-04-25T20:04:36.290Z"
+  },
+  {
+    "script_id": "22410b7f-bab0-436b-92cb-a3b18ce424bb",
+    "subagent_id": "haiku1_new",
+    "instruction_id": "ea9d24ea-8407-4ad1-913d-eceda75103b5",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const servers = ['n00dles', 'foodnstuff', 'sigma-cosmetics', 'joesguns', '港'];\n  let best = null;\n  let bestChance = 0;\n  for (const srv of servers) {\n    if (ns.hasRootAccess(srv)) {\n      const chance = ns.hackAnalyzeChance(srv);\n      if (chance > bestChance) {\n        bestChance = chance;\n        best = srv;\n      }\n    }\n  }\n  if (best) {\n    await ns.hack(best);\n    ns.tprint(`Hacked ${best} with ${(bestChance * 100).toFixed(1)}% chance`);\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "22410b7f-bab0-436b-92cb-a3b18ce424bb",
+      "subagent_id": "haiku1_new",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T20:16:36.391Z"
+      },
+      "timestamp": "2026-04-25T20:16:36.614Z"
+    },
+    "tokens_used": 3793,
+    "timestamp": "2026-04-25T20:16:36.111Z"
+  }
+]
