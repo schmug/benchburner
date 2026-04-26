@@ -1,0 +1,22 @@
+[
+  {
+    "delegation_id": "e9431045-5467-43f9-b6cf-ff1ab3c75f1c",
+    "cycle_number": 2,
+    "subagent_id": "worker1",
+    "instruction_id": "3f42232e-6b80-4449-bc42-811fc6767986",
+    "action": {
+      "action_type": "instruct",
+      "subagent_id": "worker1",
+      "instruction": {
+        "task": "Create and commit a single long-running low-RAM money-making script that scans the reachable network from home, picks the best currently hackable target based on max money and required hacking level, and continuously self-manages it with a simple loop: if security is above min+5 then weaken; else if money is below 75% of max then grow; else hack. Use only cheap APIs (individual getters and basic actions), and include simple stdout logging of chosen target and action. Script should run forever and not require arguments.",
+        "context": "We have almost no money after 60 seconds, so likely no effective earner is running. Need a robust starter script that definitely launches under tight RAM. Avoid expensive APIs like getServer and hackAnalyzeChance. Use scan-based BFS from home to discover hosts. Filter to rooted servers with required hacking level <= current hacking level and max money > 0. Estimate value with maxMoney / weakenTime or similar using only cheap getters. If no valid target, sleep and rescan. Keep code compact and reliable.",
+        "constraints": {
+          "token_budget": 700,
+          "max_script_size_lines": 120
+        }
+      }
+    },
+    "result": null,
+    "timestamp": "2026-04-26T21:00:21.825Z"
+  }
+]
