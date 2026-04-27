@@ -1,0 +1,14 @@
+{
+  "run_id": "03fc4ee5-6fab-4019-a956-65cf54d30e97",
+  "orchestrator_model": "gpt-5.4",
+  "attribution": "public",
+  "final_money": 0,
+  "bitnodes_completed": 0,
+  "augments_installed": 0,
+  "status": "failed",
+  "failure_reason": "received SIGTERM",
+  "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad",
+  "start_time": "2026-04-27T21:53:36.250Z",
+  "end_time": "2026-04-27T21:59:10.546Z",
+  "duration_hours": 1
+}
