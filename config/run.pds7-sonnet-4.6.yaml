@@ -1,0 +1,26 @@
+run_id: auto
+# PDS7 — 1h validation run, sonnet variant.
+#
+# Mirrors run.pds7-gpt-5.4.yaml exactly except for the orchestrator
+# model. Used for the post-RFA-reliability-fix A/B: gpt-5.4 vs
+# claude-sonnet-4.6, both running on fix/rfa-reliability so we can
+# confirm the orchestrator no longer flips to money=0 after a
+# stuck-RFA-socket event.
+#
+# Subagent: claude-haiku-4.5. Same as PCS1 / PDS6 / pds7-gpt-5.4 so
+# numbers are comparable across phases and across orchestrators.
+#
+# Seed: 8675309 — same as every other validation run.
+#
+# hang_timeout_seconds: 120 — same as gpt-5.4 sibling.
+
+orchestrator:
+  model: claude-sonnet-4.6
+  polling_interval_seconds: 60
+  history_window: 10
+  hang_timeout_seconds: 120
+subagent_roster: [claude-haiku-4.5]
+subagent_limits: { max_concurrent: 2, token_budget_per_instruction: 2000, timeout_seconds: 300 }
+game: { bitburner_commit: a4b0f22a2e5bcf19826c0bb671373c755fc162ad, seed: 8675309 }
+duration_hours: 24
+attribution_mode: public
