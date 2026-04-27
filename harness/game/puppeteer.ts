@@ -30,6 +30,24 @@ import puppeteer, { type Browser, type Page } from "puppeteer";
 import type { ExecutionResult, GameController, GameState } from "../types";
 import { RFAServer } from "./rfa";
 
+/**
+ * Sentinel game state used when an actual RFA read failed. The
+ * `read_failed: true` flag lets callers (notably OrchestratorLoop)
+ * refuse to overwrite a previously-good cached state with this fake.
+ *
+ * Without the flag, every RFA failure looks like a genuine money=0
+ * snapshot — which is what poisoned PDS7's orchestrator loop after
+ * the cycle-16 socket timeout.
+ */
+function staleState(): GameState {
+  return {
+    current_money: 0,
+    bitnode_id: 1,
+    bitnode_complete: false,
+    read_failed: true,
+  };
+}
+
 const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 // Resolve to source dir regardless of whether we're running via tsx or compiled.
 const HARNESS_GAME_SRC_DIR = path.resolve(MODULE_DIR);
@@ -188,11 +206,7 @@ export class PuppeteerGame implements GameController {
         money_gained: 0,
         time_elapsed_seconds: 0,
         exit_reason: "running",
-        game_state_snapshot: await this.readState().catch(() => ({
-          current_money: 0,
-          bitnode_id: 1,
-          bitnode_complete: false,
-        })),
+        game_state_snapshot: await this.readState().catch(() => staleState()),
         timestamp: new Date().toISOString(),
       };
     }
@@ -220,11 +234,7 @@ export class PuppeteerGame implements GameController {
       money_gained: 0,
       time_elapsed_seconds: 0,
       error: "harness polling timed out waiting for dispatcher result",
-      game_state_snapshot: await this.readState().catch(() => ({
-        current_money: 0,
-        bitnode_id: 1,
-        bitnode_complete: false,
-      })),
+      game_state_snapshot: await this.readState().catch(() => staleState()),
       timestamp: new Date().toISOString(),
     };
   }
@@ -277,7 +287,7 @@ export class PuppeteerGame implements GameController {
         /* fall through */
       }
     }
-    return { current_money: 0, bitnode_id: 1, bitnode_complete: false };
+    return staleState();
   }
 
   // ── internals ──────────────────────────────────────────────────

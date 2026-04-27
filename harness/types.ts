@@ -61,6 +61,17 @@ export interface GameState {
    * compat with older snapshots and dispatchers.
    */
   last_heartbeat_ms?: number;
+  /**
+   * Set to true when the harness could not actually read game state
+   * from RFA (socket dead, timeout, parse failure) and synthesised a
+   * placeholder. Consumers MUST treat current_money/etc. as garbage in
+   * that case and NOT overwrite a previously-good cached state.
+   *
+   * Without this flag a failed read is indistinguishable from a real
+   * "money is zero" snapshot, which poisons OrchestratorLoop.latestState
+   * permanently (PDS7 cycle 16 incident).
+   */
+  read_failed?: boolean;
   // Extension point; distilled snapshots may carry more observables.
   [key: string]: unknown;
 }

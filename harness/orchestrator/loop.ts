@@ -134,6 +134,9 @@ export class OrchestratorLoop {
   private startedAt = 0;
   private lastCycleCompletedAt = 0;
   private latestState: GameState | null = null;
+  /** Whether we've already logged that latestState was preserved due to a
+   *  stale RFA read. Prevents log-spam across many consecutive failures. */
+  private staleReadLogged = false;
   private running = false;
   private cycleInFlight = false;
   private timer?: NodeJS.Timeout;
@@ -165,7 +168,7 @@ export class OrchestratorLoop {
       this.bus.subscribe("results", (r) => this.onResult(r)),
       this.bus.subscribe("executions", (e) => this.onExecution(e)),
       this.bus.subscribe("snapshots", (s) => {
-        this.latestState = s.game_state;
+        this.acceptIncomingState(s.game_state);
       }),
     );
 
@@ -454,7 +457,42 @@ export class OrchestratorLoop {
   }
 
   private onExecution(e: ExecutionResult): void {
-    this.latestState = e.game_state_snapshot;
+    this.acceptIncomingState(e.game_state_snapshot);
+  }
+
+  /**
+   * Accept a candidate GameState into latestState ONLY if it isn't a
+   * "the read failed" sentinel coming from PuppeteerGame. Without this
+   * guard, an RFA timeout or socket-stuck failure flips latestState
+   * to {current_money: 0, ...} and the orchestrator's prompt sees
+   * money=0 forever — even though the real game is still alive
+   * (PDS7 cycle 16 incident).
+   *
+   * If we have no prior state at all, we accept the stale sentinel as
+   * a placeholder so the loop can keep going; otherwise we keep the
+   * last known-good state and log the skip so it's visible to the
+   * operator.
+   */
+  private acceptIncomingState(incoming: GameState): void {
+    if (incoming.read_failed === true) {
+      if (this.latestState && this.latestState.read_failed !== true) {
+        if (!this.staleReadLogged) {
+          console.warn(
+            `[orchestrator] ignoring stale game_state (RFA read failed) — preserving last good state at money=${this.latestState.current_money}`,
+          );
+          this.staleReadLogged = true;
+        }
+        return;
+      }
+    } else {
+      if (this.staleReadLogged) {
+        console.log(
+          `[orchestrator] RFA reads recovered — accepting fresh game_state (money=${incoming.current_money})`,
+        );
+        this.staleReadLogged = false;
+      }
+    }
+    this.latestState = incoming;
   }
 
   private appendPromptLog(entry: { cycle: number; system: string; user: string; leak_check_violations: string[] }): void {
