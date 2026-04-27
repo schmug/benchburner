@@ -18,7 +18,7 @@
  * fail the run.
  */
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { appendFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 
@@ -277,16 +277,18 @@ export class OrchestratorLoop {
     const elapsedSeconds = Math.floor((Date.now() - this.startedAt) / 1000);
     const { verbatim, summary } = this.history.view();
 
-    const subagent_status: SubagentStatus[] = this.pool.list().map((s) => {
-      const t = this.subagentTracks.get(s.subagent_id);
-      return {
-        subagent_id: s.subagent_id,
-        model_choice: s.model,
-        last_instruction_id: t?.last_instruction_id ?? null,
-        last_result: t?.last_result ?? null,
-        status: !t ? "idle" : t.pending ? "pending" : "executed",
-      };
-    });
+    const subagent_status: SubagentStatus[] = truncateSubagentStatuses(
+      this.pool.list().map((s) => {
+        const t = this.subagentTracks.get(s.subagent_id);
+        return {
+          subagent_id: s.subagent_id,
+          model_choice: s.model,
+          last_instruction_id: t?.last_instruction_id ?? null,
+          last_result: t?.last_result ?? null,
+          status: !t ? "idle" : t.pending ? "pending" : "executed",
+        } satisfies SubagentStatus;
+      }),
+    );
 
     return {
       cycle_number: this.cycle,
@@ -518,4 +520,119 @@ function extractFirstJsonObject(s: string): string | null {
   return null;
 }
 
-export const __testing = { parseOrchestratorOutput, detectLeaks };
+/**
+ * Per-subagent code-truncation policy used by assembleInput when
+ * folding the live pool into the orchestrator prompt.
+ *
+ * Why truncation exists: each cycle the orchestrator gets every
+ * subagent's last_result.code verbatim. Pool size grows over a 24h
+ * run (PDS7 hit ~150 subagents; one observed cycle reached 825).
+ * Without bounding, prompt size scales linearly with pool — PDS7
+ * went from 22 KB at cycle 100 to 107 KB at cycle 825, ~5x the
+ * projected token burn for nothing the orchestrator actually used.
+ *
+ * Heuristic: top-K most recently-completed subagents get a generous
+ * head/tail snippet of their code (the agents the orchestrator is
+ * most likely to be reasoning about right now); older subagents get
+ * a much smaller snippet plus a content hash so the orchestrator
+ * can still tell whether the agent has changed since last cycle
+ * without re-reading the whole script. Code is never dropped
+ * entirely — "is this agent making progress" requires SOME signal.
+ */
+export interface CodeTruncationConfig {
+  topK: number;
+  recentHeadLines: number;
+  recentTailLines: number;
+  recentCharCap: number;
+  olderHeadLines: number;
+  olderTailLines: number;
+  olderCharCap: number;
+}
+
+export const DEFAULT_TRUNCATION: CodeTruncationConfig = {
+  topK: 5,
+  recentHeadLines: 30,
+  recentTailLines: 15,
+  recentCharCap: 4000,
+  // Older agents: just enough that the orchestrator can identify
+  // the agent's general intent + see whether the script changed
+  // (via the hash in the truncation marker). Aggressive bound is
+  // necessary — at pool size ~150 the older bucket dominates.
+  olderHeadLines: 1,
+  olderTailLines: 0,
+  olderCharCap: 120,
+};
+
+function truncateCodeSnippet(
+  code: string,
+  headLines: number,
+  tailLines: number,
+  charCap: number,
+): string {
+  if (code.length <= charCap) return code;
+  const hash = createHash("sha256").update(code).digest("hex").slice(0, 8);
+  const lines = code.split("\n");
+  const total = lines.length;
+  // (0,0) → marker only: no head/tail snippet, just enough metadata
+  // for the orchestrator to detect change-vs-no-change cycle over.
+  if (headLines === 0 && tailLines === 0) {
+    return `// [code summary: ${total} lines, ${code.length} chars, hash=${hash}]`;
+  }
+  if (total <= headLines + tailLines + 2) {
+    // Few but very long lines — char-truncate instead of line-truncate.
+    const headChars = Math.floor(charCap * 0.66);
+    const tailChars = Math.floor(charCap * 0.2);
+    const head = headChars > 0 ? code.slice(0, headChars) : "";
+    const tail = tailChars > 0 ? code.slice(-tailChars) : "";
+    return `${head}\n// ... [truncated for prompt budget; total chars=${code.length} hash=${hash}] ...\n${tail}`;
+  }
+  // slice(-0) returns the whole array, so guard tailLines===0 explicitly.
+  const head = headLines > 0 ? lines.slice(0, headLines).join("\n") : "";
+  const tail = tailLines > 0 ? lines.slice(-tailLines).join("\n") : "";
+  const omitted = total - headLines - tailLines;
+  return `${head}\n// ... [truncated for prompt budget; ${omitted} of ${total} lines omitted, hash=${hash}] ...\n${tail}`;
+}
+
+function truncateLastResultCode(
+  r: Result | null,
+  recent: boolean,
+  cfg: CodeTruncationConfig,
+): Result | null {
+  if (!r || !r.code) return r;
+  const headLines = recent ? cfg.recentHeadLines : cfg.olderHeadLines;
+  const tailLines = recent ? cfg.recentTailLines : cfg.olderTailLines;
+  const charCap = recent ? cfg.recentCharCap : cfg.olderCharCap;
+  return { ...r, code: truncateCodeSnippet(r.code, headLines, tailLines, charCap) };
+}
+
+/**
+ * Bound each subagent's last_result.code so subagent_status size
+ * does not scale linearly with pool size. The K most recently-
+ * completed subagents (by last_result.timestamp) get the larger
+ * cap; the rest get the smaller cap. Subagents with no result are
+ * passed through unchanged.
+ *
+ * The orchestrator's prompt never sees the original full code — only
+ * what each subagent itself sees in its own runtime is unaffected.
+ */
+export function truncateSubagentStatuses(
+  statuses: SubagentStatus[],
+  cfg: CodeTruncationConfig = DEFAULT_TRUNCATION,
+): SubagentStatus[] {
+  // Rank by last_result.timestamp descending; missing results sort last.
+  const ranked = statuses
+    .map((s, idx) => ({ idx, ts: s.last_result?.timestamp ?? "" }))
+    .sort((a, b) => {
+      if (a.ts === b.ts) return a.idx - b.idx;
+      if (!a.ts) return 1;
+      if (!b.ts) return -1;
+      return a.ts < b.ts ? 1 : -1;
+    });
+  const recentIdxs = new Set(ranked.slice(0, cfg.topK).map((r) => r.idx));
+  return statuses.map((s, idx) => ({
+    ...s,
+    last_result: truncateLastResultCode(s.last_result, recentIdxs.has(idx), cfg),
+  }));
+}
+
+export const __testing = { parseOrchestratorOutput, detectLeaks, truncateSubagentStatuses, truncateCodeSnippet };
