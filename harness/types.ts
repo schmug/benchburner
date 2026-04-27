@@ -53,6 +53,14 @@ export interface GameState {
   bitnode_id: number;
   bitnode_complete: boolean;
   augments_installed?: string[];
+  /**
+   * Wall-clock ms (Date.now()) the in-game dispatcher last completed a
+   * loop iteration. Used by waitForDispatcherAlive and liveness probes
+   * to distinguish a running dispatcher from one that wrote
+   * /__state.json once at boot and then died. Optional for backward
+   * compat with older snapshots and dispatchers.
+   */
+  last_heartbeat_ms?: number;
   // Extension point; distilled snapshots may carry more observables.
   [key: string]: unknown;
 }

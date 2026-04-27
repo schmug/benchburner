@@ -374,18 +374,48 @@ export class PuppeteerGame implements GameController {
   }
 
   private async waitForDispatcherAlive(): Promise<void> {
+    // The dispatcher previously failed silently: it wrote /__state.json
+    // once at boot then exited or stalled, and a "current_money is a
+    // number" check passed forever on the stale file. PDS7 spent 24h
+    // polling 1262. Real liveness requires either the heartbeat or
+    // the money value to ADVANCE between samples.
     const deadline = Date.now() + 30_000;
+    let firstHeartbeat: number | null = null;
+    let firstMoney: number | null = null;
+    let firstSeenAt = 0;
+    let sawAnything = false;
     while (Date.now() < deadline) {
       await sleep(500);
       const raw = await this.safeGetFile("/__state.json");
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw) as GameState;
-          if (typeof parsed.current_money === "number") return;
-        } catch {
-          /* keep waiting */
-        }
+      if (!raw) continue;
+      let parsed: GameState;
+      try {
+        parsed = JSON.parse(raw) as GameState;
+      } catch {
+        continue;
       }
+      if (typeof parsed.current_money !== "number") continue;
+      sawAnything = true;
+      const hb = typeof parsed.last_heartbeat_ms === "number" ? parsed.last_heartbeat_ms : null;
+      const money = parsed.current_money;
+      if (firstHeartbeat === null && firstMoney === null) {
+        firstHeartbeat = hb;
+        firstMoney = money;
+        firstSeenAt = Date.now();
+        continue;
+      }
+      // Wait at least 2s after the first sighting before declaring
+      // advancement — the dispatcher loop sleeps 500ms, so 2s is
+      // ~4 iterations and well outside any single-iteration jitter.
+      if (Date.now() - firstSeenAt < 2_000) continue;
+      const heartbeatAdvanced = hb !== null && firstHeartbeat !== null && hb > firstHeartbeat;
+      const moneyAdvanced = firstMoney !== null && money !== firstMoney;
+      if (heartbeatAdvanced || moneyAdvanced) return;
+    }
+    if (sawAnything) {
+      throw new Error(
+        "dispatcher wrote /__state.json but neither heartbeat nor money advanced within 30s — dispatcher is dead or stalled after first iteration",
+      );
     }
     throw new Error("dispatcher failed to produce /__state.json within 30s");
   }
