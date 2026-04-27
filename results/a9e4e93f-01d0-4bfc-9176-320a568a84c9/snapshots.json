@@ -1,0 +1,25 @@
+[
+  {
+    "snapshot_id": "0731b44f-47f2-4153-b790-d6860f85cf78",
+    "hour": 0,
+    "game_state": {
+      "current_money": 1262,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777328545270,
+      "timestamp": "2026-04-27T22:22:25.270Z"
+    },
+    "timestamp": "2026-04-27T22:22:25.276Z"
+  },
+  {
+    "snapshot_id": "90f33c85-349a-4da1-b525-1c35dfa7d6ad",
+    "hour": 1,
+    "game_state": {
+      "current_money": 0,
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-04-27T23:22:35.287Z"
+  }
+]

@@ -1,0 +1,3426 @@
+[
+  {
+    "script_id": "70e68b58-3ff7-456b-8c31-34fbf0fe1ff4",
+    "subagent_id": "scanner",
+    "instruction_id": "e30ac70f-ae06-4370-b134-c38d4995ed5f",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const cheap = ns => {\n    // Avoid expensive APIs; we will only use:\n    // ns.scan, hasRootAccess, getServerRequiredHackingLevel, getServerMaxMoney, \n    // getServerMoneyAvailable, getServerSecurityLevel, getServerMinSecurityLevel,\n    // getServerMaxRam, getServerUsedRam, getHackingLevel, weaken, grow, hack, sleep, tprint\n  };\n\n  const findTargets = async () => {\n    const targets = [];\n    const visited = new Set();\n    const queue = ['home'];\n    const playerHack = ns.getHackingLevel();\n\n    while (queue.length > 0) {\n      const server = queue.shift();\n      if (visited.has(server)) continue;\n      visited.add(server);\n\n      const reqs = ns.getServerRequiredHackingLevel(server);\n      const maxMoney = ns.getServerMaxMoney(server);\n      const hasRoot = ns.hasRootAccess(server);\n\n      if (hasRoot && reqs <= playerHack && maxMoney > 0) {\n        targets.push({ name: server, maxMoney, reqs });\n      }\n\n      const neighbors = ns.scan(server);\n      for (const neighbor of neighbors) {\n        if (!visited.has(neighbor)) queue.push(neighbor);\n      }\n    }\n\n    return targets.sort((a, b) => b.maxMoney - a.maxMoney)[0] || null;\n  };\n\n  let iteration = 0;\n  while (true) {\n    const target = await findTargets();\n\n    if (!target) {\n      ns.tprint('No valid target found, rescanning...');\n      await ns.sleep(5000);\n      continue;\n    }\n\n    ns.tprint(`Target: ${target.name} (max: ${ns.formatNumber(target.maxMoney)})`);\n\n    let hackCount = 0;\n    const maxRam = ns.getServerMaxRam('home');\n    const scriptRam = ns.getScriptRam(ns.getRunningScript());\n    const availRam = maxRam - ns.getServerUsedRam('home');\n\n    while (true) {\n      const current = ns.getServerMoneyAvailable(target.name);\n      const max = ns.getServerMaxMoney(target.name);\n      const sec = ns.getServerSecurityLevel(target.name);\n      const minSec = ns.getServerMinSecurityLevel(target.name);\n      const useRam = Math.max(1, Math.floor((availRam - scriptRam) / 2));\n\n      if (sec > minSec + 5) {\n        await ns.weaken(target.name);\n      } else if (current < max * 0.8) {\n        await ns.grow(target.name);\n      } else {\n        await ns.hack(target.name);\n        hackCount++;\n      }\n\n      iteration++;\n      if (iteration % 50 === 0) {\n        ns.tprint(`Status: ${target.name} cash=${ns.formatNumber(current)}/${ns.formatNumber(max)} sec=${sec.toFixed(1)} hacks=${hackCount}`);\n      }\n\n      await ns.sleep(100);\n\n      // Rescan every 200 iterations\n      if (iteration % 200 === 0) break;\n    }\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "70e68b58-3ff7-456b-8c31-34fbf0fe1ff4",
+      "subagent_id": "scanner",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-27T22:23:54.389Z"
+    },
+    "tokens_used": 6601,
+    "timestamp": "2026-04-27T22:23:53.927Z"
+  },
+  {
+    "script_id": "69be4190-a769-4a73-8a38-6e6c606762dd",
+    "subagent_id": "scanner",
+    "instruction_id": "42c7782b-d21c-4bbd-8d59-795daeaddafa",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const target = 'n00dles';\n  let loop = 0;\n  while (true) {\n    if (!ns.hasRootAccess(target)) {\n      await ns.sleep(5000);\n      continue;\n    }\n    const reqHack = ns.getServerRequiredHackingLevel(target);\n    if (reqHack > ns.getHackingLevel()) {\n      await ns.sleep(5000);\n      continue;\n    }\n    const maxMoney = ns.getServerMaxMoney(target);\n    if (maxMoney <= 0) {\n      await ns.sleep(5000);\n      continue;\n    }\n    const sec = ns.getServerSecurityLevel(target);\n    const minSec = ns.getServerMinSecurityLevel(target);\n    if (sec > minSec + 5) {\n      await ns.hack(target);\n    } else {\n      const money = ns.getServerMoneyAvailable(target);\n      if (money < maxMoney * 0.75) {\n        await ns.grow(target);\n      } else {\n        await ns.hack(target);\n      }\n    }\n    if (++loop % 100 === 0) ns.print('loop ' + loop);\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "69be4190-a769-4a73-8a38-6e6c606762dd",
+      "subagent_id": "scanner",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-27T22:25:46.010Z"
+    },
+    "tokens_used": 5025,
+    "timestamp": "2026-04-27T22:25:45.778Z"
+  },
+  {
+    "script_id": "48bd8fc2-1c94-4342-86e4-7a700f51960d",
+    "subagent_id": "scanner",
+    "instruction_id": "6de56616-232c-4348-9d69-2710ee1ae67c",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  while(true) await ns.sleep(10000);\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "48bd8fc2-1c94-4342-86e4-7a700f51960d",
+      "subagent_id": "scanner",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-27T22:26:37.556Z"
+    },
+    "tokens_used": 2321,
+    "timestamp": "2026-04-27T22:26:37.324Z"
+  },
+  {
+    "script_id": "d43bcad4-8c51-41ec-8719-9b50378254dd",
+    "subagent_id": "scanner",
+    "instruction_id": "4b5493bb-1166-4f90-a1af-d40a9ca8d161",
+    "code": "export async function main(ns){return}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "d43bcad4-8c51-41ec-8719-9b50378254dd",
+      "subagent_id": "scanner",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-27T22:27:38.617Z"
+    },
+    "tokens_used": 2151,
+    "timestamp": "2026-04-27T22:27:38.407Z"
+  },
+  {
+    "script_id": "b1f1f2d4-1a15-4275-8c76-9210bbd75dea",
+    "subagent_id": "probe",
+    "instruction_id": "547af3c2-a718-4c2f-a4d9-db6b21ab4b88",
+    "code": "async function main(ns){return}\nif(typeof module!='undefined'){module.exports.main=main}\nif(typeof globalThis!='undefined'){globalThis.main=main}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "b1f1f2d4-1a15-4275-8c76-9210bbd75dea",
+      "subagent_id": "probe",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-27T22:28:40.170Z"
+    },
+    "tokens_used": 2464,
+    "timestamp": "2026-04-27T22:28:40.096Z"
+  },
+  {
+    "script_id": "181670e2-da4c-4635-8f85-a2cd1c4f0e52",
+    "subagent_id": "probe2",
+    "instruction_id": "726e00e9-172f-47f2-8bd4-7e76eb8bcdc8",
+    "code": "export async function main(ns){}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "181670e2-da4c-4635-8f85-a2cd1c4f0e52",
+      "subagent_id": "probe2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-27T22:30:42.274Z"
+    },
+    "tokens_used": 2222,
+    "timestamp": "2026-04-27T22:30:42.241Z"
+  },
+  {
+    "script_id": "7644eb42-98a3-4d58-9d11-d2a9e39105ea",
+    "subagent_id": "pathprobe",
+    "instruction_id": "30b1c947-4a51-4921-9106-9120bcdfe826",
+    "code": "export function main(ns){}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "7644eb42-98a3-4d58-9d11-d2a9e39105ea",
+      "subagent_id": "pathprobe",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-27T22:30:46.778Z"
+    },
+    "tokens_used": 2141,
+    "timestamp": "2026-04-27T22:30:46.557Z"
+  },
+  {
+    "script_id": "e7abe117-2de1-4165-b2ae-e99d99b2fc71",
+    "subagent_id": "syntaxprobe",
+    "instruction_id": "aea45173-0f90-4fe8-8111-247ca1fd5bac",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  while(false){}\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "e7abe117-2de1-4165-b2ae-e99d99b2fc71",
+      "subagent_id": "syntaxprobe",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "last_heartbeat_ms": 1777329051285,
+        "timestamp": "2026-04-27T22:30:51.285Z"
+      },
+      "timestamp": "2026-04-27T22:30:51.725Z"
+    },
+    "tokens_used": 2144,
+    "timestamp": "2026-04-27T22:30:51.218Z"
+  },
+  {
+    "script_id": "3e64f535-ff64-4950-9160-cc43d7affb71",
+    "subagent_id": "scanner",
+    "instruction_id": "43da819c-d923-4914-bfbb-f4d9650578ab",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const targets = ['n00dles', 'foodnstuff', 'sigma-cosmetics', 'joesguns', 'nectar-net'];\n  \n  while (true) {\n    const playerLevel = ns.getHackingLevel();\n    let chosen = null;\n    \n    for (const t of targets) {\n      if (!ns.hasRootAccess(t)) continue;\n      const req = ns.getServerRequiredHackingLevel(t);\n      const maxMoney = ns.getServerMaxMoney(t);\n      if (req <= playerLevel && maxMoney > 0) {\n        chosen = t;\n        break;\n      }\n    }\n    \n    if (!chosen) {\n      await ns.sleep(5000);\n      continue;\n    }\n    \n    const sec = ns.getServerSecurityLevel(chosen);\n    const minSec = ns.getServerMinSecurityLevel(chosen);\n    const money = ns.getServerMoneyAvailable(chosen);\n    const maxMoney = ns.getServerMaxMoney(chosen);\n    \n    if (sec > minSec + 5) {\n      await ns.weaken(chosen);\n    } else if (money < maxMoney * 0.75) {\n      await ns.grow(chosen);\n    } else {\n      await ns.hack(chosen);\n    }\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "3e64f535-ff64-4950-9160-cc43d7affb71",
+      "subagent_id": "scanner",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "last_heartbeat_ms": 1777329052291,
+        "timestamp": "2026-04-27T22:30:52.291Z"
+      },
+      "timestamp": "2026-04-27T22:30:52.567Z"
+    },
+    "tokens_used": 6930,
+    "timestamp": "2026-04-27T22:30:52.063Z"
+  },
+  {
+    "script_id": "fcf95653-12e6-495f-97db-74a44a6b37ae",
+    "subagent_id": "claude-haiku-4.5-50fbb0df",
+    "instruction_id": "22a5746b-d5b4-4f5b-8b79-eed899ca1e9d",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  let target = 'n00dles';\n  while (true) {\n    if (!ns.hasRootAccess(target)) {\n      await ns.sleep(1000);\n      continue;\n    }\n    let hLvl = ns.getHackingLevel();\n    let reqLvl = ns.getServerRequiredHackingLevel(target);\n    if (hLvl < reqLvl) {\n      await ns.sleep(5000);\n      continue;\n    }\n    let maxMoney = ns.getServerMaxMoney(target);\n    let curMoney = ns.getServerMoneyAvailable(target);\n    let curSec = ns.getServerSecurityLevel(target);\n    let minSec = ns.getServerMinSecurityLevel(target);\n    if (curSec > minSec + 5) {\n      await ns.weaken(target);\n    } else if (curMoney < maxMoney * 0.95) {\n      await ns.grow(target);\n    } else {\n      await ns.hack(target);\n    }\n    await ns.sleep(100);\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "fcf95653-12e6-495f-97db-74a44a6b37ae",
+      "subagent_id": "claude-haiku-4.5-50fbb0df",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-27T22:31:45.362Z"
+    },
+    "tokens_used": 3311,
+    "timestamp": "2026-04-27T22:31:45.020Z"
+  },
+  {
+    "script_id": "6c82cbde-f720-4064-a765-21dd89891f8b",
+    "subagent_id": "lastprobe",
+    "instruction_id": "30742a48-e73f-466d-bcbf-a7f403272bba",
+    "code": "export async function main(ns) {\n  const target = 'n00dles';\n  while (true) {\n    const has = ns.hasRootAccess(target);\n    const req = ns.getServerRequiredHackingLevel(target);\n    const max = ns.getServerMaxMoney(target);\n    const sec = ns.getServerSecurityLevel(target);\n    const min = ns.getServerMinSecurityLevel(target);\n    const money = ns.getServerMoneyAvailable(target);\n    if (!has || req > ns.getHackingLevel() || max <= 0) {\n      await ns.sleep(5000);\n      continue;\n    }\n    if (sec > min + 5) {\n      await ns.weaken(target);\n    } else if (money < max * 0.75) {\n      await ns.grow(target);\n    } else {\n      await ns.hack(target);\n    }\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "6c82cbde-f720-4064-a765-21dd89891f8b",
+      "subagent_id": "lastprobe",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-27T22:31:49.875Z"
+    },
+    "tokens_used": 4553,
+    "timestamp": "2026-04-27T22:31:49.558Z"
+  },
+  {
+    "script_id": "17704966-b063-4bf5-b995-a09420d938b2",
+    "subagent_id": "scanner",
+    "instruction_id": "0ceb9e8a-6064-449a-b4aa-51b0f0cdb9f1",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const target = 'n00dles';\n  const ports = [];\n  \n  // Try to open ports if functions exist\n  if (typeof ns.bruteSsh === 'function') { ns.bruteSsh(target); ports.push(1); }\n  if (typeof ns.ftpcrack === 'function') { ns.ftpcrack(target); ports.push(1); }\n  if (typeof ns.relaysmtp === 'function') { ns.relaysmtp(target); ports.push(1); }\n  if (typeof ns.httpworm === 'function') { ns.httpworm(target); ports.push(1); }\n  if (typeof ns.sqlinject === 'function') { ns.sqlinject(target); ports.push(1); }\n  \n  // Nuke if we have enough ports open\n  const required = ns.getServerNumPortsRequired(target);\n  if (ports.length >= required) {\n    ns.nuke(target);\n  }\n  \n  // Main farm loop\n  while (true) {\n    const root = ns.hasRootAccess(target);\n    if (!root) {\n      const req = ns.getServerNumPortsRequired(target);\n      let opened = 0;\n      if (typeof ns.bruteSsh === 'function') { try { ns.bruteSsh(target); opened++; } catch(e) {} }\n      if (typeof ns.ftpcrack === 'function') { try { ns.ftpcrack(target); opened++; } catch(e) {} }\n      if (typeof ns.relaysmtp === 'function') { try { ns.relaysmtp(target); opened++; } catch(e) {} }\n      if (typeof ns.httpworm === 'function') { try { ns.httpworm(target); opened++; } catch(e) {} }\n      if (typeof ns.sqlinject === 'function') { try { ns.sqlinject(target); opened++; } catch(e) {} }\n      if (opened >= req) ns.nuke(target);\n      await ns.sleep(1000);\n      continue;\n    }\n    \n    const lvl = ns.getHackingLevel();\n    const req_lvl = ns.getServerRequiredHackingLevel(target);\n    if (lvl < req_lvl) { await ns.sleep(100); continue; }\n    \n    const sec = ns.getServerSecurityLevel(target);\n    const min_sec = ns.getServerMinSecurityLevel(target);\n    const mon = ns.getServerMoneyAvailable(target);\n    const max_mon = ns.getServerMaxMoney(target);\n    \n    if (sec > min_sec + 5) {\n      await ns.weaken(target);\n    } else if (mon < 0.9 * max_mon) {\n      await ns.grow(target);\n    } else {\n      await ns.hack(target);\n    }\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "17704966-b063-4bf5-b995-a09420d938b2",
+      "subagent_id": "scanner",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-27T22:32:53.951Z"
+    },
+    "tokens_used": 6089,
+    "timestamp": "2026-04-27T22:32:53.538Z"
+  },
+  {
+    "script_id": "09854d3d-9850-4682-a7d1-305ec5696dce",
+    "subagent_id": "tinyroot2",
+    "instruction_id": "60b8ddbb-5b27-4e9f-ad9a-f4a31654de51",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const t = 'foodnstuff';\n  while (true) {\n    if (!ns.hasRootAccess(t)) {\n      try { ns.nuke(t); } catch (e) {}\n      await ns.sleep(1000);\n      continue;\n    }\n    const s = ns.getServerSecurityLevel(t);\n    const m = ns.getServerMoneyAvailable(t);\n    const ms = ns.getServerMaxMoney(t);\n    const mn = ns.getServerMinSecurityLevel(t);\n    if (s > mn + 5) await ns.weaken(t);\n    else if (m < ms * 0.8) await ns.grow(t);\n    else await ns.hack(t);\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "09854d3d-9850-4682-a7d1-305ec5696dce",
+      "subagent_id": "tinyroot2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-27T22:34:46.554Z"
+    },
+    "tokens_used": 4262,
+    "timestamp": "2026-04-27T22:34:46.352Z"
+  },
+  {
+    "script_id": "0a6b0159-a9a2-4a1e-b16b-02d81ec77a96",
+    "subagent_id": "tinyroot",
+    "instruction_id": "62a9b6b3-a00d-4eec-809a-67f24c8ef233",
+    "code": "export async function main(ns){while(true)await ns.hack('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "0a6b0159-a9a2-4a1e-b16b-02d81ec77a96",
+      "subagent_id": "tinyroot",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-27T22:35:40.600Z"
+    },
+    "tokens_used": 2363,
+    "timestamp": "2026-04-27T22:35:40.193Z"
+  },
+  {
+    "script_id": "f94afd0b-e756-4e53-bbf9-02781ca1ee77",
+    "subagent_id": "microgrow",
+    "instruction_id": "a531db0f-48ef-48ea-b74a-d539122a1be3",
+    "code": "export async function main(ns){while(true){}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "f94afd0b-e756-4e53-bbf9-02781ca1ee77",
+      "subagent_id": "microgrow",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:37:08.875Z"
+    },
+    "tokens_used": 2285,
+    "timestamp": "2026-04-27T22:36:38.371Z"
+  },
+  {
+    "script_id": "78935bb8-c70f-42c5-8b28-d7cee6d0384a",
+    "subagent_id": "microweaken",
+    "instruction_id": "46d419bb-a857-4960-a339-ef342ee0e6db",
+    "code": "/** @param {NS} ns */\nexport async function main(ns){for(;;){}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "78935bb8-c70f-42c5-8b28-d7cee6d0384a",
+      "subagent_id": "microweaken",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-27T22:37:01.210Z"
+    },
+    "tokens_used": 2153,
+    "timestamp": "2026-04-27T22:36:51.210Z"
+  },
+  {
+    "script_id": "b7300479-717a-4998-92da-085962fd0bd3",
+    "subagent_id": "tinyroot",
+    "instruction_id": "704a5bae-96da-4e28-8ba9-c7e711c301d2",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const target = 'n00dles';\n  while (true) {\n    if (!ns.hasRootAccess(target)) {\n      try {\n        ns.nuke(target);\n      } catch (e) {}\n      await ns.sleep(1000);\n      continue;\n    }\n    const sec = ns.getServerSecurityLevel(target);\n    const minSec = ns.getServerMinSecurityLevel(target);\n    if (sec > minSec + 5) {\n      await ns.weaken(target);\n    } else if (ns.getServerMoneyAvailable(target) < ns.getServerMaxMoney(target) * 0.8) {\n      await ns.grow(target);\n    } else {\n      await ns.hack(target);\n    }\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "b7300479-717a-4998-92da-085962fd0bd3",
+      "subagent_id": "tinyroot",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:37:14.061Z"
+    },
+    "tokens_used": 4985,
+    "timestamp": "2026-04-27T22:37:04.060Z"
+  },
+  {
+    "script_id": "53c2fad6-6c0d-4402-9e15-95455d3b065a",
+    "subagent_id": "tinyroot",
+    "instruction_id": "dee94db4-86ab-483f-a6d1-f5869029374a",
+    "code": "export async function main(ns) {\n  while (true) {\n    if (!ns.hasRootAccess('n00dles')) {\n      try { ns.nuke('n00dles'); } catch (e) {}\n      await ns.sleep(1000);\n      continue;\n    }\n    const s = ns.getServerSecurity('n00dles');\n    const m = ns.getServerMoneyAvailable('n00dles');\n    const sm = ns.getServerMaxMoney('n00dles');\n    const min = ns.getServerMinSecurity('n00dles');\n    if (s > min + 5) await ns.weaken('n00dles');\n    else if (m < sm * 0.8) await ns.grow('n00dles');\n    else await ns.hack('n00dles');\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "53c2fad6-6c0d-4402-9e15-95455d3b065a",
+      "subagent_id": "tinyroot",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:38:10.204Z"
+    },
+    "tokens_used": 4301,
+    "timestamp": "2026-04-27T22:38:00.203Z"
+  },
+  {
+    "script_id": "937e3b12-c5f5-452c-bddb-5e9cefb6ae8c",
+    "subagent_id": "tinyroot",
+    "instruction_id": "412ea0bf-3b21-4be4-9cb2-4157df094560",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  while (true) {\n    if (!ns.hasRootAccess('n00dles')) {\n      try {\n        ns.nuke('n00dles');\n      } catch (e) {}\n      await ns.sleep(1000);\n      continue;\n    }\n    const sec = ns.getServerSecurityLevel('n00dles');\n    const min = ns.getServerMinSecurityLevel('n00dles');\n    const mon = ns.getServerMoneyAvailable('n00dles');\n    const max = ns.getServerMaxMoney('n00dles');\n    if (sec > min + 5) ns.weaken('n00dles');\n    else if (mon < max * 0.8) ns.grow('n00dles');\n    else ns.hack('n00dles');\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "937e3b12-c5f5-452c-bddb-5e9cefb6ae8c",
+      "subagent_id": "tinyroot",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:38:58.181Z"
+    },
+    "tokens_used": 2978,
+    "timestamp": "2026-04-27T22:38:48.181Z"
+  },
+  {
+    "script_id": "17798c8d-72d9-4a43-bcbb-83198e403e33",
+    "subagent_id": "tinyroot",
+    "instruction_id": "e1f89589-9fc8-4f9e-9814-722c6cdd1e90",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  while (true) {\n    if (!ns.hasRootAccess('n00dles')) {\n      try {\n        ns.nuke('n00dles');\n      } catch (e) {}\n      await ns.sleep(1000);\n      continue;\n    }\n    const sec = ns.getServerSecurityLevel('n00dles');\n    const min = ns.getServerMinSecurityLevel('n00dles');\n    const money = ns.getServerMoneyAvailable('n00dles');\n    const max = ns.getServerMaxMoney('n00dles');\n    if (sec > min + 5) {\n      await ns.weaken('n00dles');\n    } else if (money < max * 0.8) {\n      await ns.grow('n00dles');\n    } else {\n      await ns.hack('n00dles');\n    }\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "17798c8d-72d9-4a43-bcbb-83198e403e33",
+      "subagent_id": "tinyroot",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:41:15.689Z"
+    },
+    "tokens_used": 4598,
+    "timestamp": "2026-04-27T22:41:05.688Z"
+  },
+  {
+    "script_id": "834ccaa9-d489-4b8a-b0cc-41e221a21a7a",
+    "subagent_id": "foodworker",
+    "instruction_id": "78472a8f-c3f2-4fcb-a4e8-d2505379c877",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  while (true) {\n    if (!ns.hasRootAccess('foodnstuff')) {\n      try { ns.nuke('foodnstuff'); } catch(e) {}\n      await ns.sleep(1000);\n      continue;\n    }\n    const sec = ns.getServerSecurityLevel('foodnstuff');\n    const minSec = ns.getServerMinSecurityLevel('foodnstuff');\n    const money = ns.getServerMoneyAvailable('foodnstuff');\n    const maxMoney = ns.getServerMaxMoney('foodnstuff');\n    if (sec > minSec + 5) await ns.weaken('foodnstuff');\n    else if (money < maxMoney * 0.8) await ns.grow('foodnstuff');\n    else await ns.hack('foodnstuff');\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "834ccaa9-d489-4b8a-b0cc-41e221a21a7a",
+      "subagent_id": "foodworker",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:41:58.761Z"
+    },
+    "tokens_used": 2894,
+    "timestamp": "2026-04-27T22:41:48.760Z"
+  },
+  {
+    "script_id": "e502299d-20d2-4197-b8a6-a0de55d2aa6c",
+    "subagent_id": "foodworker",
+    "instruction_id": "1432c0c5-7db9-4969-853f-97238925149c",
+    "code": "export async function main(ns) {\nwhile(true) { if(!ns.hasRootAccess('foodnstuff')) try{ns.nuke('foodnstuff')}catch(e){}; await ns.sleep(1000); else await ns.hack('foodnstuff'); }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "e502299d-20d2-4197-b8a6-a0de55d2aa6c",
+      "subagent_id": "foodworker",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:43:02.393Z"
+    },
+    "tokens_used": 2351,
+    "timestamp": "2026-04-27T22:42:52.392Z"
+  },
+  {
+    "script_id": "de84b326-4cf7-4ff9-a30a-c318efe69d6e",
+    "subagent_id": "tinyroot",
+    "instruction_id": "3e5ad106-0b91-4a0b-b9b1-751ebbab06e3",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  for(;;){if(!ns.hasRootAccess('n00dles'))try{ns.nuke('n00dles')}catch(e){}else await ns.hack('n00dles');await ns.sleep(1000)}\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "de84b326-4cf7-4ff9-a30a-c318efe69d6e",
+      "subagent_id": "tinyroot",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:43:14.192Z"
+    },
+    "tokens_used": 3702,
+    "timestamp": "2026-04-27T22:43:04.191Z"
+  },
+  {
+    "script_id": "7bc70951-cec4-40e1-9e04-19ed273f2c84",
+    "subagent_id": "probe2",
+    "instruction_id": "624e944b-cac0-4284-af75-0edc006a24f2",
+    "code": "/** @param {NS} ns */\nexport async function main(ns){for(;;){if(!ns.hasRootAccess('foodnstuff')){try{ns.nuke('foodnstuff')}catch(e){};await ns.sleep(1000)}else await ns.hack('foodnstuff')}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "7bc70951-cec4-40e1-9e04-19ed273f2c84",
+      "subagent_id": "probe2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:43:58.545Z"
+    },
+    "tokens_used": 2310,
+    "timestamp": "2026-04-27T22:43:48.545Z"
+  },
+  {
+    "script_id": "3ef242fd-42fe-499a-9f53-b6047e5d3e5b",
+    "subagent_id": "probe1",
+    "instruction_id": "8b6b4bef-0cc5-4ced-95fb-4531ee82cefc",
+    "code": "export async function main(ns){for(;;){if(!ns.hasRootAccess('n00dles')){try{ns.nuke('n00dles')}catch(e){}}else await ns.hack('n00dles');await ns.sleep(1000)}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "3ef242fd-42fe-499a-9f53-b6047e5d3e5b",
+      "subagent_id": "probe1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:44:09.994Z"
+    },
+    "tokens_used": 3681,
+    "timestamp": "2026-04-27T22:43:59.993Z"
+  },
+  {
+    "script_id": "405e2bdb-f5b9-4855-8ade-022cb7b2fb5b",
+    "subagent_id": "probe3",
+    "instruction_id": "b640c443-59a7-439b-85ac-5bf56bce3290",
+    "code": "export async function main(ns){for(;;)await ns.hack('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "405e2bdb-f5b9-4855-8ade-022cb7b2fb5b",
+      "subagent_id": "probe3",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:44:11.977Z"
+    },
+    "tokens_used": 2147,
+    "timestamp": "2026-04-27T22:44:01.976Z"
+  },
+  {
+    "script_id": "f5d292e1-ae0f-4377-b48d-fad06b39cc79",
+    "subagent_id": "probe5",
+    "instruction_id": "d29ae87b-754d-4b4d-998a-d95bbbb0b876",
+    "code": "export async function main(ns){\nfor(;;){try{await ns.hack('home')}catch(e){await ns.sleep(1000)}}\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "f5d292e1-ae0f-4377-b48d-fad06b39cc79",
+      "subagent_id": "probe5",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:45:46.306Z"
+    },
+    "tokens_used": 1036,
+    "timestamp": "2026-04-27T22:45:36.305Z"
+  },
+  {
+    "script_id": "cafff93c-0b5c-40ec-b7c2-1d9857e92192",
+    "subagent_id": "probe4",
+    "instruction_id": "90af7809-77bf-4425-96d7-80f7b45f0971",
+    "code": "export async function main(ns){for(;;)await ns.hack('home')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "cafff93c-0b5c-40ec-b7c2-1d9857e92192",
+      "subagent_id": "probe4",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:45:56.839Z"
+    },
+    "tokens_used": 2161,
+    "timestamp": "2026-04-27T22:45:46.839Z"
+  },
+  {
+    "script_id": "6cdb771f-fec0-46b5-b49a-0f48dbd32ac7",
+    "subagent_id": "probe6",
+    "instruction_id": "b4f2e71d-5d4a-46a3-814b-da8e58f17eaf",
+    "code": "export async function main(ns){for(;;)await ns.grow('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "6cdb771f-fec0-46b5-b49a-0f48dbd32ac7",
+      "subagent_id": "probe6",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:46:10.274Z"
+    },
+    "tokens_used": 3312,
+    "timestamp": "2026-04-27T22:46:00.273Z"
+  },
+  {
+    "script_id": "ed9787db-7b8b-4e96-ac03-94dc0435c11f",
+    "subagent_id": "probe5",
+    "instruction_id": "de97a6b6-c1f3-493b-b7bb-172aab0f1173",
+    "code": "export async function main(ns){for(;;){try{await ns.hack('n00dles')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "ed9787db-7b8b-4e96-ac03-94dc0435c11f",
+      "subagent_id": "probe5",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:46:45.435Z"
+    },
+    "tokens_used": 1071,
+    "timestamp": "2026-04-27T22:46:35.434Z"
+  },
+  {
+    "script_id": "44a9ce65-aafb-47d7-9eec-ad44cb31ebd9",
+    "subagent_id": "probe3",
+    "instruction_id": "b9122e9b-bcee-4031-9354-abd21a4156d2",
+    "code": "export async function main(ns){for(;;)try{await ns.hack('n00dles')}catch(e){await ns.sleep(1000)}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "44a9ce65-aafb-47d7-9eec-ad44cb31ebd9",
+      "subagent_id": "probe3",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:46:57.410Z"
+    },
+    "tokens_used": 2105,
+    "timestamp": "2026-04-27T22:46:47.410Z"
+  },
+  {
+    "script_id": "2bf4b1b6-990f-4379-8391-83eac3872b2b",
+    "subagent_id": "tinyroot",
+    "instruction_id": "d50473a6-80d3-4500-bfa1-f0ef089f5016",
+    "code": "export async function main(ns){for(;;){if(!ns.hasRootAccess('n00dles')){try{ns.nuke('n00dles')}catch(e){};await ns.sleep(1000);continue}try{await ns.hack('n00dles')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "2bf4b1b6-990f-4379-8391-83eac3872b2b",
+      "subagent_id": "tinyroot",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:46:58.124Z"
+    },
+    "tokens_used": 2360,
+    "timestamp": "2026-04-27T22:46:48.123Z"
+  },
+  {
+    "script_id": "90074411-3547-4171-b33b-67f4c5abaf3f",
+    "subagent_id": "probe5",
+    "instruction_id": "8c6e03f8-bdb0-4582-a551-4e17f5273a29",
+    "code": "export async function main(ns){for(;;){try{await ns.hack('n00dles')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "90074411-3547-4171-b33b-67f4c5abaf3f",
+      "subagent_id": "probe5",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:47:55.336Z"
+    },
+    "tokens_used": 2180,
+    "timestamp": "2026-04-27T22:47:45.336Z"
+  },
+  {
+    "script_id": "9484374b-3a06-4361-8fea-2c9564df4305",
+    "subagent_id": "tinyroot",
+    "instruction_id": "476fb0d5-f212-4c5a-963f-eadcaf4a58fe",
+    "code": "export async function main(ns){for(;;){if(!ns.hasRootAccess('n00dles')){try{ns.nuke('n00dles')}catch(e){};await ns.sleep(1000);continue}try{await ns.hack('n00dles')}catch(e){await ns.sleep(1000)}}}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "9484374b-3a06-4361-8fea-2c9564df4305",
+      "subagent_id": "tinyroot",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:48:07.326Z"
+    },
+    "tokens_used": 3586,
+    "timestamp": "2026-04-27T22:47:57.325Z"
+  },
+  {
+    "script_id": "41661da7-7ffc-4752-b531-d3f1f1f857ca",
+    "subagent_id": "foodhack",
+    "instruction_id": "d75e254a-26f4-4ad1-9b9c-ea94ff62942f",
+    "code": "export async function main(ns){for(;;)await ns.hack('foodnstuff')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "41661da7-7ffc-4752-b531-d3f1f1f857ca",
+      "subagent_id": "foodhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:49:43.072Z"
+    },
+    "tokens_used": 986,
+    "timestamp": "2026-04-27T22:49:33.071Z"
+  },
+  {
+    "script_id": "578f0a20-a976-4486-ac02-83cb20eb5af7",
+    "subagent_id": "joehack",
+    "instruction_id": "420a4b55-4e54-4491-a72d-3b29268c6770",
+    "code": "export async function main(ns){for(;;)await ns.hack('joesguns')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "578f0a20-a976-4486-ac02-83cb20eb5af7",
+      "subagent_id": "joehack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:49:43.925Z"
+    },
+    "tokens_used": 988,
+    "timestamp": "2026-04-27T22:49:33.925Z"
+  },
+  {
+    "script_id": "d4f9b3ec-5d60-4227-a0db-8180b56dec72",
+    "subagent_id": "sigmahack",
+    "instruction_id": "fe442753-41a8-4707-9519-aeef2ee49864",
+    "code": "export async function main(ns){for(;;)await ns.hack('sigma-cosmetics')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "d4f9b3ec-5d60-4227-a0db-8180b56dec72",
+      "subagent_id": "sigmahack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:49:44.149Z"
+    },
+    "tokens_used": 980,
+    "timestamp": "2026-04-27T22:49:34.148Z"
+  },
+  {
+    "script_id": "55b77aad-0cab-4c04-8a72-9f00fc1a6861",
+    "subagent_id": "tinyroot",
+    "instruction_id": "a0fd9acb-2bbe-4617-a430-ed148c73cdc4",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('foodnstuff')}catch(e){}try{await ns.hack('foodnstuff')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "55b77aad-0cab-4c04-8a72-9f00fc1a6861",
+      "subagent_id": "tinyroot",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:51:00.982Z"
+    },
+    "tokens_used": 2228,
+    "timestamp": "2026-04-27T22:50:50.981Z"
+  },
+  {
+    "script_id": "3f6ac226-ae4a-4e75-b1d1-6a80b6928b79",
+    "subagent_id": "honghack",
+    "instruction_id": "bf82b3d4-729d-47fa-abf4-dd167f4f9e18",
+    "code": "export async function main(ns){for(;;)await ns.hack('hong-fang-tea')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "3f6ac226-ae4a-4e75-b1d1-6a80b6928b79",
+      "subagent_id": "honghack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:51:43.891Z"
+    },
+    "tokens_used": 986,
+    "timestamp": "2026-04-27T22:51:33.891Z"
+  },
+  {
+    "script_id": "314ff954-8bfe-42da-a2a5-2548bde07781",
+    "subagent_id": "nectarhack",
+    "instruction_id": "8d995ed8-4301-4832-9a0b-1a87db671c00",
+    "code": "export async function main(ns){for(;;)await ns.hack('nectar-net')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "314ff954-8bfe-42da-a2a5-2548bde07781",
+      "subagent_id": "nectarhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:51:43.933Z"
+    },
+    "tokens_used": 982,
+    "timestamp": "2026-04-27T22:51:33.933Z"
+  },
+  {
+    "script_id": "65e7145e-d6d8-45d0-8510-90aff5a15cbb",
+    "subagent_id": "harakirihack",
+    "instruction_id": "2c435865-8996-4c23-b02f-acb8029fb2c9",
+    "code": "export async function main(ns){for(;;)await ns.hack('harakiri-sushi')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "65e7145e-d6d8-45d0-8510-90aff5a15cbb",
+      "subagent_id": "harakirihack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:51:45.355Z"
+    },
+    "tokens_used": 986,
+    "timestamp": "2026-04-27T22:51:35.354Z"
+  },
+  {
+    "script_id": "243d0f69-cdf9-4d2f-926f-cf516bdb00e6",
+    "subagent_id": "n00dleshack",
+    "instruction_id": "df794d1b-bf2f-4052-a1b3-90695c9f267c",
+    "code": "export async function main(ns){for(;;)await ns.hack('n00dles')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "243d0f69-cdf9-4d2f-926f-cf516bdb00e6",
+      "subagent_id": "n00dleshack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:53:45.504Z"
+    },
+    "tokens_used": 982,
+    "timestamp": "2026-04-27T22:53:35.503Z"
+  },
+  {
+    "script_id": "4123f93d-824f-4e81-a10b-e4de486be7bc",
+    "subagent_id": "maxhack",
+    "instruction_id": "1647b11d-4b6f-4c3b-88b3-509f01dad08e",
+    "code": "export async function main(ns){for(;;)await ns.hack('max-hardware')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "4123f93d-824f-4e81-a10b-e4de486be7bc",
+      "subagent_id": "maxhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:53:45.507Z"
+    },
+    "tokens_used": 979,
+    "timestamp": "2026-04-27T22:53:35.507Z"
+  },
+  {
+    "script_id": "e4f65b67-6c79-40bd-8d10-cf1999f3d81d",
+    "subagent_id": "rootn00dles",
+    "instruction_id": "768218ba-1174-410f-84d6-93727bc5a464",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('n00dles')}catch(e){}try{await ns.hack('n00dles')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "e4f65b67-6c79-40bd-8d10-cf1999f3d81d",
+      "subagent_id": "rootn00dles",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:53:46.533Z"
+    },
+    "tokens_used": 1055,
+    "timestamp": "2026-04-27T22:53:36.532Z"
+  },
+  {
+    "script_id": "d3561a7d-1110-40ee-977f-d10b71a19ec2",
+    "subagent_id": "ironhack",
+    "instruction_id": "33139cb8-8b24-4bd4-b164-2c350ed4edb1",
+    "code": "export async function main(ns){for(;;)await ns.hack('iron-gym')}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "d3561a7d-1110-40ee-977f-d10b71a19ec2",
+      "subagent_id": "ironhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:53:47.144Z"
+    },
+    "tokens_used": 979,
+    "timestamp": "2026-04-27T22:53:37.143Z"
+  },
+  {
+    "script_id": "a138ddcb-7d3b-4c32-bee0-a82ec32292b8",
+    "subagent_id": "rootsigma",
+    "instruction_id": "a06234ce-fc4a-43d2-a0c2-db5de78500c8",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('sigma-cosmetics')}catch(e){}try{await ns.hack('sigma-cosmetics')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "a138ddcb-7d3b-4c32-bee0-a82ec32292b8",
+      "subagent_id": "rootsigma",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:53:48.690Z"
+    },
+    "tokens_used": 1092,
+    "timestamp": "2026-04-27T22:53:38.689Z"
+  },
+  {
+    "script_id": "3511e4bd-22cc-4b22-a46c-52f2bad59cc1",
+    "subagent_id": "rootfood2",
+    "instruction_id": "d66f193d-bf0b-4725-85ae-c107f18dd675",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('foodnstuff')}catch(e){}try{await ns.hack('foodnstuff')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "3511e4bd-22cc-4b22-a46c-52f2bad59cc1",
+      "subagent_id": "rootfood2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:55:46.063Z"
+    },
+    "tokens_used": 1050,
+    "timestamp": "2026-04-27T22:55:36.062Z"
+  },
+  {
+    "script_id": "5d07fe39-7162-4297-8871-3601e9e80f7a",
+    "subagent_id": "rootjoe2",
+    "instruction_id": "1358945f-00b8-4fb1-b5de-65ec3c991e19",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('joesguns')}catch(e){}try{await ns.hack('joesguns')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "5d07fe39-7162-4297-8871-3601e9e80f7a",
+      "subagent_id": "rootjoe2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:55:46.539Z"
+    },
+    "tokens_used": 1049,
+    "timestamp": "2026-04-27T22:55:36.538Z"
+  },
+  {
+    "script_id": "274b5556-3def-4fd1-b633-391d5a545a31",
+    "subagent_id": "roothong2",
+    "instruction_id": "494e4938-83a4-4c91-98e0-5ee19a9d5341",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('hong-fang-tea')}catch(e){}try{await ns.hack('hong-fang-tea')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "274b5556-3def-4fd1-b633-391d5a545a31",
+      "subagent_id": "roothong2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:55:47.361Z"
+    },
+    "tokens_used": 1071,
+    "timestamp": "2026-04-27T22:55:37.360Z"
+  },
+  {
+    "script_id": "48e96c29-5d8f-4213-a3b4-c3a3e1453908",
+    "subagent_id": "rootnectar2",
+    "instruction_id": "82d49acb-6270-454a-8b8a-71394f02a669",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('nectar-net')}catch(e){}try{await ns.hack('nectar-net')}catch(e){await ns.sleep(1000)}}}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "48e96c29-5d8f-4213-a3b4-c3a3e1453908",
+      "subagent_id": "rootnectar2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:55:48.353Z"
+    },
+    "tokens_used": 1047,
+    "timestamp": "2026-04-27T22:55:38.353Z"
+  },
+  {
+    "script_id": "7b7e2450-2de0-41a8-a06c-4180b41e1d2e",
+    "subagent_id": "rootharakiri2",
+    "instruction_id": "02a58d03-ac2c-4fec-9ed2-806af36cb1f8",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('harakiri-sushi')}catch(e){}try{await ns.hack('harakiri-sushi')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "7b7e2450-2de0-41a8-a06c-4180b41e1d2e",
+      "subagent_id": "rootharakiri2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:55:49.099Z"
+    },
+    "tokens_used": 1062,
+    "timestamp": "2026-04-27T22:55:39.098Z"
+  },
+  {
+    "script_id": "adb2b820-8215-4fec-bd81-ce1359b763af",
+    "subagent_id": "rootmax2",
+    "instruction_id": "0dc9e0c7-1c21-41f4-b863-291f22942929",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('max-hardware')}catch(e){}try{await ns.hack('max-hardware')}catch(e){await ns.sleep(1000)}}}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "adb2b820-8215-4fec-bd81-ce1359b763af",
+      "subagent_id": "rootmax2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:55:49.505Z"
+    },
+    "tokens_used": 1043,
+    "timestamp": "2026-04-27T22:55:39.505Z"
+  },
+  {
+    "script_id": "4fb86ac8-e38a-4967-b5c7-1944901e53ae",
+    "subagent_id": "rootfood3",
+    "instruction_id": "15613f22-adb2-4087-9cc8-5b037aa16982",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('foodnstuff')}catch(e){}try{await ns.hack('foodnstuff')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "4fb86ac8-e38a-4967-b5c7-1944901e53ae",
+      "subagent_id": "rootfood3",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:57:44.730Z"
+    },
+    "tokens_used": 1060,
+    "timestamp": "2026-04-27T22:57:34.729Z"
+  },
+  {
+    "script_id": "9c66e6a8-b719-4df4-92e8-e92b3bb7522d",
+    "subagent_id": "rootiron2",
+    "instruction_id": "80102182-fab0-4fc8-ada9-98cd1f46b6cf",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('iron-gym')}catch(e){}try{await ns.hack('iron-gym')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "9c66e6a8-b719-4df4-92e8-e92b3bb7522d",
+      "subagent_id": "rootiron2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:57:44.761Z"
+    },
+    "tokens_used": 1052,
+    "timestamp": "2026-04-27T22:57:34.760Z"
+  },
+  {
+    "script_id": "f6c8a2bd-0245-435c-8244-c1c2a5875c03",
+    "subagent_id": "rootsigma2b",
+    "instruction_id": "02839dbb-18c5-47cc-b592-ec759956f3a0",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('sigma-cosmetics')}catch(e){}try{await ns.hack('sigma-cosmetics')}catch(e){await ns.sleep(1000)}}}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "f6c8a2bd-0245-435c-8244-c1c2a5875c03",
+      "subagent_id": "rootsigma2b",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:57:45.872Z"
+    },
+    "tokens_used": 1062,
+    "timestamp": "2026-04-27T22:57:35.871Z"
+  },
+  {
+    "script_id": "3e113643-4ef3-474d-89c4-00ea822ee949",
+    "subagent_id": "rootjoe3",
+    "instruction_id": "43b3c40d-a180-494d-8c27-6bdae219d2ee",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('joesguns')}catch(e){}try{await ns.hack('joesguns')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "3e113643-4ef3-474d-89c4-00ea822ee949",
+      "subagent_id": "rootjoe3",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:57:45.939Z"
+    },
+    "tokens_used": 1062,
+    "timestamp": "2026-04-27T22:57:35.939Z"
+  },
+  {
+    "script_id": "b596d62c-0921-4258-bf66-491c95c25686",
+    "subagent_id": "rootalpha1",
+    "instruction_id": "aa069546-4aaa-4219-afd5-23b109e55ba6",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('alpha-ent')}catch(e){}try{await ns.hack('alpha-ent')}catch(e){await ns.sleep(1000)}}}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "b596d62c-0921-4258-bf66-491c95c25686",
+      "subagent_id": "rootalpha1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:59:46.804Z"
+    },
+    "tokens_used": 1053,
+    "timestamp": "2026-04-27T22:59:36.803Z"
+  },
+  {
+    "script_id": "480e6bde-9f8f-4066-8970-ddcf031c5ce6",
+    "subagent_id": "rootcattle1",
+    "instruction_id": "f79a0263-084c-40c4-a615-e7ed4b1282ec",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('cattlelog')}catch(e){}try{await ns.hack('cattlelog')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "480e6bde-9f8f-4066-8970-ddcf031c5ce6",
+      "subagent_id": "rootcattle1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T22:59:58.951Z"
+    },
+    "tokens_used": 2191,
+    "timestamp": "2026-04-27T22:59:48.950Z"
+  },
+  {
+    "script_id": "d6f94af7-9752-4b5b-b3c6-a31a67a16579",
+    "subagent_id": "rootphant1",
+    "instruction_id": "d369adb9-7dc2-482a-9756-afe36b625308",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('phantasy')}catch(e){}try{await ns.hack('phantasy')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "d6f94af7-9752-4b5b-b3c6-a31a67a16579",
+      "subagent_id": "rootphant1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:00:00.229Z"
+    },
+    "tokens_used": 1073,
+    "timestamp": "2026-04-27T22:59:50.229Z"
+  },
+  {
+    "script_id": "8711f087-16dc-48d7-ab32-16f937f4581a",
+    "subagent_id": "rootcomm1",
+    "instruction_id": "37f09283-fe03-4678-b98e-b8060ad223c3",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('computek')}catch(e){}try{await ns.hack('computek')}catch(e){await ns.sleep(1000)}}}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "8711f087-16dc-48d7-ab32-16f937f4581a",
+      "subagent_id": "rootcomm1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:00:01.286Z"
+    },
+    "tokens_used": 1043,
+    "timestamp": "2026-04-27T22:59:51.286Z"
+  },
+  {
+    "script_id": "5e33eeee-e91d-4c91-8ced-e3bd23312b17",
+    "subagent_id": "rootomega1",
+    "instruction_id": "c3a5a50d-7321-47e2-9764-cf07cafbff20",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('omega-net')}catch(e){}try{await ns.hack('omega-net')}catch(e){await ns.sleep(1000)}}}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "5e33eeee-e91d-4c91-8ced-e3bd23312b17",
+      "subagent_id": "rootomega1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:00:02.486Z"
+    },
+    "tokens_used": 1048,
+    "timestamp": "2026-04-27T22:59:52.486Z"
+  },
+  {
+    "script_id": "a43d9a4b-cf63-4a2f-8390-5a190d94c0a0",
+    "subagent_id": "rootsilver1",
+    "instruction_id": "37e974df-2cd9-49fa-b95e-3cb27ff7c5be",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('silver-helix')}catch(e){}try{await ns.hack('silver-helix')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "a43d9a4b-cf63-4a2f-8390-5a190d94c0a0",
+      "subagent_id": "rootsilver1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:00:11.855Z"
+    },
+    "tokens_used": 3408,
+    "timestamp": "2026-04-27T23:00:01.854Z"
+  },
+  {
+    "script_id": "97185155-63bc-4b42-ace3-507660adf0fe",
+    "subagent_id": "rootavmn1",
+    "instruction_id": "e4829f4f-8f58-44a9-930c-930760224ea4",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('avmnite-02h')}catch(e){}try{await ns.hack('avmnite-02h')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "97185155-63bc-4b42-ace3-507660adf0fe",
+      "subagent_id": "rootavmn1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:01:46.199Z"
+    },
+    "tokens_used": 1067,
+    "timestamp": "2026-04-27T23:01:36.198Z"
+  },
+  {
+    "script_id": "62fa00c2-fa80-41f8-8554-82d5bb83265c",
+    "subagent_id": "rootnetlink1",
+    "instruction_id": "ec2e433d-83db-4515-8862-15cb85836a85",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('netlink')}catch(e){}try{await ns.hack('netlink')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "62fa00c2-fa80-41f8-8554-82d5bb83265c",
+      "subagent_id": "rootnetlink1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:01:46.282Z"
+    },
+    "tokens_used": 1047,
+    "timestamp": "2026-04-27T23:01:36.281Z"
+  },
+  {
+    "script_id": "93a2f7ab-bc46-4ab9-b919-aaffe1d8e309",
+    "subagent_id": "rootsyscore1",
+    "instruction_id": "bd9d2c96-9469-45ff-93b8-ab03a06a6ba9",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('syscore')}catch(e){}try{await ns.hack('syscore')}catch(e){await ns.sleep(1000)}}}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "93a2f7ab-bc46-4ab9-b919-aaffe1d8e309",
+      "subagent_id": "rootsyscore1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:01:47.232Z"
+    },
+    "tokens_used": 1049,
+    "timestamp": "2026-04-27T23:01:37.231Z"
+  },
+  {
+    "script_id": "f9672873-276f-419b-a4d8-cadc488f813f",
+    "subagent_id": "rootlexo1",
+    "instruction_id": "13bb6103-863a-4768-b771-a49c4c215389",
+    "code": "/** @param {NS} ns */\nexport async function main(ns){for(;;){try{ns.nuke('lexo-corp')}catch(e){}try{await ns.hack('lexo-corp')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "f9672873-276f-419b-a4d8-cadc488f813f",
+      "subagent_id": "rootlexo1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:01:47.585Z"
+    },
+    "tokens_used": 1067,
+    "timestamp": "2026-04-27T23:01:37.584Z"
+  },
+  {
+    "script_id": "07832fbb-f53f-433c-abb9-17cdabb74cbb",
+    "subagent_id": "rootaero1",
+    "instruction_id": "44f77cc8-0385-4564-b54a-71ecb99e8bbb",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('aerocorp')}catch(e){}try{await ns.hack('aerocorp')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "07832fbb-f53f-433c-abb9-17cdabb74cbb",
+      "subagent_id": "rootaero1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:01:48.475Z"
+    },
+    "tokens_used": 1054,
+    "timestamp": "2026-04-27T23:01:38.475Z"
+  },
+  {
+    "script_id": "ca8c1e28-eb89-4195-a383-25583bfc3348",
+    "subagent_id": "rootzb1",
+    "instruction_id": "1a289871-c947-4e49-9e4c-9cdcb19d815c",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('zb-institute')}catch(e){}try{await ns.hack('zb-institute')}catch(e){await ns.sleep(1000)}}}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "ca8c1e28-eb89-4195-a383-25583bfc3348",
+      "subagent_id": "rootzb1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:03:49.544Z"
+    },
+    "tokens_used": 1059,
+    "timestamp": "2026-04-27T23:03:39.543Z"
+  },
+  {
+    "script_id": "6a2e679b-2f8a-466a-aab6-4c02c2aeee65",
+    "subagent_id": "rootrho1",
+    "instruction_id": "b55f4579-27eb-4554-be27-c9e226edf439",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('rho-construction')}catch(e){}try{await ns.hack('rho-construction')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "6a2e679b-2f8a-466a-aab6-4c02c2aeee65",
+      "subagent_id": "rootrho1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:03:49.614Z"
+    },
+    "tokens_used": 1057,
+    "timestamp": "2026-04-27T23:03:39.614Z"
+  },
+  {
+    "script_id": "43b390f1-504e-4f87-8653-f73517bad8b9",
+    "subagent_id": "rootuni1",
+    "instruction_id": "49282f20-213c-4ded-a930-10dcbe624b86",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('unitalife')}catch(e){}try{await ns.hack('unitalife')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "43b390f1-504e-4f87-8653-f73517bad8b9",
+      "subagent_id": "rootuni1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:03:50.779Z"
+    },
+    "tokens_used": 1054,
+    "timestamp": "2026-04-27T23:03:40.778Z"
+  },
+  {
+    "script_id": "0c46d678-5a5f-4c22-9904-bf92a2d82967",
+    "subagent_id": "rootmill1",
+    "instruction_id": "49c93a9b-187d-4399-a5a5-dc402ac7e8eb",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('millenium-fitness')}catch(e){}try{await ns.hack('millenium-fitness')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "0c46d678-5a5f-4c22-9904-bf92a2d82967",
+      "subagent_id": "rootmill1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:03:50.945Z"
+    },
+    "tokens_used": 1064,
+    "timestamp": "2026-04-27T23:03:40.945Z"
+  },
+  {
+    "script_id": "b57c6d9a-6aae-4c73-919f-a0526f7d39d4",
+    "subagent_id": "rootsnap1",
+    "instruction_id": "1bbef25d-272b-4e41-b5a4-2776332ec7e9",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('snap-fitness')}catch(e){}try{await ns.hack('snap-fitness')}catch(e){await ns.sleep(1000)}}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "b57c6d9a-6aae-4c73-919f-a0526f7d39d4",
+      "subagent_id": "rootsnap1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:03:51.852Z"
+    },
+    "tokens_used": 1053,
+    "timestamp": "2026-04-27T23:03:41.851Z"
+  },
+  {
+    "script_id": "f81bfb7a-2dc7-4793-a4ea-c71d8b91d9d9",
+    "subagent_id": "rootnova1",
+    "instruction_id": "6fe21eff-464e-485f-814a-453d4ac55e8b",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('nova-med')}catch(e){}try{await ns.hack('nova-med')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "f81bfb7a-2dc7-4793-a4ea-c71d8b91d9d9",
+      "subagent_id": "rootnova1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:03:52.000Z"
+    },
+    "tokens_used": 1052,
+    "timestamp": "2026-04-27T23:03:42.000Z"
+  },
+  {
+    "script_id": "68b9ece1-6c7a-4fa0-8059-3b89d7ffe2e0",
+    "subagent_id": "rootglobal1",
+    "instruction_id": "3a9be3ed-4a5f-479c-9e57-0e2d0519758d",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('global-pharm')}catch(e){}try{await ns.hack('global-pharm')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "68b9ece1-6c7a-4fa0-8059-3b89d7ffe2e0",
+      "subagent_id": "rootglobal1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:03:52.850Z"
+    },
+    "tokens_used": 1057,
+    "timestamp": "2026-04-27T23:03:42.849Z"
+  },
+  {
+    "script_id": "1151411f-fd22-44dd-98f4-7e8552e47c76",
+    "subagent_id": "rootdelta1",
+    "instruction_id": "66274d74-48b6-4ece-bdb1-5e6a390e8422",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('deltaone')}catch(e){}try{await ns.hack('deltaone')}catch(e){await ns.sleep(1000)}}}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "1151411f-fd22-44dd-98f4-7e8552e47c76",
+      "subagent_id": "rootdelta1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:03:53.761Z"
+    },
+    "tokens_used": 1049,
+    "timestamp": "2026-04-27T23:03:43.761Z"
+  },
+  {
+    "script_id": "b92a2104-561a-44de-8ce7-8a990d63c36b",
+    "subagent_id": "rootmicro1",
+    "instruction_id": "1256dfbb-6cc3-4670-8d7e-aa5f74562c6f",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('microdyne')}catch(e){}try{await ns.hack('microdyne')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "b92a2104-561a-44de-8ce7-8a990d63c36b",
+      "subagent_id": "rootmicro1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:05:49.552Z"
+    },
+    "tokens_used": 1053,
+    "timestamp": "2026-04-27T23:05:39.552Z"
+  },
+  {
+    "script_id": "be872213-cfa4-4ee6-bfab-294f3136980e",
+    "subagent_id": "rootgal1",
+    "instruction_id": "bb20c5f4-abf3-4472-8c14-42a5353a7720",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('galactic-cyber')}catch(e){}try{await ns.hack('galactic-cyber')}catch(e){await ns.sleep(1000)}}}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "be872213-cfa4-4ee6-bfab-294f3136980e",
+      "subagent_id": "rootgal1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:05:49.677Z"
+    },
+    "tokens_used": 1058,
+    "timestamp": "2026-04-27T23:05:39.676Z"
+  },
+  {
+    "script_id": "c8f7063a-cfbc-461e-bfea-b7c9f96abbed",
+    "subagent_id": "rootsol1",
+    "instruction_id": "93d15e00-60f5-4d81-8a61-6ebed853f22c",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('solaris')}catch(e){}try{await ns.hack('solaris')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "c8f7063a-cfbc-461e-bfea-b7c9f96abbed",
+      "subagent_id": "rootsol1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:05:50.703Z"
+    },
+    "tokens_used": 1046,
+    "timestamp": "2026-04-27T23:05:40.703Z"
+  },
+  {
+    "script_id": "c600067d-08aa-4d3a-9a80-067108e41a21",
+    "subagent_id": "rootomnia1",
+    "instruction_id": "3440dfb8-17d6-479f-a791-6a82cb25eefd",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('omnia')}catch(e){}try{await ns.hack('omnia')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "c600067d-08aa-4d3a-9a80-067108e41a21",
+      "subagent_id": "rootomnia1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:05:50.940Z"
+    },
+    "tokens_used": 1048,
+    "timestamp": "2026-04-27T23:05:40.940Z"
+  },
+  {
+    "script_id": "39ad47d2-8380-43c0-afa7-6f2a6d847c33",
+    "subagent_id": "rootful1",
+    "instruction_id": "438daf0b-ec2f-4005-be24-9d9e84417c60",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('fulcrumtech')}catch(e){}try{await ns.hack('fulcrumtech')}catch(e){await ns.sleep(1000)}}}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "39ad47d2-8380-43c0-afa7-6f2a6d847c33",
+      "subagent_id": "rootful1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:05:51.834Z"
+    },
+    "tokens_used": 1058,
+    "timestamp": "2026-04-27T23:05:41.834Z"
+  },
+  {
+    "script_id": "44a0b0a5-af3f-4076-97c3-54f9e136bf71",
+    "subagent_id": "rooticar1",
+    "instruction_id": "ecce364b-00a2-4d1d-a2c3-9b0a9e38af03",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('icarus')}catch(e){}try{await ns.hack('icarus')}catch(e){await ns.sleep(1000)}}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "44a0b0a5-af3f-4076-97c3-54f9e136bf71",
+      "subagent_id": "rooticar1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:05:52.432Z"
+    },
+    "tokens_used": 1072,
+    "timestamp": "2026-04-27T23:05:42.432Z"
+  },
+  {
+    "script_id": "ef8011c9-5509-4a12-8d51-994d2dbbf696",
+    "subagent_id": "roottitan1",
+    "instruction_id": "de9f83ae-31d6-4f67-9cff-7ae70a68558c",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('titan-labs')}catch(e){}try{await ns.hack('titan-labs')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "ef8011c9-5509-4a12-8d51-994d2dbbf696",
+      "subagent_id": "roottitan1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:05:52.986Z"
+    },
+    "tokens_used": 1053,
+    "timestamp": "2026-04-27T23:05:42.985Z"
+  },
+  {
+    "script_id": "0535ed61-695f-4c2f-85f6-d3e6e143aa45",
+    "subagent_id": "rootbld1",
+    "instruction_id": "b616dab6-8bb6-4367-9740-59565413f995",
+    "code": "export async function main(ns){for(;;){try{ns.nuke('blade')}catch(e){}try{await ns.hack('blade')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "0535ed61-695f-4c2f-85f6-d3e6e143aa45",
+      "subagent_id": "rootbld1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:05:53.852Z"
+    },
+    "tokens_used": 1043,
+    "timestamp": "2026-04-27T23:05:43.851Z"
+  },
+  {
+    "script_id": "42b873c8-cc11-40bd-93d8-3b8c89008794",
+    "subagent_id": "diagsec",
+    "instruction_id": "867385b3-d5a4-4f86-a9f8-e7af090758e9",
+    "code": "export async function main(ns){for(;;){try{if(ns.getServerSecurityLevel('n00dles')>ns.getServerMinSecurityLevel('n00dles')+1)await ns.weaken('n00dles');else await ns.grow('n00dles')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "42b873c8-cc11-40bd-93d8-3b8c89008794",
+      "subagent_id": "diagsec",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:07:46.768Z"
+    },
+    "tokens_used": 1118,
+    "timestamp": "2026-04-27T23:07:36.767Z"
+  },
+  {
+    "script_id": "83c55321-c564-40b4-960c-ac50e7ef53c2",
+    "subagent_id": "diagroot",
+    "instruction_id": "dabcf5f4-90fa-4065-983c-fff66ed023c9",
+    "code": "export async function main(ns){for(;;){try{if(ns.getServerSecurityLevel('foodnstuff')>ns.getServerMinSecurityLevel('foodnstuff')+1)await ns.weaken('foodnstuff');else await ns.grow('foodnstuff')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "83c55321-c564-40b4-960c-ac50e7ef53c2",
+      "subagent_id": "diagroot",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:07:47.973Z"
+    },
+    "tokens_used": 1119,
+    "timestamp": "2026-04-27T23:07:37.973Z"
+  },
+  {
+    "script_id": "a2665aaf-8542-45c0-a524-0b38fad916ab",
+    "subagent_id": "diagmoney",
+    "instruction_id": "6b8d6a21-1d44-4414-8cb6-3951eabe60a2",
+    "code": "export async function main(ns){const a=['n00dles','foodnstuff','sigma-cosmetics','joesguns','hong-fang-tea','harakiri-sushi','nectar-net','iron-gym','max-hardware','alpha-ent','phantasy','omega-net','silver-helix'];for(const s of a)ns.tprint(s+' money='+ns.getServerMoneyAvailable(s)+' sec='+ns.getServerSecurityLevel(s)+' min='+ns.getServerMinSecurityLevel(s)+' rooted='+ns.hasRootAccess(s));}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "a2665aaf-8542-45c0-a524-0b38fad916ab",
+      "subagent_id": "diagmoney",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:08:00.097Z"
+    },
+    "tokens_used": 2725,
+    "timestamp": "2026-04-27T23:07:50.096Z"
+  },
+  {
+    "script_id": "242d8fb1-29a6-48d0-ab02-a14ddf36dd43",
+    "subagent_id": "diagmoney",
+    "instruction_id": "e0595b45-86ff-4743-9b51-3a622e848d8e",
+    "code": "export async function main(ns){const a=['n00dles','foodnstuff','sigma-cosmetics','joesguns','hong-fang-tea','harakiri-sushi','nectar-net'];for(const s of a)ns.tprint(s+' money='+ns.getServerMoneyAvailable(s)+' sec='+ns.getServerSecurityLevel(s)+' min='+ns.getServerMinSecurityLevel(s)+' root='+ns.hasRootAccess(s));}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "242d8fb1-29a6-48d0-ab02-a14ddf36dd43",
+      "subagent_id": "diagmoney",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:09:00.057Z"
+    },
+    "tokens_used": 1185,
+    "timestamp": "2026-04-27T23:08:50.056Z"
+  },
+  {
+    "script_id": "aa055a50-4d94-40ec-923f-4e8bbcdbf19b",
+    "subagent_id": "foodhack",
+    "instruction_id": "ecadbfcf-8d8c-400e-8e40-2249e9403e45",
+    "code": "export async function main(ns){for(;;){try{if(ns.getServerMoneyAvailable('foodnstuff')<1)await ns.grow('foodnstuff');else if(ns.getServerSecurityLevel('foodnstuff')>ns.getServerMinSecurityLevel('foodnstuff')+1)await ns.weaken('foodnstuff');else await ns.hack('foodnstuff')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "aa055a50-4d94-40ec-923f-4e8bbcdbf19b",
+      "subagent_id": "foodhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:09:00.914Z"
+    },
+    "tokens_used": 1261,
+    "timestamp": "2026-04-27T23:08:50.913Z"
+  },
+  {
+    "script_id": "5397460b-cf66-4dbd-b2d4-d139070e1396",
+    "subagent_id": "n00dleshack",
+    "instruction_id": "04c9965e-99f6-4337-989f-8bc45c198a0c",
+    "code": "export async function main(ns){for(;;){try{if(ns.getServerMoneyAvailable('n00dles')<1)await ns.grow('n00dles');else if(ns.getServerSecurityLevel('n00dles')>ns.getServerMinSecurityLevel('n00dles')+1)await ns.weaken('n00dles');else await ns.hack('n00dles')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "5397460b-cf66-4dbd-b2d4-d139070e1396",
+      "subagent_id": "n00dleshack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:09:02.457Z"
+    },
+    "tokens_used": 1231,
+    "timestamp": "2026-04-27T23:08:52.456Z"
+  },
+  {
+    "script_id": "2e3fa933-0672-4f19-bede-259398cf6086",
+    "subagent_id": "sigmahack",
+    "instruction_id": "84f015aa-53fe-4622-a6fb-aebf7c506204",
+    "code": "export async function main(ns){for(;;){try{if(ns.getServerMoneyAvailable('sigma-cosmetics')<1)await ns.grow('sigma-cosmetics');else if(ns.getServerSecurityLevel('sigma-cosmetics')>ns.getServerMinSecurityLevel('sigma-cosmetics')+1)await ns.weaken('sigma-cosmetics');else await ns.hack('sigma-cosmetics')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "2e3fa933-0672-4f19-bede-259398cf6086",
+      "subagent_id": "sigmahack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:09:02.630Z"
+    },
+    "tokens_used": 1221,
+    "timestamp": "2026-04-27T23:08:52.630Z"
+  },
+  {
+    "script_id": "9db6281e-3e80-40f7-81c2-67e411023e7c",
+    "subagent_id": "joehack",
+    "instruction_id": "bae7063f-4af3-4c92-a05d-43ba04b328b2",
+    "code": "export async function main(ns){for(;;){try{if(ns.getServerMoneyAvailable('joesguns')<1)await ns.grow('joesguns');else if(ns.getServerSecurityLevel('joesguns')>ns.getServerMinSecurityLevel('joesguns')+1)await ns.weaken('joesguns');else await ns.hack('joesguns')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "9db6281e-3e80-40f7-81c2-67e411023e7c",
+      "subagent_id": "joehack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:09:04.524Z"
+    },
+    "tokens_used": 1249,
+    "timestamp": "2026-04-27T23:08:54.523Z"
+  },
+  {
+    "script_id": "80f6d652-1003-488d-b0ef-461798a63e76",
+    "subagent_id": "nectarhack",
+    "instruction_id": "7bfe85da-660b-449b-895c-7ab42998b3b7",
+    "code": "export async function main(ns){for(;;){try{if(ns.getServerMoneyAvailable('nectar-net')<1)await ns.grow('nectar-net');else if(ns.getServerSecurityLevel('nectar-net')>ns.getServerMinSecurityLevel('nectar-net')+1)await ns.weaken('nectar-net');else await ns.hack('nectar-net')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "80f6d652-1003-488d-b0ef-461798a63e76",
+      "subagent_id": "nectarhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:09:04.702Z"
+    },
+    "tokens_used": 1241,
+    "timestamp": "2026-04-27T23:08:54.701Z"
+  },
+  {
+    "script_id": "c7e486b2-c289-486a-a48c-5b88629fc285",
+    "subagent_id": "harakirihack",
+    "instruction_id": "71d72454-560a-4b53-be2a-3d33df4ff57f",
+    "code": "export async function main(ns){for(;;){try{if(ns.getServerMoneyAvailable('harakiri-sushi')<1)await ns.grow('harakiri-sushi');else if(ns.getServerSecurityLevel('harakiri-sushi')>ns.getServerMinSecurityLevel('harakiri-sushi')+1)await ns.weaken('harakiri-sushi');else await ns.hack('harakiri-sushi')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "c7e486b2-c289-486a-a48c-5b88629fc285",
+      "subagent_id": "harakirihack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:09:07.006Z"
+    },
+    "tokens_used": 1186,
+    "timestamp": "2026-04-27T23:08:57.005Z"
+  },
+  {
+    "script_id": "2f7a0f98-15a2-4daf-a919-2b6f2b09b90e",
+    "subagent_id": "honghack",
+    "instruction_id": "e6e7f6d3-186d-4d24-808c-5947f0b4582f",
+    "code": "export async function main(ns){for(;;){try{if(ns.getServerMoneyAvailable('hong-fang-tea')<1)await ns.grow('hong-fang-tea');else if(ns.getServerSecurityLevel('hong-fang-tea')>ns.getServerMinSecurityLevel('hong-fang-tea')+1)await ns.weaken('hong-fang-tea');else await ns.hack('hong-fang-tea')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "2f7a0f98-15a2-4daf-a919-2b6f2b09b90e",
+      "subagent_id": "honghack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:09:30.553Z"
+    },
+    "tokens_used": 3914,
+    "timestamp": "2026-04-27T23:09:20.552Z"
+  },
+  {
+    "script_id": "113581a4-be73-40fb-a9fc-a398db8e3027",
+    "subagent_id": "maxhack",
+    "instruction_id": "b9618e2c-708a-41e0-bd3f-c5a40525d9b5",
+    "code": "export async function main(ns){for(;;){try{if(ns.getServerMoneyAvailable('max-hardware')<1)await ns.grow('max-hardware');else if(ns.getServerSecurityLevel('max-hardware')>ns.getServerMinSecurityLevel('max-hardware')+1)await ns.weaken('max-hardware');else await ns.hack('max-hardware')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "113581a4-be73-40fb-a9fc-a398db8e3027",
+      "subagent_id": "maxhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:09:45.747Z"
+    },
+    "tokens_used": 1237,
+    "timestamp": "2026-04-27T23:09:35.747Z"
+  },
+  {
+    "script_id": "8219b576-6991-460c-a208-50c87a3f8611",
+    "subagent_id": "ironhack",
+    "instruction_id": "e31f1547-4f5b-47e8-bc86-3014489dac53",
+    "code": "export async function main(ns){for(;;){try{if(ns.getServerMoneyAvailable('iron-gym')<1)await ns.grow('iron-gym');else if(ns.getServerSecurityLevel('iron-gym')>ns.getServerMinSecurityLevel('iron-gym')+1)await ns.weaken('iron-gym');else await ns.hack('iron-gym')}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "8219b576-6991-460c-a208-50c87a3f8611",
+      "subagent_id": "ironhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:09:48.298Z"
+    },
+    "tokens_used": 1220,
+    "timestamp": "2026-04-27T23:09:38.297Z"
+  },
+  {
+    "script_id": "b1df1987-3105-4d64-b3ba-305341e26549",
+    "subagent_id": "diagmoney",
+    "instruction_id": "e1fbc41a-b851-4d03-887c-5e6411e789d7",
+    "code": "export async function main(ns){const a=['n00dles','foodnstuff','sigma-cosmetics','joesguns','hong-fang-tea','harakiri-sushi','nectar-net','max-hardware','iron-gym'];for(const s of a)ns.tprint(s+' money='+ns.getServerMoneyAvailable(s)+' sec='+ns.getServerSecurityLevel(s)+' min='+ns.getServerMinSecurityLevel(s)+' root='+ns.hasRootAccess(s));}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "b1df1987-3105-4d64-b3ba-305341e26549",
+      "subagent_id": "diagmoney",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:09:57.485Z"
+    },
+    "tokens_used": 2600,
+    "timestamp": "2026-04-27T23:09:47.483Z"
+  },
+  {
+    "script_id": "cd42c956-b596-4101-a944-b3f3d329d3b5",
+    "subagent_id": "foodhack",
+    "instruction_id": "40047194-268c-4e99-946c-2a2e83a636d3",
+    "code": "export async function main(ns){for(;;){try{const s='foodnstuff';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "cd42c956-b596-4101-a944-b3f3d329d3b5",
+      "subagent_id": "foodhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:11:01.964Z"
+    },
+    "tokens_used": 1225,
+    "timestamp": "2026-04-27T23:10:51.964Z"
+  },
+  {
+    "script_id": "8fafb312-1e5f-4104-ae10-9cdddffc8428",
+    "subagent_id": "diagmoney",
+    "instruction_id": "9f3bde7c-8041-4bcf-967a-873e3e7ae554",
+    "code": "export async function main(ns){const a=['n00dles','foodnstuff','sigma-cosmetics','joesguns','hong-fang-tea','harakiri-sushi','nectar-net','max-hardware','iron-gym','alpha-ent','cattlelog','silver-helix'];for(const s of a)ns.tprint(s+' money='+ns.getServerMoneyAvailable(s)+' sec='+ns.getServerSecurityLevel(s)+' min='+ns.getServerMinSecurityLevel(s)+' root='+ns.hasRootAccess(s));}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "8fafb312-1e5f-4104-ae10-9cdddffc8428",
+      "subagent_id": "diagmoney",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:11:14.709Z"
+    },
+    "tokens_used": 2602,
+    "timestamp": "2026-04-27T23:11:04.705Z"
+  },
+  {
+    "script_id": "1b9f9f90-c1fb-4720-9a93-a3f9f5bbb59e",
+    "subagent_id": "n00dleshack",
+    "instruction_id": "6579385e-793a-4b1f-a02d-d8a862224989",
+    "code": "export async function main(ns){for(;;){try{const s='n00dles';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "1b9f9f90-c1fb-4720-9a93-a3f9f5bbb59e",
+      "subagent_id": "n00dleshack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:11:15.366Z"
+    },
+    "tokens_used": 2560,
+    "timestamp": "2026-04-27T23:11:05.364Z"
+  },
+  {
+    "script_id": "3c84dbfb-a87f-4504-86d2-6837869491ec",
+    "subagent_id": "joehack",
+    "instruction_id": "41b8366d-49bb-40dc-aa5b-bea4b5b6842f",
+    "code": "export async function main(ns){for(;;){try{const s='joesguns';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "3c84dbfb-a87f-4504-86d2-6837869491ec",
+      "subagent_id": "joehack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:11:16.041Z"
+    },
+    "tokens_used": 1202,
+    "timestamp": "2026-04-27T23:11:06.039Z"
+  },
+  {
+    "script_id": "1ce37c7a-5f02-408d-b72b-5822eb7373f7",
+    "subagent_id": "sigmahack",
+    "instruction_id": "8a9373e7-19ac-4d18-ba23-d3221da67647",
+    "code": "export async function main(ns){for(;;){try{const s='sigma-cosmetics';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "1ce37c7a-5f02-408d-b72b-5822eb7373f7",
+      "subagent_id": "sigmahack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:11:16.744Z"
+    },
+    "tokens_used": 1202,
+    "timestamp": "2026-04-27T23:11:06.743Z"
+  },
+  {
+    "script_id": "6ba8819e-b5aa-4ea0-a2f2-2b69454b4090",
+    "subagent_id": "nectarhack",
+    "instruction_id": "ed67a2f9-c2cd-4f87-a946-5f2cade69d7d",
+    "code": "export async function main(ns){for(;;){try{const s='nectar-net';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "6ba8819e-b5aa-4ea0-a2f2-2b69454b4090",
+      "subagent_id": "nectarhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:11:30.541Z"
+    },
+    "tokens_used": 2591,
+    "timestamp": "2026-04-27T23:11:20.540Z"
+  },
+  {
+    "script_id": "20afcddd-7ede-4cf8-8c8a-9b05305b2285",
+    "subagent_id": "honghack",
+    "instruction_id": "29b0ae29-5737-4376-b2b9-e85964c6f90a",
+    "code": "export async function main(ns){for(;;){try{const s='hong-fang-tea';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "20afcddd-7ede-4cf8-8c8a-9b05305b2285",
+      "subagent_id": "honghack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:11:31.083Z"
+    },
+    "tokens_used": 2617,
+    "timestamp": "2026-04-27T23:11:21.083Z"
+  },
+  {
+    "script_id": "19e10bf5-4218-4b63-8007-1dc67a8a3ea0",
+    "subagent_id": "alphahack",
+    "instruction_id": "a00dde13-1201-4526-bbc0-49f40f5842cd",
+    "code": "export async function main(ns){for(;;){try{const s='alpha-ent';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "19e10bf5-4218-4b63-8007-1dc67a8a3ea0",
+      "subagent_id": "alphahack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:12:57.469Z"
+    },
+    "tokens_used": 1211,
+    "timestamp": "2026-04-27T23:12:47.468Z"
+  },
+  {
+    "script_id": "6ca1e742-7c7b-422b-a232-7294c12dd0e7",
+    "subagent_id": "silverhack",
+    "instruction_id": "475a6a63-4844-49d7-9484-59ec7bd628e9",
+    "code": "export async function main(ns){for(;;){try{const s='silver-helix';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "6ca1e742-7c7b-422b-a232-7294c12dd0e7",
+      "subagent_id": "silverhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:12:59.744Z"
+    },
+    "tokens_used": 1304,
+    "timestamp": "2026-04-27T23:12:49.745Z"
+  },
+  {
+    "script_id": "6d78efa7-dd75-4c1a-80ae-aa082054b30b",
+    "subagent_id": "phanthack",
+    "instruction_id": "9fa22549-0370-4798-8e19-43e39d3a93ae",
+    "code": "export async function main(ns){for(;;){try{const s='phantasy';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "6d78efa7-dd75-4c1a-80ae-aa082054b30b",
+      "subagent_id": "phanthack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:13:02.000Z"
+    },
+    "tokens_used": 1257,
+    "timestamp": "2026-04-27T23:12:51.999Z"
+  },
+  {
+    "script_id": "c46fce3e-56ab-43c9-bf96-1f1569b52dc7",
+    "subagent_id": "omegahack",
+    "instruction_id": "1abff2e4-e660-482e-9690-3574b8d49130",
+    "code": "export async function main(ns){for(;;){try{const s='omega-net';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "c46fce3e-56ab-43c9-bf96-1f1569b52dc7",
+      "subagent_id": "omegahack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:13:03.902Z"
+    },
+    "tokens_used": 1292,
+    "timestamp": "2026-04-27T23:12:53.902Z"
+  },
+  {
+    "script_id": "19254217-6135-426c-90fa-324ffbda3ab2",
+    "subagent_id": "cattlehack",
+    "instruction_id": "3d4f535f-59a0-49ed-b77c-f3bd45e471ee",
+    "code": "export async function main(ns){for(;;){try{const s='cattlelog';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "19254217-6135-426c-90fa-324ffbda3ab2",
+      "subagent_id": "cattlehack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:13:04.075Z"
+    },
+    "tokens_used": 1208,
+    "timestamp": "2026-04-27T23:12:54.075Z"
+  },
+  {
+    "script_id": "405b18a8-5f41-48bd-b6ba-a38ee7d3cc05",
+    "subagent_id": "commhack",
+    "instruction_id": "91443b2b-e570-4df6-84b0-e554811e04bc",
+    "code": "export async function main(ns){for(;;){try{const s='computek';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "405b18a8-5f41-48bd-b6ba-a38ee7d3cc05",
+      "subagent_id": "commhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:13:05.798Z"
+    },
+    "tokens_used": 1205,
+    "timestamp": "2026-04-27T23:12:55.796Z"
+  },
+  {
+    "script_id": "3e18d162-5138-4493-9021-c9ac4e206244",
+    "subagent_id": "syscorehack",
+    "instruction_id": "d2f2ffe7-06c9-43cb-b58f-b115af5ab925",
+    "code": "export async function main(ns){for(;;){try{const s='syscore';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "3e18d162-5138-4493-9021-c9ac4e206244",
+      "subagent_id": "syscorehack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:13:07.037Z"
+    },
+    "tokens_used": 1205,
+    "timestamp": "2026-04-27T23:12:57.037Z"
+  },
+  {
+    "script_id": "19144598-4ce8-4abc-931b-c7cdb64de6c5",
+    "subagent_id": "netlinkhack",
+    "instruction_id": "6a761cfa-b957-48ba-80af-7b9bcbbc9057",
+    "code": "export async function main(ns){for(;;){try{const s='netlink';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "19144598-4ce8-4abc-931b-c7cdb64de6c5",
+      "subagent_id": "netlinkhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:13:18.043Z"
+    },
+    "tokens_used": 2541,
+    "timestamp": "2026-04-27T23:13:08.042Z"
+  },
+  {
+    "script_id": "a3ce4078-32b3-4ad9-be4b-17e3c1b3496d",
+    "subagent_id": "diagquick",
+    "instruction_id": "768958cc-2734-4b27-9e64-968cd33aa829",
+    "code": "export async function main(ns){const a=['n00dles','foodnstuff','sigma-cosmetics','joesguns','hong-fang-tea','nectar-net','alpha-ent','cattlelog','silver-helix','phantasy','omega-net','computek','netlink','syscore'];for(const s of a)ns.tprint(s+' money='+ns.getServerMoneyAvailable(s)+' max='+ns.getServerMaxMoney(s)+' sec='+ns.getServerSecurityLevel(s)+' min='+ns.getServerMinSecurityLevel(s)+' root='+ns.hasRootAccess(s));}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "a3ce4078-32b3-4ad9-be4b-17e3c1b3496d",
+      "subagent_id": "diagquick",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:13:20.704Z"
+    },
+    "tokens_used": 2695,
+    "timestamp": "2026-04-27T23:13:10.703Z"
+  },
+  {
+    "script_id": "3bab7490-e135-49b7-b6e9-7479dd7332d1",
+    "subagent_id": "unihack",
+    "instruction_id": "66439bb6-ee4c-4885-ba68-43b111515134",
+    "code": "export async function main(ns){for(;;){try{const s='unitalife';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "3bab7490-e135-49b7-b6e9-7479dd7332d1",
+      "subagent_id": "unihack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:14:53.085Z"
+    },
+    "tokens_used": 1210,
+    "timestamp": "2026-04-27T23:14:43.085Z"
+  },
+  {
+    "script_id": "a7d0ef6b-2f4b-4cb7-8a5b-3904c0ffb6c4",
+    "subagent_id": "deltahack",
+    "instruction_id": "88a16946-51ad-4cba-b670-e72650c0dca5",
+    "code": "export async function main(ns){for(;;){try{const s='deltaone';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "a7d0ef6b-2f4b-4cb7-8a5b-3904c0ffb6c4",
+      "subagent_id": "deltahack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:14:54.378Z"
+    },
+    "tokens_used": 1207,
+    "timestamp": "2026-04-27T23:14:44.377Z"
+  },
+  {
+    "script_id": "6d5f7b5e-54f4-49d5-9aea-558f240f7e7c",
+    "subagent_id": "microhack",
+    "instruction_id": "7d42370f-5c31-4079-ae61-bf5a2ee1be43",
+    "code": "export async function main(ns){for(;;){try{const s='microdyne';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "6d5f7b5e-54f4-49d5-9aea-558f240f7e7c",
+      "subagent_id": "microhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:14:56.490Z"
+    },
+    "tokens_used": 1283,
+    "timestamp": "2026-04-27T23:14:46.490Z"
+  },
+  {
+    "script_id": "8d880bf5-9a2f-4dce-8028-dcb22d2898b0",
+    "subagent_id": "galhack",
+    "instruction_id": "c4b42653-b915-44fa-859f-0059778076d8",
+    "code": "export async function main(ns){for(;;){try{const s='galactic-cyber';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "8d880bf5-9a2f-4dce-8028-dcb22d2898b0",
+      "subagent_id": "galhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:14:58.474Z"
+    },
+    "tokens_used": 1256,
+    "timestamp": "2026-04-27T23:14:48.474Z"
+  },
+  {
+    "script_id": "4bb66fe8-b6e3-440a-8fe0-090d2d09c4bf",
+    "subagent_id": "solhack",
+    "instruction_id": "a3a10d32-22f7-49c4-8b2e-2b89f00adc6b",
+    "code": "export async function main(ns){for(;;){try{const s='solaris';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "4bb66fe8-b6e3-440a-8fe0-090d2d09c4bf",
+      "subagent_id": "solhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:15:00.929Z"
+    },
+    "tokens_used": 1207,
+    "timestamp": "2026-04-27T23:14:50.929Z"
+  },
+  {
+    "script_id": "3c895495-a0eb-46c9-b3ec-9b3df3d0133c",
+    "subagent_id": "novahack",
+    "instruction_id": "14ea99c7-39a2-41b2-9163-f11c8eeb7446",
+    "code": "export async function main(ns){for(;;){try{const s='nova-med';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "3c895495-a0eb-46c9-b3ec-9b3df3d0133c",
+      "subagent_id": "novahack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:15:05.721Z"
+    },
+    "tokens_used": 2666,
+    "timestamp": "2026-04-27T23:14:55.720Z"
+  },
+  {
+    "script_id": "6447fa15-5efe-4c42-a554-ae96e786871c",
+    "subagent_id": "diagone",
+    "instruction_id": "8d6b7b10-91db-4bcf-9f26-e27f0db260a3",
+    "code": "export async function main(ns){const a=['unitalife','nova-med','deltaone','microdyne','galactic-cyber','solaris','omnia','foodnstuff','n00dles'];for(const s of a)ns.tprint(s+' money='+ns.getServerMoneyAvailable(s)+' max='+ns.getServerMaxMoney(s)+' sec='+ns.getServerSecurityLevel(s)+' min='+ns.getServerMinSecurityLevel(s)+' root='+ns.hasRootAccess(s));}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "6447fa15-5efe-4c42-a554-ae96e786871c",
+      "subagent_id": "diagone",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:15:08.282Z"
+    },
+    "tokens_used": 1270,
+    "timestamp": "2026-04-27T23:14:58.282Z"
+  },
+  {
+    "script_id": "2b4fd227-2165-465a-9112-80d75ab22cc9",
+    "subagent_id": "omnihack",
+    "instruction_id": "cb0c6c91-b9dc-4384-a016-3e369c30d62f",
+    "code": "export async function main(ns){for(;;){try{const s='omnia';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+0.5)await ns.weaken(s);else if(ns.getServerMoneyAvailable(s)<ns.getServerMaxMoney(s)*0.9)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "2b4fd227-2165-465a-9112-80d75ab22cc9",
+      "subagent_id": "omnihack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:15:27.006Z"
+    },
+    "tokens_used": 3940,
+    "timestamp": "2026-04-27T23:15:17.006Z"
+  },
+  {
+    "script_id": "07abf872-a687-4682-832e-0fe83f69228a",
+    "subagent_id": "diaglate",
+    "instruction_id": "3157687d-9edf-45da-863e-088cd5bb0ff1",
+    "code": "export async function main(ns){const a=['n00dles','foodnstuff','sigma-cosmetics','joesguns','hong-fang-tea','nectar-net','harakiri-sushi','iron-gym','max-hardware','alpha-ent','cattlelog','silver-helix','phantasy','omega-net','computek','netlink','syscore','unitalife','nova-med','deltaone','microdyne','galactic-cyber','solaris','omnia'];for(const s of a)ns.tprint(s+' money='+ns.getServerMoneyAvailable(s)+' max='+ns.getServerMaxMoney(s)+' sec='+ns.getServerSecurityLevel(s)+' min='+ns.getServerMinSecurityLevel(s)+' root='+ns.hasRootAccess(s));}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "07abf872-a687-4682-832e-0fe83f69228a",
+      "subagent_id": "diaglate",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:16:43.119Z"
+    },
+    "tokens_used": 1387,
+    "timestamp": "2026-04-27T23:16:33.119Z"
+  },
+  {
+    "script_id": "8848fd35-42eb-424a-b99b-ce0540c8ac3e",
+    "subagent_id": "n00dleshack",
+    "instruction_id": "dd71a137-036f-4967-8703-2f7eaf69d530",
+    "code": "export async function main(ns){for(;;){try{const s='n00dles';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerMoneyAvailable(s)<=0)await ns.grow(s);else if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+5)await ns.weaken(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "8848fd35-42eb-424a-b99b-ce0540c8ac3e",
+      "subagent_id": "n00dleshack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:17:53.379Z"
+    },
+    "tokens_used": 1292,
+    "timestamp": "2026-04-27T23:17:43.378Z"
+  },
+  {
+    "script_id": "f6070d0d-d51b-4ede-9cea-06ad8061e01e",
+    "subagent_id": "diaglate",
+    "instruction_id": "a09fce83-f574-4d5d-ba29-ad5818e5a362",
+    "code": "export async function main(ns){const a=['n00dles','foodnstuff','sigma-cosmetics','joesguns','hong-fang-tea','nectar-net','harakiri-sushi','iron-gym','max-hardware','alpha-ent','cattlelog','silver-helix','phantasy','omega-net','computek','netlink','syscore','unitalife','nova-med','deltaone','microdyne','galactic-cyber','solaris','omnia'];for(const s of a)ns.tprint(s+' money='+ns.getServerMoneyAvailable(s)+' max='+ns.getServerMaxMoney(s)+' sec='+ns.getServerSecurityLevel(s)+' min='+ns.getServerMinSecurityLevel(s)+' root='+ns.hasRootAccess(s));}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "f6070d0d-d51b-4ede-9cea-06ad8061e01e",
+      "subagent_id": "diaglate",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:18:05.270Z"
+    },
+    "tokens_used": 2864,
+    "timestamp": "2026-04-27T23:17:55.270Z"
+  },
+  {
+    "script_id": "2cc1d620-3f04-4ee2-a88b-46d400e6ec98",
+    "subagent_id": "sigmahack",
+    "instruction_id": "a0464715-cd21-401d-9666-501ddd91db91",
+    "code": "export async function main(ns){for(;;){try{const s='sigma-cosmetics';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerMoneyAvailable(s)<=0)await ns.grow(s);else if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+5)await ns.weaken(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "2cc1d620-3f04-4ee2-a88b-46d400e6ec98",
+      "subagent_id": "sigmahack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:18:07.003Z"
+    },
+    "tokens_used": 1187,
+    "timestamp": "2026-04-27T23:17:57.001Z"
+  },
+  {
+    "script_id": "f2d09748-51e9-4e7d-955f-cf57cd939944",
+    "subagent_id": "foodhack",
+    "instruction_id": "5fc21e06-c811-4026-b923-69dcced5a1e0",
+    "code": "export async function main(ns){for(;;){try{const s='foodnstuff';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerMoneyAvailable(s)<=0)await ns.grow(s);else if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+5)await ns.weaken(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "f2d09748-51e9-4e7d-955f-cf57cd939944",
+      "subagent_id": "foodhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:18:07.392Z"
+    },
+    "tokens_used": 2531,
+    "timestamp": "2026-04-27T23:17:57.391Z"
+  },
+  {
+    "script_id": "0ed5cdd9-10c8-4395-949b-25c14ede3e31",
+    "subagent_id": "nectarhack",
+    "instruction_id": "a1cf3a05-ece8-4fc9-a760-f58de850acc7",
+    "code": "export async function main(ns){for(;;){try{const s='nectar-net';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerMoneyAvailable(s)<=0)await ns.grow(s);else if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+5)await ns.weaken(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "0ed5cdd9-10c8-4395-949b-25c14ede3e31",
+      "subagent_id": "nectarhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:18:08.935Z"
+    },
+    "tokens_used": 1187,
+    "timestamp": "2026-04-27T23:17:58.933Z"
+  },
+  {
+    "script_id": "324c5e40-3a59-41c6-b1c1-4f3060a6256a",
+    "subagent_id": "joehack",
+    "instruction_id": "6c37f2d3-476f-4e41-8ce4-39e702aaf2bd",
+    "code": "export async function main(ns){for(;;){try{const s='joesguns';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerMoneyAvailable(s)<=0)await ns.grow(s);else if(ns.getServerSecurityLevel(s)>ns.getServerMinSecurityLevel(s)+5)await ns.weaken(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "324c5e40-3a59-41c6-b1c1-4f3060a6256a",
+      "subagent_id": "joehack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:18:09.720Z"
+    },
+    "tokens_used": 1268,
+    "timestamp": "2026-04-27T23:17:59.719Z"
+  },
+  {
+    "script_id": "2bcf26e7-e8d0-46de-8607-3e8a6d860b9e",
+    "subagent_id": "foodzero",
+    "instruction_id": "6425f6aa-e31c-4350-a125-c0b5ff6a75e1",
+    "code": "export async function main(ns){for(;;){try{const s='foodnstuff';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerMoneyAvailable(s)<=0)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "2bcf26e7-e8d0-46de-8607-3e8a6d860b9e",
+      "subagent_id": "foodzero",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:19:49.728Z"
+    },
+    "tokens_used": 1153,
+    "timestamp": "2026-04-27T23:19:39.727Z"
+  },
+  {
+    "script_id": "1d0f99cc-ebe0-440a-84b3-dd34f8a3dec6",
+    "subagent_id": "n00dzero",
+    "instruction_id": "04d00a06-9da9-4c88-869a-da27c5ee12db",
+    "code": "export async function main(ns){for(;;){try{const s='n00dles';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerMoneyAvailable(s)<=0)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "1d0f99cc-ebe0-440a-84b3-dd34f8a3dec6",
+      "subagent_id": "n00dzero",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:19:50.920Z"
+    },
+    "tokens_used": 1119,
+    "timestamp": "2026-04-27T23:19:40.919Z"
+  },
+  {
+    "script_id": "3524ab20-c19a-4b20-9419-16a969acf271",
+    "subagent_id": "joezero",
+    "instruction_id": "42fd0a5b-5df2-443b-98d1-052afaa6613b",
+    "code": "export async function main(ns){for(;;){try{const s='joesguns';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerMoneyAvailable(s)<=0)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "3524ab20-c19a-4b20-9419-16a969acf271",
+      "subagent_id": "joezero",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:19:52.615Z"
+    },
+    "tokens_used": 1179,
+    "timestamp": "2026-04-27T23:19:42.615Z"
+  },
+  {
+    "script_id": "cd535ba0-c20b-4ed4-9906-095f61500151",
+    "subagent_id": "diagstdout",
+    "instruction_id": "df4bb108-6c22-46c8-8acc-9caa68884664",
+    "code": "export async function main(ns){const a=['n00dles','foodnstuff','sigma-cosmetics','joesguns','hong-fang-tea','nectar-net','harakiri-sushi','iron-gym','max-hardware','alpha-ent','cattlelog','silver-helix','phantasy','omega-net','computek','netlink','syscore','unitalife','nova-med','deltaone','microdyne','galactic-cyber','solaris','omnia'];for(const s of a)ns.tprint(s+' money='+ns.getServerMoneyAvailable(s)+' max='+ns.getServerMaxMoney(s)+' sec='+ns.getServerSecurityLevel(s)+' min='+ns.getServerMinSecurityLevel(s)+' root='+ns.hasRootAccess(s));}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "cd535ba0-c20b-4ed4-9906-095f61500151",
+      "subagent_id": "diagstdout",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:20:02.211Z"
+    },
+    "tokens_used": 2971,
+    "timestamp": "2026-04-27T23:19:52.210Z"
+  },
+  {
+    "script_id": "5193abeb-b70d-432b-bd5e-add17fcaada8",
+    "subagent_id": "honghack",
+    "instruction_id": "f7ac61b4-10d2-4f35-9aff-aca4816a3127",
+    "code": "export async function main(ns){for(;;){try{const s='hong-fang-tea';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerMoneyAvailable(s)<=0)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "5193abeb-b70d-432b-bd5e-add17fcaada8",
+      "subagent_id": "honghack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:20:50.679Z"
+    },
+    "tokens_used": 1166,
+    "timestamp": "2026-04-27T23:20:40.678Z"
+  },
+  {
+    "script_id": "eba414e8-cee9-4315-a8bd-d25b68eacb94",
+    "subagent_id": "nectarhack",
+    "instruction_id": "72d3ceef-df88-48b2-bb15-7ee17a3eca01",
+    "code": "export async function main(ns){for(;;){try{const s='nectar-net';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerMoneyAvailable(s)<=0)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "eba414e8-cee9-4315-a8bd-d25b68eacb94",
+      "subagent_id": "nectarhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:20:53.943Z"
+    },
+    "tokens_used": 1161,
+    "timestamp": "2026-04-27T23:20:43.942Z"
+  },
+  {
+    "script_id": "6572a67a-1d8f-4397-86a7-fa1653fe8456",
+    "subagent_id": "sigmahack",
+    "instruction_id": "1ac74b8e-8e44-48b5-8d6f-c75c1b9377d4",
+    "code": "export async function main(ns){for(;;){try{const s='sigma-cosmetics';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerMoneyAvailable(s)<=0)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "6572a67a-1d8f-4397-86a7-fa1653fe8456",
+      "subagent_id": "sigmahack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:20:56.095Z"
+    },
+    "tokens_used": 1109,
+    "timestamp": "2026-04-27T23:20:46.094Z"
+  },
+  {
+    "script_id": "a222bee0-6a34-4101-b6f4-6a77dc42f3d7",
+    "subagent_id": "foodhack",
+    "instruction_id": "5e3a64fb-3790-492c-b1bc-94a3c40144ab",
+    "code": "export async function main(ns){for(;;){try{const s='foodnstuff';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerMoneyAvailable(s)<=0)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "a222bee0-6a34-4101-b6f4-6a77dc42f3d7",
+      "subagent_id": "foodhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:20:57.826Z"
+    },
+    "tokens_used": 1154,
+    "timestamp": "2026-04-27T23:20:47.825Z"
+  },
+  {
+    "script_id": "9e3b1b31-f270-46fd-8137-b75a05b00092",
+    "subagent_id": "joehack",
+    "instruction_id": "87a18994-163b-4842-855a-7b9edeb25e6d",
+    "code": "export async function main(ns){for(;;){try{const s='joesguns';if(!ns.hasRootAccess(s))ns.nuke(s);if(ns.getServerMoneyAvailable(s)<=0)await ns.grow(s);else await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "9e3b1b31-f270-46fd-8137-b75a05b00092",
+      "subagent_id": "joehack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:21:10.824Z"
+    },
+    "tokens_used": 2374,
+    "timestamp": "2026-04-27T23:21:00.824Z"
+  },
+  {
+    "script_id": "918990fb-3776-48e5-8690-3fb208570b93",
+    "subagent_id": "diagstdout",
+    "instruction_id": "dd24e10d-28d1-4028-bd71-dc43712a98a7",
+    "code": "export async function main(ns){const a=['n00dles','foodnstuff','sigma-cosmetics','joesguns','hong-fang-tea','nectar-net','harakiri-sushi','iron-gym','max-hardware','alpha-ent','cattlelog','silver-helix','phantasy','omega-net','computek','netlink','syscore','unitalife','nova-med','deltaone','microdyne','galactic-cyber','solaris','omnia'];for(const s of a)ns.tprint(s+' money='+ns.getServerMoneyAvailable(s)+' max='+ns.getServerMaxMoney(s)+' sec='+ns.getServerSecurityLevel(s)+' min='+ns.getServerMinSecurityLevel(s)+' root='+ns.hasRootAccess(s));}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "918990fb-3776-48e5-8690-3fb208570b93",
+      "subagent_id": "diagstdout",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:21:15.906Z"
+    },
+    "tokens_used": 4426,
+    "timestamp": "2026-04-27T23:21:05.905Z"
+  },
+  {
+    "script_id": "160cf359-7049-4e44-afbe-b352f7997b33",
+    "subagent_id": "foodhack",
+    "instruction_id": "2ba0bb3d-d83a-465c-8b1c-a2fbfa35a11a",
+    "code": "export async function main(ns){for(;;){try{const s='foodnstuff';if(!ns.hasRootAccess(s))ns.nuke(s);await ns.grow(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "160cf359-7049-4e44-afbe-b352f7997b33",
+      "subagent_id": "foodhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:21:54.931Z"
+    },
+    "tokens_used": 1108,
+    "timestamp": "2026-04-27T23:21:44.930Z"
+  },
+  {
+    "script_id": "2d02e0bc-997c-43bc-a5cb-e1cf879ef2d7",
+    "subagent_id": "joehack",
+    "instruction_id": "1af82dd5-3ba9-4a22-bb86-c60389b03113",
+    "code": "export async function main(ns){for(;;){try{const s='joesguns';if(!ns.hasRootAccess(s))ns.nuke(s);await ns.grow(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "2d02e0bc-997c-43bc-a5cb-e1cf879ef2d7",
+      "subagent_id": "joehack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:21:56.516Z"
+    },
+    "tokens_used": 1115,
+    "timestamp": "2026-04-27T23:21:46.516Z"
+  },
+  {
+    "script_id": "b7fe222e-a7bc-4b64-bb1c-c680d95ee229",
+    "subagent_id": "sigmahack",
+    "instruction_id": "40079cf8-9c1f-4c08-a350-2e343d433e67",
+    "code": "export async function main(ns){for(;;){try{const s='sigma-cosmetics';if(!ns.hasRootAccess(s))ns.nuke(s);await ns.grow(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "b7fe222e-a7bc-4b64-bb1c-c680d95ee229",
+      "subagent_id": "sigmahack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:21:58.393Z"
+    },
+    "tokens_used": 1085,
+    "timestamp": "2026-04-27T23:21:48.392Z"
+  },
+  {
+    "script_id": "de24825c-6d4a-462e-aba5-fb18c9ee3ebe",
+    "subagent_id": "nectarhack",
+    "instruction_id": "140e0d39-9047-4cab-a3fb-c13f172df0dc",
+    "code": "export async function main(ns){for(;;){try{const s='nectar-net';if(!ns.hasRootAccess(s))ns.nuke(s);await ns.grow(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "de24825c-6d4a-462e-aba5-fb18c9ee3ebe",
+      "subagent_id": "nectarhack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:22:00.876Z"
+    },
+    "tokens_used": 1114,
+    "timestamp": "2026-04-27T23:21:50.874Z"
+  },
+  {
+    "script_id": "2559ba8c-393b-47b3-bb65-4e731661a43e",
+    "subagent_id": "honghack",
+    "instruction_id": "59052eb6-9255-40da-bff4-3e2ccd4ad8c3",
+    "code": "export async function main(ns){for(;;){try{const s='hong-fang-tea';if(!ns.hasRootAccess(s))ns.nuke(s);await ns.grow(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "2559ba8c-393b-47b3-bb65-4e731661a43e",
+      "subagent_id": "honghack",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:22:02.498Z"
+    },
+    "tokens_used": 1106,
+    "timestamp": "2026-04-27T23:21:52.497Z"
+  },
+  {
+    "script_id": "b0f118eb-4493-48c5-a716-fd739ae5e033",
+    "subagent_id": "foodzero",
+    "instruction_id": "2ae5c0d2-b303-4547-ab1e-7eeedf058ce5",
+    "code": "export async function main(ns){for(;;){try{const s='foodnstuff';if(!ns.hasRootAccess(s))ns.nuke(s);await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "b0f118eb-4493-48c5-a716-fd739ae5e033",
+      "subagent_id": "foodzero",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:22:03.668Z"
+    },
+    "tokens_used": 1060,
+    "timestamp": "2026-04-27T23:21:53.667Z"
+  },
+  {
+    "script_id": "d80d9c54-9414-44a9-a2b5-55c9e1f457fa",
+    "subagent_id": "joezero",
+    "instruction_id": "b25e78bc-66c4-45b3-8152-88fae7e20767",
+    "code": "export async function main(ns){for(;;){try{const s='joesguns';if(!ns.hasRootAccess(s))ns.nuke(s);await ns.hack(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "d80d9c54-9414-44a9-a2b5-55c9e1f457fa",
+      "subagent_id": "joezero",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:22:05.474Z"
+    },
+    "tokens_used": 1054,
+    "timestamp": "2026-04-27T23:21:55.474Z"
+  },
+  {
+    "script_id": "0bf3f3d0-c9d1-49b2-8e34-72a70f78e36e",
+    "subagent_id": "n00dzero",
+    "instruction_id": "32d27d13-3bf7-4628-b947-c7d4b3a8b3f4",
+    "code": "export async function main(ns){for(;;){try{const s='n00dles';if(!ns.hasRootAccess(s))ns.nuke(s);await ns.grow(s)}catch(e){await ns.sleep(1000)}}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "0bf3f3d0-c9d1-49b2-8e34-72a70f78e36e",
+      "subagent_id": "n00dzero",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:22:07.237Z"
+    },
+    "tokens_used": 1115,
+    "timestamp": "2026-04-27T23:21:57.235Z"
+  },
+  {
+    "script_id": "560bf095-050f-4024-80b2-1bffc8fd942f",
+    "subagent_id": "diagstdout",
+    "instruction_id": "b893fb7d-9dd5-44c4-a92a-23bdbcb637d0",
+    "code": "export async function main(ns){const a=['n00dles','foodnstuff','sigma-cosmetics','joesguns','hong-fang-tea','nectar-net','harakiri-sushi','iron-gym','max-hardware','alpha-ent','cattlelog','silver-helix','phantasy','omega-net','computek','netlink','syscore','unitalife','nova-med','deltaone','microdyne','galactic-cyber','solaris','omnia'];for(const s of a)ns.tprint(s+' money='+ns.getServerMoneyAvailable(s)+' max='+ns.getServerMaxMoney(s)+' sec='+ns.getServerSecurityLevel(s)+' min='+ns.getServerMinSecurityLevel(s)+' root='+ns.hasRootAccess(s));}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "560bf095-050f-4024-80b2-1bffc8fd942f",
+      "subagent_id": "diagstdout",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "RFA pushFile timed out after 10000ms",
+      "game_state_snapshot": {
+        "current_money": 0,
+        "bitnode_id": 1,
+        "bitnode_complete": false
+      },
+      "timestamp": "2026-04-27T23:22:07.598Z"
+    },
+    "tokens_used": 2875,
+    "timestamp": "2026-04-27T23:21:57.597Z"
+  }
+]
