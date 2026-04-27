@@ -1,0 +1,14 @@
+{
+  "run_id": "a9acedc9-7120-479c-8a6d-e7722c264b9d",
+  "orchestrator_model": "gpt-5.4",
+  "attribution": "public",
+  "final_money": 1262,
+  "bitnodes_completed": 0,
+  "augments_installed": 0,
+  "status": "failed",
+  "failure_reason": "orchestrator hang: no cycle completed for 141s",
+  "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad",
+  "start_time": "2026-04-26T21:06:45.953Z",
+  "end_time": "2026-04-27T10:53:21.542Z",
+  "duration_hours": 24
+}
