@@ -13,6 +13,12 @@ export async function main(ns) {
 
   while (true) {
     // ── Publish state ────────────────────────────────────────────
+    // last_heartbeat_ms is the wall-clock the harness uses to tell
+    // a running dispatcher from a dead one. waitForDispatcherAlive
+    // and the loop-time liveness checks REQUIRE this field to
+    // advance — if writes fail silently they look like a dead loop,
+    // so any error inside the try block is surfaced to the in-game
+    // log via ns.tprint instead of being swallowed.
     try {
       const p = ns.getPlayer();
       const ri = ns.getResetInfo();
@@ -23,12 +29,15 @@ export async function main(ns) {
           bitnode_id: ri.currentNode,
           bitnode_complete: false,
           augments_installed: [],
+          last_heartbeat_ms: Date.now(),
           timestamp: new Date().toISOString(),
         }),
         "w",
       );
-    } catch (_) {
-      /* best effort */
+    } catch (e) {
+      try {
+        ns.tprint("DISPATCHER STATE WRITE FAILED: " + (e && e.message ? e.message : String(e)));
+      } catch (_) { /* terminal gone — nothing more we can do */ }
     }
 
     // ── Process queue ────────────────────────────────────────────
