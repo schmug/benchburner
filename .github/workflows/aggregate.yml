@@ -1,6 +1,13 @@
-# Rebuilds pages/leaderboard.json + pages/index.html from every
-# orchestrator/* branch's most recent run, then pushes to
-# results-published. Scheduled daily.
+# Rebuilds the static pages/ site from every orchestrator/* branch's
+# latest results, then publishes the output to the results-published
+# branch (Cloudflare Pages watches that branch — see README §Deploy).
+#
+# Runs daily on schedule + manual dispatch. results-published is
+# rewritten each run because it's a deploy artifact, not history.
+#
+# Security: this workflow does not consume any untrusted user input
+# (no github.event.* interpolation in run blocks). Branch names come
+# from `git for-each-ref` against trusted refs/remotes/origin/.
 
 name: aggregate
 on:
@@ -8,26 +15,81 @@ on:
     - cron: "0 4 * * *" # 04:00 UTC daily
   workflow_dispatch: {}
 
+permissions:
+  contents: write
+
 jobs:
   aggregate:
-    runs-on: [self-hosted, benchburner]
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout main
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
       - name: Install deps
-        run: npm install
+        run: npm ci
         env:
           PUPPETEER_SKIP_DOWNLOAD: "true"
-      # TODO (post-M1): iterate 'git branch -r | grep orchestrator/',
-      # checkout each, copy results/*/summary.json into a staging dir,
-      # then run aggregator/build.ts against that staging dir.
+
+      - name: Harvest results from orchestrator/* branches
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          # `git archive` emits a tar of the branch's tree filtered by
+          # path; piping into `tar -x` writes results/<run_id>/... into
+          # the working tree. Branches without a `results/` path are
+          # skipped silently. Per-branch run_ids don't collide.
+          for ref in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin/orchestrator/); do
+            short="${ref#origin/}"
+            echo "::group::harvest $short"
+            if git ls-tree -r "$ref" -- results 2>/dev/null | grep -q .; then
+              git archive "$ref" -- results | tar -x
+              echo "  ok"
+            else
+              echo "  (no results/ on $short)"
+            fi
+            echo "::endgroup::"
+          done
+
       - name: Build leaderboard
         run: npx tsx aggregator/build.ts
-      - name: Publish to results-published
+
+      - name: Publish pages/ to results-published
+        env:
+          GIT_AUTHOR_NAME: benchburner-aggregator
+          GIT_AUTHOR_EMAIL: aggregator@users.noreply.github.com
+          GIT_COMMITTER_NAME: benchburner-aggregator
+          GIT_COMMITTER_EMAIL: aggregator@users.noreply.github.com
         run: |
-          git checkout -B results-published
-          git add pages/
-          git -c user.name=aggregator -c user.email=aggregator@localhost commit -m "aggregate: rebuild leaderboard" || true
-          git push --force origin results-published
+          set -euo pipefail
+          PUBLISH_DIR="$RUNNER_TEMP/published"
+
+          # Use a worktree so we can rsync pages/ contents in without
+          # touching the main checkout.
+          if git ls-remote --exit-code --heads origin results-published >/dev/null 2>&1; then
+            git fetch origin results-published:results-published
+            git worktree add "$PUBLISH_DIR" results-published
+            # Clear everything except .git so removed files actually drop.
+            find "$PUBLISH_DIR" -maxdepth 1 -mindepth 1 ! -name '.git' -exec rm -rf {} +
+          else
+            git worktree add --orphan -b results-published "$PUBLISH_DIR"
+          fi
+
+          cp -R pages/. "$PUBLISH_DIR/"
+
+          cd "$PUBLISH_DIR"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "no changes to publish"
+            exit 0
+          fi
+          git commit -m "aggregate: rebuild leaderboard $(date -u +%FT%TZ)"
+          git push origin results-published
