@@ -15,6 +15,11 @@ export async function main(ns) {
   const STATE = "/__state.json";
 
   while (true) {
+    // last_heartbeat_ms lets the harness tell a running dispatcher
+    // from one that wrote /__state.json once and then died. Surface
+    // any write failure to the in-game log instead of swallowing it
+    // — silent failures produce a stale heartbeat that looks
+    // identical to a dead loop.
     try {
       const p = ns.getPlayer();
       const ri = ns.getResetInfo();
@@ -25,12 +30,15 @@ export async function main(ns) {
           bitnode_id: ri.currentNode,
           bitnode_complete: false,
           augments_installed: [],
+          last_heartbeat_ms: Date.now(),
           timestamp: new Date().toISOString(),
         }),
         "w",
       );
-    } catch (_) {
-      /* best effort */
+    } catch (e) {
+      try {
+        ns.tprint("DISPATCHER-LIGHT STATE WRITE FAILED: " + (e && e.message ? e.message : String(e)));
+      } catch (_) { /* terminal gone — nothing more we can do */ }
     }
     await ns.sleep(1000);
   }

@@ -7,6 +7,8 @@
  *   BENCHBURNER_CONFIG=path     # override config file path
  *   BENCHBURNER_DURATION_SEC=N  # override duration (dev only)
  *   BENCHBURNER_USE_MOCK=1      # use MockGame instead of PuppeteerGame
+ *   BENCHBURNER_RFA_PORT=N      # override RFA WebSocket port (default 12525);
+ *                               # use distinct ports to run two harnesses in parallel
  */
 
 import { execFileSync } from "node:child_process";
@@ -76,10 +78,18 @@ async function main(): Promise<void> {
   const bus = new Bus();
   const pool = new SubagentPool();
 
+  const rfaPortEnv = process.env.BENCHBURNER_RFA_PORT;
+  const rfaPort = rfaPortEnv ? Number(rfaPortEnv) : undefined;
+  if (rfaPortEnv && (!Number.isInteger(rfaPort) || rfaPort! <= 0 || rfaPort! > 65535)) {
+    console.error(`[harness] invalid BENCHBURNER_RFA_PORT=${rfaPortEnv}; expected 1-65535`);
+    process.exit(1);
+  }
+
   const game: GameController = useMock
     ? new MockGame({ seed: config.game.seed })
     : new PuppeteerGame({
         seed: config.game.seed,
+        rfaPort,
         verboseConsole: Boolean(process.env.BENCHBURNER_VERBOSE_GAME),
         // Golden/validation mode bypasses the orchestrator, so we don't
         // need the queue-processing dispatcher. The lighter variant
