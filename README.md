@@ -44,6 +44,25 @@ Early development. Private repo. Will open-source once the first two or three or
 - [`CLAUDE.md`](./CLAUDE.md) — project intent, constraints, working agreement.
 - [`SPEC.md`](./SPEC.md) — full technical specification.
 
+## Deploy (Cloudflare Pages)
+
+The leaderboard is a static site deployed by a daily GitHub Action.
+
+**Pipeline:**
+
+1. Each `orchestrator/<model>` branch holds that model's `results/<run_id>/` artifacts.
+2. `.github/workflows/aggregate.yml` runs daily at 04:00 UTC (and on `workflow_dispatch`). It harvests `results/` from every `orchestrator/*` branch, runs `aggregator/build.ts`, and force-pushes the generated `pages/` contents to the `results-published` branch.
+3. **Cloudflare Pages watches `results-published`** and serves the deploy.
+
+**Cloudflare Pages setup (one-time, dashboard):**
+
+1. Cloudflare Dashboard → Workers & Pages → **Create** → **Pages** → **Connect to Git**.
+2. Pick this repo. Production branch: **`results-published`**.
+3. Build command: *(leave empty — the artifact is already built)*. Build output directory: **`/`**. Root directory: *(leave empty)*.
+4. Save & deploy. The first deploy populates after the next aggregator run; trigger it manually via Actions → `aggregate` → Run workflow.
+
+The repo's branches stay clean: `main` carries the harness, `orchestrator/*` carry run artifacts, `results-published` carries only the deploy output. Don't merge `results-published` anywhere — it's an artifact branch.
+
 ## Methodology Notes
 
 - **Why not expose the seed to the orchestrator?** Telling the orchestrator that the run is deterministic risks measuring seed-specific overfitting instead of general orchestration strategy. The seed is pinned for reproducibility across runs, but the orchestrator is told nothing about it.
