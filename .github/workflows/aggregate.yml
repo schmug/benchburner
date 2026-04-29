@@ -39,34 +39,49 @@ jobs:
         env:
           PUPPETEER_SKIP_DOWNLOAD: "true"
 
-      - name: Fetch orchestrator/* branches
-        # actions/checkout@v4 only fetches the target ref's objects, even
-        # with fetch-depth: 0. Branch ref pointers may appear under
-        # refs/remotes/origin/, but their tree/blob objects are missing
-        # — git ls-tree silently returns empty. Fetch them explicitly.
-        run: |
-          git fetch --no-tags --prune origin \
-            '+refs/heads/orchestrator/*:refs/remotes/origin/orchestrator/*'
-
       - name: Harvest results from orchestrator/* branches
+        # Per-branch shallow clone into a tmpdir, then copy results/.
+        # We tried `git ls-tree -r origin/<branch> -- results` against
+        # the workspace clone and it returned empty on the runner even
+        # though the branch tip + objects were both fetched (works
+        # locally). Fresh per-branch clones sidestep whatever runner
+        # config makes that read fail.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_URL: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
         run: |
           set -euo pipefail
           mkdir -p results
-          # `git archive` emits a tar of the branch's tree filtered by
-          # path; piping into `tar -x` writes results/<run_id>/... into
-          # the working tree. Branches without a `results/` path are
-          # skipped silently. Per-branch run_ids don't collide.
-          for ref in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin/orchestrator/); do
-            short="${ref#origin/}"
-            echo "::group::harvest $short"
-            if git ls-tree -r "$ref" -- results 2>/dev/null | grep -q .; then
-              git archive "$ref" -- results | tar -x
-              echo "  ok"
+          # Discover branches via the GitHub API. GITHUB_REPOSITORY is
+          # set on every runner; avoids interpolating ${{ }} into the
+          # shell command body.
+          branches=$(gh api "repos/$GITHUB_REPOSITORY/branches" \
+            --paginate --jq '.[] | select(.name | startswith("orchestrator/")) | .name')
+          if [ -z "$branches" ]; then
+            echo "no orchestrator/* branches found"
+            exit 0
+          fi
+          for branch in $branches; do
+            echo "::group::harvest $branch"
+            tmpdir=$(mktemp -d)
+            if git clone --quiet --depth=1 --branch "$branch" --no-tags \
+                 "$REPO_URL" "$tmpdir" 2>/dev/null; then
+              if [ -d "$tmpdir/results" ]; then
+                # Per-branch run_ids don't collide (uuids).
+                cp -R "$tmpdir/results/." results/
+                count=$(find "$tmpdir/results" -mindepth 1 -maxdepth 1 -type d | wc -l)
+                echo "  ok ($count run dirs)"
+              else
+                echo "  (no results/ on $branch)"
+              fi
             else
-              echo "  (no results/ on $short)"
+              echo "  (clone failed for $branch)"
             fi
+            rm -rf "$tmpdir"
             echo "::endgroup::"
           done
+          total=$(find results -mindepth 1 -maxdepth 1 -type d | wc -l)
+          echo "harvested $total run directories total"
 
       - name: Build leaderboard
         run: npx tsx aggregator/build.ts
