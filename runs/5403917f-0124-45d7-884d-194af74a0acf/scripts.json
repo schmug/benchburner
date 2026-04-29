@@ -1,0 +1,104 @@
+[
+  {
+    "script_id": "b741f625-d194-4cc6-a37d-31d3c81d17fd",
+    "subagent_id": "worker1",
+    "instruction_id": "ede42bc0-a808-42a3-b310-458945b91e39",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const log = (msg) => ns.print(`[${new Date().toLocaleTimeString()}] ${msg}`);\n  \n  try {\n    // BFS to find all servers\n    const queue = ['home'];\n    const visited = new Set(['home']);\n    const servers = [];\n    \n    while (queue.length > 0) {\n      const host = queue.shift();\n      servers.push(host);\n      try {\n        const neighbors = ns.scan(host);\n        for (const neighbor of neighbors) {\n          if (!visited.has(neighbor)) {\n            visited.add(neighbor);\n            queue.push(neighbor);\n          }\n        }\n      } catch (e) {}\n    }\n    \n    log(`Found ${servers.length} servers`);\n    \n    // Port opener functions - try each if available\n    const openPorts = (host) => {\n      let count = 0;\n      try { ns.brutessh(host); count++; } catch (e) {}\n      try { ns.ftpcrack(host); count++; } catch (e) {}\n      try { ns.relaysmtp(host); count++; } catch (e) {}\n      try { ns.httpworm(host); count++; } catch (e) {}\n      try { ns.sqlinject(host); count++; } catch (e) {}\n      return count;\n    };\n    \n    // Gain root access on servers\n    const rooted = [];\n    for (const host of servers) {\n      if (host === 'home') continue;\n      try {\n        const hasRoot = ns.hasRootAccess(host);\n        if (hasRoot) {\n          rooted.push(host);\n          continue;\n        }\n        const reqPorts = ns.getServerNumPortsRequired(host);\n        const opened = openPorts(host);\n        if (opened >= reqPorts) {\n          ns.nuke(host);\n          rooted.push(host);\n          log(`Rooted: ${host}`);\n        }\n      } catch (e) {}\n    }\n    \n    // Filter hackable servers (have money and meet level requirement)\n    const targets = rooted.filter(host => {\n      try {\n        const max = ns.getServerMaxMoney(host);\n        const req = ns.getServerRequiredHackingLevel(host);\n        return max > 0 && req <= ns.getHackingLevel();\n      } catch (e) { return false; }\n    });\n    \n    if (targets.length === 0) {\n      log('No hackable targets found');\n      return;\n    }\n    \n    log(`${targets.length} hackable targets available`);\n    \n    // Main loop: find best target and exploit\n    while (true) {\n      // Pick target with highest max money\n      let best = null;\n      let bestValue = -1;\n      for (const host of targets) {\n        try {\n          const max = ns.getServerMaxMoney(host);\n          if (max > bestValue) {\n            best = host;\n            bestValue = max;\n          }\n        } catch (e) {}\n      }\n      \n      if (!best) {\n        await ns.sleep(1000);\n        continue;\n      }\n      \n      try {\n        const sec = ns.getServerSecurityLevel(best);\n        const minSec = ns.getServerMinSecurityLevel(best);\n        const money = ns.getServerMoneyAvailable(best);\n        const maxMoney = ns.getServerMaxMoney(best);\n        \n        if (sec > minSec + 5) {\n          log(`Weakening ${best} (sec: ${sec.toFixed(1)})`);\n          await ns.weaken(best);\n        } else if (money < maxMoney * 0.75) {\n          log(`Growing ${best} (money: ${(money/1e9).toFixed(2)}B)`);\n          await ns.grow(best);\n        } else {\n          log(`Hacking ${best} (money: ${(money/1e9).toFixed(2)}B)`);\n          await ns.hack(best);\n        }\n      } catch (e) {\n        log(`Error on ${best}: ${e.message}`);\n        await ns.sleep(1000);\n      }\n    }\n  } catch (e) {\n    ns.print(`Fatal error: ${e.message}`);\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "b741f625-d194-4cc6-a37d-31d3c81d17fd",
+      "subagent_id": "worker1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T17:42:56.860Z"
+    },
+    "tokens_used": 7963,
+    "timestamp": "2026-04-25T17:42:56.476Z"
+  },
+  {
+    "script_id": "902733d1-c2b9-42d5-93fc-4e06285a6012",
+    "subagent_id": "worker1",
+    "instruction_id": "eaf8ba38-e9a2-4c61-946b-be9aa3edecee",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const q = ['home'];\n  const visited = new Set(['home']);\n  const hosts = [];\n  \n  while (q.length > 0) {\n    const host = q.shift();\n    if (host !== 'home') hosts.push(host);\n    const neighbors = ns.scan(host);\n    for (const neighbor of neighbors) {\n      if (!visited.has(neighbor)) {\n        visited.add(neighbor);\n        q.push(neighbor);\n      }\n    }\n  }\n  \n  const targets = [];\n  const myLevel = ns.getHackingLevel();\n  \n  for (const host of hosts) {\n    if (!ns.hasRootAccess(host)) {\n      try { ns.brutessh(host); } catch (e) {}\n      if (ns.getServerNumPortsRequired(host) <= 1) {\n        try { ns.nuke(host); } catch (e) {}\n      }\n    }\n    if (ns.hasRootAccess(host)) {\n      const maxMoney = ns.getServerMaxMoney(host);\n      const reqLevel = ns.getServerRequiredHackingLevel(host);\n      if (maxMoney > 0 && reqLevel <= myLevel) {\n        targets.push({host, maxMoney});\n      }\n    }\n  }\n  \n  if (targets.length === 0) {\n    ns.print('No targets found');\n    return;\n  }\n  \n  targets.sort((a, b) => b.maxMoney - a.maxMoney);\n  const target = targets[0].host;\n  const minSec = ns.getServerMinSecurityLevel(target);\n  const maxMoney = ns.getServerMaxMoney(target);\n  \n  ns.print(`Target: ${target}`);\n  \n  while (true) {\n    const sec = ns.getServerSecurityLevel(target);\n    const money = ns.getServerMoneyAvailable(target);\n    \n    if (sec > minSec + 3) {\n      await ns.weaken(target);\n    } else if (money < maxMoney * 0.75) {\n      await ns.grow(target);\n    } else {\n      await ns.hack(target);\n    }\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "902733d1-c2b9-42d5-93fc-4e06285a6012",
+      "subagent_id": "worker1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T17:43:49.530Z"
+    },
+    "tokens_used": 6634,
+    "timestamp": "2026-04-25T17:43:49.148Z"
+  },
+  {
+    "script_id": "de8515ab-c5f5-4dc1-bc12-69a16d1327aa",
+    "subagent_id": "worker1",
+    "instruction_id": "e0114a2b-c033-4fac-aef5-1f168b665fb2",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  let rooted = new Set();\n  let queue = ['home'];\n  let idx = 0;\n  \n  while (idx < queue.length) {\n    let srv = queue[idx++];\n    if (rooted.has(srv)) continue;\n    \n    let ports = ns.getServerNumPortsRequired(srv);\n    if (ports <= 1) {\n      if (ports === 1) ns.brutessh(srv);\n      ns.nuke(srv);\n      rooted.add(srv);\n    }\n    \n    let neighbors = ns.scan(srv);\n    for (let n of neighbors) {\n      if (!rooted.has(n)) queue.push(n);\n    }\n  }\n  \n  while (true) {\n    try {\n      await ns.weaken('n00dles');\n      await ns.grow('n00dles');\n      await ns.hack('n00dles');\n    } catch (e) {\n      await ns.sleep(1000);\n    }\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "de8515ab-c5f5-4dc1-bc12-69a16d1327aa",
+      "subagent_id": "worker1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T17:49:40.925Z"
+      },
+      "timestamp": "2026-04-25T17:49:40.926Z"
+    },
+    "tokens_used": 7840,
+    "timestamp": "2026-04-25T17:49:13.513Z"
+  },
+  {
+    "script_id": "dc751be7-87eb-499e-b1a8-871b5f39c7b6",
+    "subagent_id": "worker1",
+    "instruction_id": "6d8544da-ea9c-45dd-9ce3-0d5e28e61630",
+    "code": " /** @param {NS} ns */\nexport async function main(ns) {\n  const visited = new Set();\n  const queue = ['home'];\n  visited.add('home');\n  while (queue.length > 0) {\n    const srv = queue.shift();\n    const neighbors = ns.scan(srv);\n    for (const n of neighbors) {\n      if (!visited.has(n)) {\n        visited.add(n);\n        queue.push(n);\n      }\n    }\n    if (srv === 'home') continue;\n    if (!ns.hasRootAccess(srv)) {\n      const ports = ns.getServerNumPortsRequired(srv);\n      if (ports === 1) { try { ns.brutessh(srv); } catch(e){} }\n      if (ports <= 1) { try { ns.nuke(srv); } catch(e){} }\n    }\n  }\n  while (true) {\n    try {\n      await ns.weaken('n00dles');\n      await ns.grow('n00dles');\n      await ns.hack('n00dles');\n    } catch (e) {\n      await ns.sleep(1000);\n    }\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "dc751be7-87eb-499e-b1a8-871b5f39c7b6",
+      "subagent_id": "worker1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T17:51:47.761Z"
+      },
+      "timestamp": "2026-04-25T17:51:48.209Z"
+    },
+    "tokens_used": 4559,
+    "timestamp": "2026-04-25T17:51:47.707Z"
+  }
+]

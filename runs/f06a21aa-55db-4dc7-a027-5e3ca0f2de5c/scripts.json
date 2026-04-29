@@ -1,0 +1,50 @@
+[
+  {
+    "script_id": "312bc2f6-f64e-4dfa-ae6e-e15713776883",
+    "subagent_id": "hacker1",
+    "instruction_id": "1e8c5305-dc33-4d50-a618-8492eb126238",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  await ns.hack(\"N00dles\");\n  ns.print(\"Hacked N00dles\");\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "312bc2f6-f64e-4dfa-ae6e-e15713776883",
+      "subagent_id": "hacker1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0.501,
+      "exit_reason": "errored",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T19:19:03.111Z"
+    },
+    "tokens_used": 13211,
+    "timestamp": "2026-04-23T19:19:02.376Z"
+  },
+  {
+    "script_id": "c9523c46-80cd-44f0-936e-a48cdbc7f7a7",
+    "subagent_id": "hacker1",
+    "instruction_id": "46cbf0bd-fffd-450a-b682-00af3659fb59",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  await ns.hack(\"N00dles\");\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "c9523c46-80cd-44f0-936e-a48cdbc7f7a7",
+      "subagent_id": "hacker1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0.502,
+      "exit_reason": "errored",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T19:21:52.589Z"
+    },
+    "tokens_used": 9867,
+    "timestamp": "2026-04-23T19:21:52.035Z"
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "run_id": "7dbcf1f0-1ade-45ac-b474-b7eb0b2756c3",
+  "orchestrator_model": "gpt-oss:20b",
+  "attribution": "public",
+  "final_money": 0,
+  "bitnodes_completed": 0,
+  "augments_installed": 0,
+  "status": "failed",
+  "failure_reason": "game boot failed: Navigation timeout of 60000 ms exceeded",
+  "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad",
+  "start_time": "2026-04-24T02:34:32.833Z",
+  "end_time": "2026-04-24T02:49:34.389Z",
+  "duration_hours": 1
+}

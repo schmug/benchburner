@@ -1,0 +1,129 @@
+[
+  {
+    "script_id": "941f91bb-ce92-4250-9fe9-915fa945746c",
+    "subagent_id": "haiku-1",
+    "instruction_id": "75743a37-c975-4851-bd35-da37ad700321",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const money = ns.getPlayer().money;\n  const level = ns.getPlayer().skills.hacking;\n  \n  ns.tprint(`Current money: $${ns.format.number(money)}`);\n  ns.tprint(`Hacking level: ${level}`);\n  \n  if (money < 5000) {\n    ns.tprint(\"Recommendation: Farm money by hacking low-security servers\");\n  } else if (level < 50) {\n    ns.tprint(\"Recommendation: Train hacking level and purchase early upgrades\");\n  } else {\n    ns.tprint(\"Recommendation: Target mid-tier servers for profit\");\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "941f91bb-ce92-4250-9fe9-915fa945746c",
+      "subagent_id": "haiku-1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T19:25:17.710Z"
+      },
+      "timestamp": "2026-04-25T19:25:18.017Z"
+    },
+    "tokens_used": 4567,
+    "timestamp": "2026-04-25T19:25:17.514Z"
+  },
+  {
+    "script_id": "9191c2c2-6345-425c-8036-2888cebca230",
+    "subagent_id": "haiku-3",
+    "instruction_id": "8c4b95c5-6050-4879-bb11-a40d23340c82",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const money = ns.getPlayer().money;\n  const level = ns.getPlayer().hacking;\n  \n  // Get list of all servers\n  const servers = ns.scan(\"home\");\n  \n  // Analyze each server\n  let recommendation = \"Focus on hacking weaker servers to gain experience and money.\";\n  \n  // At level 1 with $1262, we should:\n  // 1. Hack n00dles (easiest target)\n  // 2. Build up hacking skill and money\n  // 3. Eventually buy upgrades\n  \n  if (level < 5) {\n    recommendation = \"Priority: Hack n00dles to gain XP and money. Current level too low for most targets.\";\n  } else if (money < 5000) {\n    recommendation = \"Continue hacking n00dles. Build capital for future upgrades.\";\n  } else {\n    recommendation = \"Consider purchasing upgrades or targeting slightly harder servers.\";\n  }\n  \n  ns.tprint(`\\n=== GAME STATE ANALYSIS ===`);\n  ns.tprint(`Money: $${ns.format.number(money)}`);\n  ns.tprint(`Hacking Level: ${level}`);\n  ns.tprint(`\\n=== RECOMMENDATION ===`);\n  ns.tprint(recommendation);\n  ns.tprint(`\\n=== NEXT STEPS ===`);\n  ns.tprint(`1. Deploy hacking scripts to target n00dles`);\n  ns.tprint(`2. Monitor progress and reinvest earnings`);\n  ns.tprint(`3. Plan upgrade path once capital allows`);\n}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "9191c2c2-6345-425c-8036-2888cebca230",
+      "subagent_id": "haiku-3",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T19:30:21.047Z"
+      },
+      "timestamp": "2026-04-25T19:30:21.487Z"
+    },
+    "tokens_used": 4856,
+    "timestamp": "2026-04-25T19:30:20.984Z"
+  },
+  {
+    "script_id": "7daf0080-0f98-40ce-9039-3aeb08327ac7",
+    "subagent_id": "haiku-2",
+    "instruction_id": "807f1240-4b6d-4931-ba2b-59223582fff0",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const home = ns.getServer('home');\n  const money = home.moneyAvailable || 0;\n  \n  // Scan for nearby servers\n  const scan = ns.scan('home');\n  ns.print(`Connected servers: ${scan.length}`);\n  \n  // Find n00dles if available\n  if (scan.includes('n00dles')) {\n    const target = ns.getServerMoneyAvailable('n00dles');\n    const maxMoney = ns.getServerMaxMoney('n00dles');\n    const security = ns.getServerSecurityLevel('n00dles');\n    \n    ns.print(`n00dles - Money: ${ns.formatNumber(target)} / ${ns.formatNumber(maxMoney)}`);\n    ns.print(`Security: ${ns.formatNumber(security)}`);\n    \n    // Recommendation\n    if (money > 50000) {\n      ns.print('RECOMMENDATION: Buy first program (BruteSSH.exe)');\n    } else {\n      ns.print(`RECOMMENDATION: Save money. Need $50k, have ${ns.formatNumber(money)}`);\n    }\n  }\n  \n  ns.print(`Current money: ${ns.formatNumber(money)}`);\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "7daf0080-0f98-40ce-9039-3aeb08327ac7",
+      "subagent_id": "haiku-2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T19:30:24.564Z"
+    },
+    "tokens_used": 5220,
+    "timestamp": "2026-04-25T19:30:24.499Z"
+  },
+  {
+    "script_id": "c306c5bf-eeee-4f30-8c16-3f7bd6aa4820",
+    "subagent_id": "haiku-2-new",
+    "instruction_id": "2c977104-5f81-48e5-93c9-ad5a230824ca",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const money = ns.getPlayer().money;\n  const level = ns.getPlayer().level;\n  \n  ns.tprint(`Current State: Money=$${ns.format.number(money)}, Level=${level}`);\n  ns.tprint(`Recommendation: Focus on early hacking to grow capital`);\n  ns.tprint(`- Prioritize gaining experience and unlocking servers`);\n  ns.tprint(`- No upgrades installed yet; allocate resources to core progression`);\n  ns.tprint(`- Next steps: Complete early tutorial/intro contracts if available`);\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "c306c5bf-eeee-4f30-8c16-3f7bd6aa4820",
+      "subagent_id": "haiku-2-new",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-25T19:31:26.239Z"
+      },
+      "timestamp": "2026-04-25T19:31:26.577Z"
+    },
+    "tokens_used": 4564,
+    "timestamp": "2026-04-25T19:31:26.075Z"
+  },
+  {
+    "script_id": "8f6be0da-544e-404d-b4d0-4dae80ec50c8",
+    "subagent_id": "haiku-3-new",
+    "instruction_id": "edddd6c8-02a9-4085-8f5a-c5ad62a6fa7c",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const money = ns.getPlayer().money;\n  const level = ns.getPlayer().hacking;\n  const augmentations = ns.getOwnedAugmentations();\n  \n  ns.tprint(`Current money: $${money}`);\n  ns.tprint(`Hacking level: ${level}`);\n  ns.tprint(`Augmentations: ${augmentations.length}`);\n  \n  // Analyze available hackable servers\n  const servers = ns.scan('home');\n  ns.tprint(`Available servers: ${servers.length}`);\n  \n  // Recommendation logic\n  if (money < 5000) {\n    ns.tprint(\"RECOMMENDATION: Focus on early hacking. Run basic.js or crime scripts to build capital.\");\n  } else if (level < 10) {\n    ns.tprint(\"RECOMMENDATION: Increase hacking level before attempting server breaches.\");\n  } else {\n    ns.tprint(\"RECOMMENDATION: Scout for hackable servers and begin exploitation.\");\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "8f6be0da-544e-404d-b4d0-4dae80ec50c8",
+      "subagent_id": "haiku-3-new",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-25T19:37:27.036Z"
+    },
+    "tokens_used": 4331,
+    "timestamp": "2026-04-25T19:37:26.553Z"
+  }
+]

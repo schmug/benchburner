@@ -1,0 +1,104 @@
+[
+  {
+    "script_id": "bd6bbe58-d1db-463c-9d7b-4fe8b63e7680",
+    "subagent_id": "worker_1",
+    "instruction_id": "b86cfacf-686b-46ea-8944-96eae5fc14b6",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const targets = ['n00dles', 'foodnstuff', 'sigma-cosmetics', 'joesguns', 'nectar-net', 'hong-fang-ends'];\n  let target = null;\n  \n  // Find first hackable target with root access\n  for (const srv of targets) {\n    if (ns.hasRootAccess(srv)) {\n      target = srv;\n      break;\n    }\n  }\n  \n  if (!target) {\n    ns.tprint('No hackable servers found');\n    return;\n  }\n  \n  ns.tprint(`Starting hack loop on ${target}`);\n  let hackCount = 0;\n  const startTime = Date.now();\n  const maxTime = 24 * 60 * 60 * 1000; // 24 hours\n  \n  while (Date.now() - startTime < maxTime) {\n    const security = ns.getServerSecurityLevel(target);\n    const minSecurity = ns.getServerMinSecurityLevel(target);\n    const money = ns.getServerMoneyAvailable(target);\n    const maxMoney = ns.getServerMaxMoney(target);\n    \n    // Weaken if security too high\n    if (security > minSecurity + 5) {\n      await ns.weaken(target);\n      continue;\n    }\n    \n    // Grow if money too low\n    if (money < maxMoney * 0.5) {\n      await ns.grow(target);\n      continue;\n    }\n    \n    // Hack\n    await ns.hack(target);\n    hackCount++;\n    \n    if (hackCount % 10 === 0) {\n      ns.tprint(`Hacks: ${hackCount}, Money: ${ns.nFormat(money, '$0.00')}, Security: ${ns.nFormat(security, '0.00')}`);\n    }\n  }\n  \n  ns.tprint(`Finished after ${hackCount} hacks`);\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "bd6bbe58-d1db-463c-9d7b-4fe8b63e7680",
+      "subagent_id": "worker_1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-24T16:48:02.717Z"
+      },
+      "timestamp": "2026-04-24T16:48:02.903Z"
+    },
+    "tokens_used": 5437,
+    "timestamp": "2026-04-24T16:48:02.396Z"
+  },
+  {
+    "script_id": "d56fc0ec-36de-4acd-a8d3-66f8caf15de6",
+    "subagent_id": "worker_1",
+    "instruction_id": "dd913151-804c-4d8c-b687-4695fca812b0",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const targets = ['n00dles', 'foodnstuff'];\n  let target = null;\n  \n  // Find a valid target\n  for (const srv of targets) {\n    try {\n      if (ns.hasRootAccess(srv)) {\n        target = srv;\n        break;\n      }\n    } catch (e) {\n      // Server doesn't exist, try next\n    }\n  }\n  \n  if (!target) {\n    ns.tprint('ERROR: No valid target found');\n    return;\n  }\n  \n  ns.tprint(`Starting hack cycle on ${target}`);\n  let hackCount = 0;\n  \n  while (true) {\n    const sec = ns.getServerSecurityLevel(target);\n    const minSec = ns.getServerMinSecurityLevel(target);\n    const money = ns.getServerMoneyAvailable(target);\n    const maxMoney = ns.getServerMaxMoney(target);\n    \n    if (sec > minSec + 5) {\n      await ns.weaken(target);\n    } else if (money < maxMoney * 0.5) {\n      await ns.grow(target);\n    } else {\n      await ns.hack(target);\n      hackCount++;\n      if (hackCount % 10 === 0) {\n        ns.print(`Hacks: ${hackCount}, Money: ${money}, Sec: ${sec}`);\n      }\n    }\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "d56fc0ec-36de-4acd-a8d3-66f8caf15de6",
+      "subagent_id": "worker_1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-24T16:49:59.649Z"
+    },
+    "tokens_used": 5810,
+    "timestamp": "2026-04-24T16:49:59.434Z"
+  },
+  {
+    "script_id": "63e819e9-56f2-43a5-b247-ee6b352491cd",
+    "subagent_id": "worker_1",
+    "instruction_id": "3de4e1e7-7384-4354-8f5c-79dbf090905d",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  const servers = ['n00dles', 'foodnstuff', 'sigma-cosmetics', 'joesguns', 'nectar-net', 'harakiri-sushi', 'otto-stands', 'neo-net', 'zer0', 'max-hardware'];\n  \n  let target = null;\n  \n  // Find easiest target with root access or attempt nuke\n  for (const srv of servers) {\n    if (ns.hasRootAccess(srv)) {\n      target = srv;\n      break;\n    }\n  }\n  \n  if (!target) {\n    ns.tprint('No servers with root access found. Attempting to nuke n00dles...');\n    ns.nuke('n00dles');\n    target = 'n00dles';\n  }\n  \n  ns.tprint(`Selected target: ${target}`);\n  \n  // Main hack cycle - runs for ~24 hours\n  while (true) {\n    const money = ns.getServerMoneyAvailable(target);\n    const sec = ns.getServerSecurityLevel(target);\n    const minSec = ns.getServerMinSecurityLevel(target);\n    const maxMoney = ns.getServerMaxMoney(target);\n    \n    ns.tprint(`Target: ${target} | Money: $${money} / $${maxMoney} | Sec: ${sec.toFixed(1)} / ${minSec.toFixed(1)}`);\n    \n    // If security is elevated, weaken first\n    if (sec > minSec + 0.1) {\n      ns.tprint(`Weakening (sec: ${sec.toFixed(1)})`);\n      await ns.weaken(target);\n      continue;\n    }\n    \n    // If money is below 80% max, grow\n    if (money < maxMoney * 0.8) {\n      ns.tprint(`Growing (money: ${money})`);\n      await ns.grow(target);\n      continue;\n    }\n    \n    // Otherwise hack\n    ns.tprint(`Hacking (money: ${money})`);\n    await ns.hack(target);\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "63e819e9-56f2-43a5-b247-ee6b352491cd",
+      "subagent_id": "worker_1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "timestamp": "2026-04-24T16:53:05.228Z"
+      },
+      "timestamp": "2026-04-24T16:53:05.638Z"
+    },
+    "tokens_used": 7768,
+    "timestamp": "2026-04-24T16:53:05.134Z"
+  },
+  {
+    "script_id": "185c3fca-f4d4-4dcd-a2ea-113a4c156b3b",
+    "subagent_id": "minimal_hacker",
+    "instruction_id": "230d759d-6635-46c0-898a-06d341002e29",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  let i = 0;\n  while (true) {\n    const money = ns.getServerMoneyAvailable('home');\n    const sec = ns.getServerSecurityLevel('home');\n    const minSec = ns.getServerMinSecurityLevel('home');\n    const maxMoney = ns.getServerMaxMoney('home');\n    \n    if (sec > minSec + 2) {\n      await ns.weaken('home');\n    } else if (money < maxMoney * 0.7) {\n      await ns.grow('home');\n    } else {\n      await ns.hack('home');\n    }\n    \n    i++;\n    if (i % 50 === 0) {\n      ns.print(`Iteration ${i}: money=${money}, sec=${sec}`);\n    }\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "185c3fca-f4d4-4dcd-a2ea-113a4c156b3b",
+      "subagent_id": "minimal_hacker",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-24T17:02:58.989Z"
+    },
+    "tokens_used": 4891,
+    "timestamp": "2026-04-24T17:02:58.588Z"
+  }
+]

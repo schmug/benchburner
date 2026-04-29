@@ -1,0 +1,78 @@
+[
+  {
+    "script_id": "1f21cbe6-84ac-42cd-9ae0-e18e31697ad4",
+    "subagent_id": "agent1",
+    "instruction_id": "b3705155-bee6-44b0-9cac-ddce74826353",
+    "code": "#!/usr/bin/env python3\nimport time\n\n# Initial money\nmoney = 1262\n\n# Simulate playing the game and accumulating money\nfor i in range(86400):  # 24 hours in seconds\n    money += 5  # Assume earning $5 per second\n    time.sleep(1)  # Simulate a second of game play\n\nprint(f'Final Money: {money}')",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "1f21cbe6-84ac-42cd-9ae0-e18e31697ad4",
+      "subagent_id": "agent1",
+      "status": "failed",
+      "money_gained": 1262,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T15:59:36.805Z"
+    },
+    "tokens_used": 1245,
+    "timestamp": "2026-04-23T15:59:36.512Z"
+  },
+  {
+    "script_id": "56ac16d4-fce1-4989-b6ad-ea79371b17cf",
+    "subagent_id": "agent2",
+    "instruction_id": "e5096dda-539b-4462-ae05-37e1652debe2",
+    "code": "#!/usr/bin/env python3\n\nimport time\n\n# Initial money and level setup\ncurrent_money = 1262\nlevel_id = 1\nlevel_complete = False\n\n# Function to simulate in-game actions\ndef play_level():\n    global current_money, level_complete\n    for _ in range(100):\n        if level_complete:\n            break\n        # Simulate earning money\n        current_money += 5\n        time.sleep(1)\n    level_complete = True\n\n# Main execution loop\nstart_time = time.time()\ntime_limit = 24 * 60 * 60  # 24 hours in seconds\n\nwhile (time.time() - start_time) < time_limit:\n    play_level()\n\nprint(f'Final money: {current_money}')\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "56ac16d4-fce1-4989-b6ad-ea79371b17cf",
+      "subagent_id": "agent2",
+      "status": "failed",
+      "money_gained": 1262,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T16:01:42.177Z"
+    },
+    "tokens_used": 1939,
+    "timestamp": "2026-04-23T16:01:41.870Z"
+  },
+  {
+    "script_id": "a3299950-93b5-4abb-8ff0-a4f7af67bb97",
+    "subagent_id": "agent3",
+    "instruction_id": "eb3d9a66-2147-4c97-82d6-e4f70763fe04",
+    "code": "// hackGrow.js\n/**\n * Minimal Bitburner hack/grow script to start increasing money.\n *\n * @param {NS} ns - The Bitburner namespace.\n */\nexport async function main(ns) {\n    const servers = Object.keys(ns.getHackingTargets()).filter(s => ns.getServerMaxMoney(s) > 0);\n\n    if (servers.length === 0) {\n        ns.tprint('No target servers found with money.');\n        return;\n    }\n\n    const targetServer = servers.reduce((a, b) => ns.getServerMaxMoney(a) > ns.getServerMaxMoney(b) ? a : b);\n\n    while (true) {\n        if (ns.hack(targetServer)) {\n            await ns.sleep(100);\n            ns.grow(targetServer);\n        } else {\n            await ns.sleep(1000);\n        }\n    }\n}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "a3299950-93b5-4abb-8ff0-a4f7af67bb97",
+      "subagent_id": "agent3",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0.501,
+      "exit_reason": "errored",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T16:06:55.663Z"
+    },
+    "tokens_used": 2218,
+    "timestamp": "2026-04-23T16:06:55.010Z"
+  }
+]

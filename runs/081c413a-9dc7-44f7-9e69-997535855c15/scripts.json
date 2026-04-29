@@ -1,0 +1,98 @@
+[
+  {
+    "script_id": "177ea854-ecee-49b3-a634-77368816d4a0",
+    "subagent_id": "subagent1",
+    "instruction_id": "0bf5358c-d734-440d-bf0b-4fefe0509c2f",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n    let servers = await ns.scan('home');\n    let targetServer = null;\n    let maxSecurityToMoneyRatio = -Infinity;\n\n    for (let server of servers) {\n        let security = await ns.getServerSecurityLevel(server);\n        let money = await ns.getServerMaxMoney(server);\n        if (security > 0 && money > 0) {\n            let ratio = security / money;\n            if (ratio < maxSecurityToMoneyRatio) {\n                maxSecurityToMoneyRatio = ratio;\n                targetServer = server;\n            }\n        }\n    }\n\n    if (targetServer) {\n        await ns.hack(targetServer);\n        let gainedMoney = await ns.getServerMaxMoney(targetServer) - await ns.getServerMoneyAvailable(targetServer);\n        ns.tprint(`Gained ${gainedMoney} from ${targetServer}`);\n    } else {\n        ns.tprint('No servers available to hack.');\n    }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "177ea854-ecee-49b3-a634-77368816d4a0",
+      "subagent_id": "subagent1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0.502,
+      "exit_reason": "errored",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T19:40:59.071Z"
+    },
+    "tokens_used": 2408,
+    "timestamp": "2026-04-23T19:40:58.477Z"
+  },
+  {
+    "script_id": "bd550cc6-af74-4a99-a392-8c3d98b2d82f",
+    "subagent_id": "subagent2",
+    "instruction_id": "05d4ea58-521c-4d15-b4ab-3c869da83e5c",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  while (true) {\n    const money = ns.getServerMoneyAvailable(\"home\");\n    if (money === 0) break;\n    await ns.hack(\"home\");\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "bd550cc6-af74-4a99-a392-8c3d98b2d82f",
+      "subagent_id": "subagent2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0.502,
+      "exit_reason": "errored",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T19:42:53.406Z"
+    },
+    "tokens_used": 1897,
+    "timestamp": "2026-04-23T19:42:52.858Z"
+  },
+  {
+    "script_id": "e59b1ba5-4819-4b75-8e6b-727e0c3d62a3",
+    "subagent_id": "subagent5",
+    "instruction_id": "9f6be073-1f80-45d5-921b-00202eff5da3",
+    "code": "// @param {NS} ns\nexport async function main(ns) {\n    let totalMoneyGained = 0;\n    while (ns.getServerMaxMoney(\"home\") > 0 && ns.getPlayer().money < ns.getServerMaxMoney(\"home\")) {\n        await ns.hack(\"home\");\n        const moneyGained = ns.getServerMoneyAvailable(\"home\") - ns.getHackingLevel() * 1000;\n        totalMoneyGained += moneyGained;\n        ns.tprint(`Gained ${moneyGained} from hacking home. Total: ${totalMoneyGained}`);\n    }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "e59b1ba5-4819-4b75-8e6b-727e0c3d62a3",
+      "subagent_id": "subagent5",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0.502,
+      "exit_reason": "errored",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T19:47:48.772Z"
+    },
+    "tokens_used": 2016,
+    "timestamp": "2026-04-23T19:47:48.013Z"
+  },
+  {
+    "script_id": "7f18bc08-ced0-402b-886e-600a5db3d103",
+    "subagent_id": "subagent5",
+    "instruction_id": "cbc41868-c13c-4842-9fbf-713db6a6c73d",
+    "code": "// @param {NS} ns\nexport async function main(ns) {\n  let moneyGained = 0;\n  while (ns.getServerMoneyAvailable('home') > 0) {\n    const earnings = await ns.hack('home');\n    moneyGained += earnings;\n    ns.tprint(`Gained $${earnings.toFixed(2)}, Total: $${moneyGained.toFixed(2)}`);\n  }\n}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "7f18bc08-ced0-402b-886e-600a5db3d103",
+      "subagent_id": "subagent5",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0.501,
+      "exit_reason": "errored",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T19:48:50.464Z"
+    },
+    "tokens_used": 2057,
+    "timestamp": "2026-04-23T19:48:49.474Z"
+  }
+]

@@ -1,0 +1,148 @@
+[
+  {
+    "script_id": "62e64158-0309-42c7-9516-7e459b2d2c76",
+    "subagent_id": "scout-1",
+    "instruction_id": "c230fa3b-0abf-4348-9c52-3b89a8885c48",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  // List all properties of ns\n  try {\n    const keys = Object.getOwnPropertyNames(ns);\n    ns.tprint('NS KEYS: ' + JSON.stringify(keys));\n  } catch(e) { ns.tprint('keys error: ' + e); }\n\n  // Try prototype methods\n  try {\n    const proto = Object.getOwnPropertyNames(Object.getPrototypeOf(ns));\n    ns.tprint('NS PROTO: ' + JSON.stringify(proto));\n  } catch(e) { ns.tprint('proto error: ' + e); }\n\n  // Try common getters safely\n  const probes = [\n    () => { const r = ns.getPlayer?.(); ns.tprint('getPlayer: ' + JSON.stringify(r)); },\n    () => { const r = ns.getServer?.('home'); ns.tprint('getServer home: ' + JSON.stringify(r)); },\n    () => { const r = ns.scan?.(); ns.tprint('scan: ' + JSON.stringify(r)); },\n    () => { const r = ns.ls?.('home'); ns.tprint('ls home: ' + JSON.stringify(r)); },\n    () => { const r = ns.getHostname?.(); ns.tprint('hostname: ' + r); },\n    () => { const r = ns.getServerMoneyAvailable?.('home'); ns.tprint('money home: ' + r); },\n    () => { const r = ns.getHackingLevel?.(); ns.tprint('hackLevel: ' + r); },\n  ];\n  for (const p of probes) {\n    try { p(); } catch(e) { ns.tprint('probe error: ' + e); }\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "62e64158-0309-42c7-9516-7e459b2d2c76",
+      "subagent_id": "scout-1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T21:28:17.551Z"
+    },
+    "tokens_used": 5483,
+    "timestamp": "2026-04-23T21:28:17.370Z"
+  },
+  {
+    "script_id": "17a07925-5e1e-495b-8b56-76afab448ea1",
+    "subagent_id": "scout-1",
+    "instruction_id": "27ff7f2c-3cac-4637-98e1-6707854bb795",
+    "code": "export async function main(ns) {\n  console.log('script started');\n  console.log('ns type: ' + typeof ns);\n  try {\n    var keys = Object.keys(ns);\n    console.log('keys: ' + keys.join(','));\n  } catch(e) {\n    console.log('keys error: ' + e);\n  }\n  try {\n    ns.print('hello from ns.print');\n  } catch(e) {\n    console.log('print error: ' + e);\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "17a07925-5e1e-495b-8b56-76afab448ea1",
+      "subagent_id": "scout-1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0.503,
+      "exit_reason": "errored",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T21:28:50.743Z"
+    },
+    "tokens_used": 3598,
+    "timestamp": "2026-04-23T21:28:50.213Z"
+  },
+  {
+    "script_id": "308985ce-2417-4622-95cc-49e46246916d",
+    "subagent_id": "scout-1",
+    "instruction_id": "0c3ec534-365e-4799-98c6-95760c9b3985",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  try {\n    const info = JSON.stringify({keys: Object.keys(ns), own: Object.getOwnPropertyNames(ns)});\n    throw new Error('INFO:' + info);\n  } catch(e) {\n    throw new Error('CAUGHT:' + e.message);\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "308985ce-2417-4622-95cc-49e46246916d",
+      "subagent_id": "scout-1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0.503,
+      "exit_reason": "errored",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T21:29:51.048Z"
+    },
+    "tokens_used": 3553,
+    "timestamp": "2026-04-23T21:29:50.198Z"
+  },
+  {
+    "script_id": "63734dae-ada0-4017-9a10-7e38494fa25a",
+    "subagent_id": "diag-1",
+    "instruction_id": "eddd5b29-4a72-4d4b-a2b3-49046e3a7805",
+    "code": "export async function main() { return 'hello_' + Date.now(); }",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "63734dae-ada0-4017-9a10-7e38494fa25a",
+      "subagent_id": "diag-1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0.502,
+      "exit_reason": "errored",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T21:35:09.744Z"
+    },
+    "tokens_used": 5812,
+    "timestamp": "2026-04-23T21:35:08.872Z"
+  },
+  {
+    "script_id": "3b9c9ddc-19e9-4795-91f6-0c34fa9f1f37",
+    "subagent_id": "diag-2",
+    "instruction_id": "6bb069d8-b4ee-4ce0-a400-c99677b753f3",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  try {\n    const player = ns.getPlayer();\n    const money = ns.getServerMoneyAvailable('home');\n    const scan = ns.scan('home');\n    ns.tprint('PLAYER: ' + JSON.stringify(player));\n    ns.tprint('MONEY: ' + money);\n    ns.tprint('SCAN: ' + JSON.stringify(scan));\n  } catch(e) {\n    ns.tprint('ERROR: ' + e.message + ' STACK: ' + e.stack);\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "3b9c9ddc-19e9-4795-91f6-0c34fa9f1f37",
+      "subagent_id": "diag-2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0.501,
+      "exit_reason": "errored",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T21:36:59.088Z"
+    },
+    "tokens_used": 3925,
+    "timestamp": "2026-04-23T21:36:58.117Z"
+  },
+  {
+    "script_id": "bf5d201b-5dee-4831-ab31-14d373f4179c",
+    "subagent_id": "diag-3",
+    "instruction_id": "2791aae3-b045-4ee3-92fa-f0a237edd518",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  try {\n    const result = await ns.hack('n00dles');\n    ns.tprint('hack result: ' + JSON.stringify(result));\n  } catch(e) {\n    ns.tprint('hack error: ' + e.message);\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "bf5d201b-5dee-4831-ab31-14d373f4179c",
+      "subagent_id": "diag-3",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0.501,
+      "exit_reason": "errored",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T21:42:54.221Z"
+    },
+    "tokens_used": 3950,
+    "timestamp": "2026-04-23T21:42:53.690Z"
+  }
+]

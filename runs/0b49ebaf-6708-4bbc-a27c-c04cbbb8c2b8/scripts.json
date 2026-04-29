@@ -1,0 +1,34 @@
+[
+  {
+    "script_id": "9a111887-4c3b-48a0-b0d2-2b708a2a1a42",
+    "subagent_id": "explorer-1",
+    "instruction_id": "ba93c7e6-2937-43f0-982c-5486686e079b",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  // Safely enumerate top-level ns properties\n  const skip = ['buy','sell','install','attack','hack','start','stop','purchase','upgrade','donate','crime','join','quit','destroy','nuke','bribe','kickFromFaction','murder','assassin'];\n  \n  function isSafe(name) {\n    const low = name.toLowerCase();\n    return !skip.some(s => low.includes(s));\n  }\n\n  const results = {};\n  \n  // Get all property names from ns\n  let props = [];\n  try {\n    props = Object.getOwnPropertyNames(ns);\n  } catch(e) {\n    props = Object.keys(ns);\n  }\n  \n  // Also try common names\n  const extras = ['help','docs','tutorial','print','tprint','scan','ls','ps','getHostname',\n    'getServerMaxMoney','getServerMoneyAvailable','getPlayerInfo','getPlayer','getCharacterInfo',\n    'getHackingLevel','getStats','getMoney','getBalance','getLevel','getUpgrades','getShop',\n    'getAugmentations','getPurchasableAugs','getTasks','getCrimes','getGang','sleeve',\n    'bladeburner','corporation','hacknet','stock','singularity','formulas','ui','args'];\n  \n  const allNames = [...new Set([...props, ...extras])];\n  \n  for (const key of allNames) {\n    try {\n      const val = ns[key];\n      if (val === undefined) continue;\n      const t = typeof val;\n      if (t === 'object' && val !== null) {\n        // Enumerate nested\n        const nested = {};\n        let subkeys = [];\n        try { subkeys = Object.getOwnPropertyNames(val); } catch(e) { subkeys = Object.keys(val); }\n        for (const sk of subkeys) {\n          try {\n            const sv = val[sk];\n            nested[sk] = typeof sv;\n          } catch(e) {\n            nested[sk] = 'error:' + e.message;\n          }\n        }\n        results[key] = { type: 'object', children: nested };\n      } else if (t === 'function') {\n        results[key] = { type: 'function' };\n      } else {\n        results[key] = { type: t, value: String(val).slice(0,100) };\n      }\n    } catch(e) {\n      results[key] = { error: e.message };\n    }\n  }\n  \n  // Print in chunks\n  const lines = JSON.stringify(results, null, 1).split('\\n');\n  for (let i = 0; i < lines.length; i += 20) {\n    ns.tprint(lines.slice(i, i+20).join('\\n'));\n  }\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "9a111887-4c3b-48a0-b0d2-2b708a2a1a42",
+      "subagent_id": "explorer-1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0.503,
+      "stdout": "Script finished running",
+      "exit_reason": "exited",
+      "script_stats": {
+        "online_running_time_seconds": 0.01,
+        "online_exp_gained": 0,
+        "online_money_made": 0,
+        "ram_usage": 1.6,
+        "threads": 1
+      },
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T21:50:30.391Z"
+    },
+    "tokens_used": 5702,
+    "timestamp": "2026-04-23T21:50:29.634Z"
+  }
+]

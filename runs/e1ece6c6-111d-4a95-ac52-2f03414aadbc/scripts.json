@@ -1,0 +1,49 @@
+[
+  {
+    "script_id": "60c5cdd9-5f6c-4c8c-870f-c867a2779ff9",
+    "subagent_id": "agent_2",
+    "instruction_id": "09984daf-a82d-45af-83f8-577c2a0bf516",
+    "code": "// SCP Money Generation Strategy - Optimized Implementation\n// Generated: 2024-06-15\n\nexport let config = {\n    autoTrade: true,\n    tradeInterval: 2000,\n    targetProfit: 50,\n    inventoryCheck: true\n};\n\n// Core Strategy Variables\nlet scrapAmount = 0;\nlet ironAmount = 0;\nlet copperAmount = 0;\nlet scrapPrice = 10;\nlet ironPrice = 20;\nlet copperPrice = 30;\nlet profitCounter = 0;\nlet lastTradeTime = null;\nlet botReady = false;\nlet activeJobs = false;\n\nexport function init() {\n    // Initialize base configurations\n    config.autoTrade = true;\n    config.targetProfit = 50;\n    config.tradeInterval = 2000;\n    botReady = true;\n    activeJobs = false;\n\n    // Load initial resources if available\n    if (!has('scrap')) {\n        scrapAmount = 5;\n    }\n    if (!has('iron')) {\n        ironAmount = 5;\n    }\n    if (!has('copper')) {\n        copperAmount = 5;\n    }\n}\n\nexport function execute() {\n    // Check game state and available resources\n    if (config.autoTrade) {\n        checkResourcePricing();\n        calculateOptimalStrategy();\n        optimizeInventory();\n        manageBots();\n        executeAutoTrade();\n    }\n\n    if (botReady && activeJobs) {\n        activateJob();\n    }\n}\n\nexport function checkResourcePricing() {\n    // Update market prices based on availability\n    scrapPrice = get('scrap');\n    ironPrice = get('iron');\n    copperPrice = get('copper');\n}\n\nexport function calculateOptimalStrategy() {\n    // Determine which resources to focus on based on profit margin\n    let bestResource = null;\n    let maxProfit = 0;\n    \n    if (scrapPrice * scrapAmount > maxProfit) {\n        maxProfit = scrapPrice * scrapAmount;\n        bestResource = 'scrap';\n    }\n    if (ironPrice * ironAmount > maxProfit) {\n        maxProfit = ironPrice * ironAmount;\n        bestResource = 'iron';\n    }\n    if (copperPrice * copperAmount > maxProfit) {\n        maxProfit = copperPrice * copperAmount;\n        bestResource = 'copper';\n    }\n    \n    return bestResource;\n}\n\nexport function optimizeInventory() {\n    // Remove low-value inventory items to free up space\n    if (has('scrap') && scrapAmount > 20) {\n        delete(scrapAmount, 5);\n        scrapAmount = 15;\n    }\n    if (has('iron') && ironAmount > 20) {\n        delete(ironAmount, 5);\n        ironAmount = 15;\n    }\n    if (has('copper') && copperAmount > 20) {\n        delete(copperAmount, 5);\n        copperAmount = 15;\n    }\n}\n\nexport function manageBots() {\n    // Prepare bots for resource mining\n    if (!botReady) {\n        botReady = true;\n        activeJobs = false;\n    }\n}\n\nexport function executeAutoTrade() {\n    // Execute trade loop\n    if (config.autoTrade) {\n        profitCounter += 5;\n        if (profitCounter >= config.targetProfit) {\n            config.targetProfit += 5;\n        }\n    }\n}\n\nexport function activateJob() {\n    // Start mining operation\n    activeJobs = true;\n    if (has('scrap')) {\n        mineResource('scrap');\n    }\n    if (has('iron')) {\n        mineResource('iron');\n    }\n    if (has('copper')) {\n        mineResource('copper');\n    }\n}\n\n// Core resource functions\nfunction get(type) {\n    return typeof type;\n}\n\nfunction has(type) {\n    return true;\n}\n\nfunction delete(type, count) {\n    return true;\n}\n\nfunction mineResource(resource) {\n    return true;\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "60c5cdd9-5f6c-4c8c-870f-c867a2779ff9",
+      "subagent_id": "agent_2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 (out of RAM or file missing?)",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T00:07:58.557Z"
+    },
+    "tokens_used": 1829,
+    "timestamp": "2026-04-23T00:07:58.468Z"
+  },
+  {
+    "script_id": "6ba3f5fd-8aee-446d-8d89-0fe7c8002343",
+    "subagent_id": "agent_3",
+    "instruction_id": "5ed4d9f3-6ac5-485a-bfa1-bb89ef76e6da",
+    "code": "const AgentUtils = {\n    safeLog: (msg) => {\n        if (this && this.logger) {\n            this.logger.log(`[Agent] ${msg}`);\n        } else {\n            console.log(`[Agent] ${msg}`);\n        }\n    },\n\n    safeRun: async (scriptName, args = []) => {\n        if (!scriptName || typeof scriptName !== 'string') {\n            AgentUtils.safeLog('Error: Invalid script name');\n            return false;\n        }\n        \n        const resources = await AgentUtils.getAvailableResources();\n        if (!resources.funds) {\n            AgentUtils.safeLog('Error: Insufficient funds for script execution');\n            return false;\n        }\n\n        try {\n            AgentUtils.safeLog(`Executing script: ${scriptName}`);\n            await this.runScript(scriptName);\n            AgentUtils.safeLog(`Script ${scriptName} completed successfully`);\n            return true;\n        } catch (error) {\n            AgentUtils.safeLog(`Execution error for ${scriptName}: ${error.message}`);\n            return false;\n        }\n    },\n\n    checkResources: async () => {\n        const mem = await this.memory.getUsed();\n        const funds = await this.getMoney();\n        return { mem, funds };\n    },\n\n    validateEnvironment: async () => {\n        try {\n            const env = await this.runCommand('env');\n            if (!env.includes('NETSCRIPT')) {\n                throw new Error('Invalid environment');\n            }\n            return true;\n        } catch (err) {\n            throw new Error(`Environment check failed: ${err.message}`);\n        }\n    },\n\n    async executeTask(task) {\n        if (!task || !task.script) {\n            throw new Error('Invalid task object');\n        }\n        const { script, args, maxRetries } = task;\n        let lastError = null;\n\n        for (let i = 0; i < maxRetries; i++) {\n            AgentUtils.safeLog(`Attempt ${i + 1} for ${script}`);\n            \n            if (!AgentUtils.validateEnvironment()) {\n                throw new Error('Environment validation failed');\n            }\n\n            const result = await AgentUtils.safeRun(script, args);\n            if (result) return true;\n\n            if (i < maxRetries - 1) {\n                await new Promise(resolve => setTimeout(resolve, 500));\n            }\n        }\n        throw new Error(`Max retries exceeded for ${script}`);\n    }\n};\n\nconst runAgentLoop = async () => {\n    try {\n        await AgentUtils.validateEnvironment();\n        await AgentUtils.checkResources();\n        while (true) {\n            try {\n                await AgentUtils.executeTask({ script: 'gameLoop' });\n                await AgentUtils.executeTask({ script: 'updateEconomy' });\n            } catch (e) {\n                console.error('Agent Loop Failure:', e.message);\n            }\n            await new Promise(r => setTimeout(r, 1000));\n        }\n    } catch (e) {\n        console.error('Agent Initialization Error:', e.message);\n    }\n};\n\n(async () => {\n    try {\n        await runAgentLoop();\n    } catch (e) {\n        console.error('Fatal Agent Error:', e);\n    }\n})();",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "6ba3f5fd-8aee-446d-8d89-0fe7c8002343",
+      "subagent_id": "agent_3",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0.502,
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-04-23T00:11:28.998Z"
+    },
+    "tokens_used": 2411,
+    "timestamp": "2026-04-23T00:11:28.252Z"
+  }
+]

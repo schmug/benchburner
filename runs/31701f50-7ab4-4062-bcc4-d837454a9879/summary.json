@@ -1,0 +1,14 @@
+{
+  "run_id": "31701f50-7ab4-4062-bcc4-d837454a9879",
+  "orchestrator_model": "claude-opus-4.7",
+  "attribution": "public",
+  "final_money": 1000,
+  "bitnodes_completed": 0,
+  "augments_installed": 0,
+  "status": "failed",
+  "failure_reason": "received SIGINT",
+  "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad",
+  "start_time": "2026-04-23T23:35:10.514Z",
+  "end_time": "2026-04-23T23:35:35.544Z",
+  "duration_hours": 1
+}
