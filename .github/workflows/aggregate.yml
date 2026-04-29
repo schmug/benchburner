@@ -39,6 +39,15 @@ jobs:
         env:
           PUPPETEER_SKIP_DOWNLOAD: "true"
 
+      - name: Fetch orchestrator/* branches
+        # actions/checkout@v4 only fetches the target ref's objects, even
+        # with fetch-depth: 0. Branch ref pointers may appear under
+        # refs/remotes/origin/, but their tree/blob objects are missing
+        # — git ls-tree silently returns empty. Fetch them explicitly.
+        run: |
+          git fetch --no-tags --prune origin \
+            '+refs/heads/orchestrator/*:refs/remotes/origin/orchestrator/*'
+
       - name: Harvest results from orchestrator/* branches
         run: |
           set -euo pipefail
