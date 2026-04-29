@@ -53,8 +53,8 @@ jobs:
           set -euo pipefail
           mkdir -p results
           # Discover branches via the GitHub API. GITHUB_REPOSITORY is
-          # set on every runner; avoids interpolating ${{ }} into the
-          # shell command body.
+          # set on every runner; the env block above carries the token,
+          # so the shell body itself stays free of GHA expressions.
           branches=$(gh api "repos/$GITHUB_REPOSITORY/branches" \
             --paginate --jq '.[] | select(.name | startswith("orchestrator/")) | .name')
           if [ -z "$branches" ]; then
