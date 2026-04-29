@@ -511,6 +511,7 @@ function indexHtml(): string {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>benchburner — orchestration leaderboard</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
 ${FONT_LINKS}
 <link rel="stylesheet" href="styles.css" />
 <link rel="stylesheet" href="extra.css" />
@@ -533,6 +534,7 @@ function aboutHtml(): string {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>benchburner — about / methodology</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
 ${FONT_LINKS}
 <link rel="stylesheet" href="styles.css" />
 <link rel="stylesheet" href="extra.css" />
@@ -555,6 +557,7 @@ function runHtml(runId: string): string {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>benchburner — run ${escapeHtml(runId)}</title>
+<link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
 ${FONT_LINKS}
 <link rel="stylesheet" href="../../styles.css" />
 <link rel="stylesheet" href="../../extra.css" />
@@ -589,7 +592,7 @@ function emit(machine: MachineLeaderboard, design: DesignData): void {
   mkdirSync(PAGES_DIR, { recursive: true });
 
   // Static design assets — copied verbatim from templates/.
-  for (const asset of ["styles.css", "extra.css", "app.jsx", "tweaks-panel.jsx", "run-detail.jsx", "about.jsx"]) {
+  for (const asset of ["styles.css", "extra.css", "app.jsx", "tweaks-panel.jsx", "run-detail.jsx", "about.jsx", "favicon.svg"]) {
     copyTemplateAsset(asset);
   }
 

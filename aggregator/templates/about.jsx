@@ -10,9 +10,11 @@ function AboutPage() {
           <div className="bb-header-top">
             <div className="bb-brand">
               <div className="bb-brand-mark">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <rect x="1.5" y="1.5" width="17" height="17" rx="2" stroke="var(--bb-fg)" strokeWidth="1.2"/>
-                  <path d="M5 14 L5 6 L9 6 Q11 6 11 8 Q11 10 9 10 L5 10 M9 10 Q12 10 12 12 Q12 14 9 14 Z" stroke="var(--bb-accent)" strokeWidth="1.2" fill="none"/>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="14" height="14" stroke="var(--bb-accent)" strokeWidth="2" fill="none" />
+                  <circle cx="0" cy="0" r="3.5" fill="var(--bb-accent)">
+                    <animateMotion dur="8s" repeatCount="indefinite" path="M17,17 L3,17 L3,3 L17,3 Z" rotate="0" />
+                  </circle>
                 </svg>
               </div>
               <div className="bb-brand-text">
