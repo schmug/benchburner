@@ -67,6 +67,45 @@ function main(): void {
   const built = buildOrchestratorPrompt(makeInput(3600), 8675309);
   assert(built.system.includes("the 1-hour window"), "buildOrchestratorPrompt routes input.total_duration_seconds into prompt");
   assert(built.leak_check_violations.length === 0, "leak detector clean for benign 1h prompt");
+
+  // ── (3) detectLeaks: seed digit-substring of duration must NOT fire ──
+  // 86400 contains "8640" as a substring. Pre-fix detector trips here.
+  const promptWith86400 = "the 24-hour window total_duration_seconds: 86400";
+  assert(
+    detectLeaks(promptWith86400, 8640).length === 0,
+    "seed 8640 not flagged as leaking when 86400 appears (word-boundary required)",
+  );
+
+  // 3600 contains "360" as a substring; same shape.
+  const promptWith3600 = "the 1-hour window total_duration_seconds: 3600";
+  assert(
+    detectLeaks(promptWith3600, 360).length === 0,
+    "seed 360 not flagged when 3600 appears",
+  );
+
+  // Real seed leak (word-boundary match): bare seed in prose.
+  const promptWithBareSeed = "the 24-hour window debug seed=8640 ok";
+  const violations = detectLeaks(promptWithBareSeed, 8640);
+  assert(
+    violations.includes("seed:8640"),
+    "bare seed token 8640 IS flagged",
+  );
+
+  // Seed embedded inside another digit string of the same length: still
+  // a substring, so word-boundary blocks it. Defensible — false positives
+  // were the regression risk.
+  const promptWithSeedInsideNumber = "value=186402 ok";
+  assert(
+    detectLeaks(promptWithSeedInsideNumber, 8640).length === 0,
+    "seed 8640 not flagged when embedded inside 186402",
+  );
+
+  // Short seeds (< 3 digits) remain exempt — pre-existing policy.
+  const promptWithShortSeed = "value=42 here";
+  assert(
+    detectLeaks(promptWithShortSeed, 42).length === 0,
+    "short seed (<3 chars) still exempt from leak check",
+  );
 }
 
 main();
