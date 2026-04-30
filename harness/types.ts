@@ -117,6 +117,7 @@ export interface SubagentStatus {
 export interface OrchestratorInput {
   cycle_number: number;
   elapsed_time_seconds: number;
+  total_duration_seconds: number;
   game_state: GameState;
   subagent_status: SubagentStatus[];
   delegation_history: Array<{ instruction: Instruction; result: Result | null }>;
