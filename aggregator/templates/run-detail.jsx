@@ -59,7 +59,7 @@ function BigChart({ points, augmentHours, accent = "var(--bb-accent)", height = 
   const yticks = [0, 0.25, 0.5, 0.75, 1].map((f) => ({ y: pad.t + h - f * h, v: max * f }));
   const xticks = [0, 4, 8, 12, 16, 20, 24].map((hr) => ({ x: pad.l + (hr / 24) * w, v: hr }));
   return (
-    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ display: "block" }}>
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ display: "block", width: "100%", height: "auto" }}>
       {yticks.map((t, i) => (
         <g key={i}>
           <line x1={pad.l} x2={pad.l + w} y1={t.y} y2={t.y} stroke="var(--bb-grid)" strokeDasharray="2 3" />

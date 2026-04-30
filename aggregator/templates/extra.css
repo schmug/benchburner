@@ -260,14 +260,45 @@
   margin: 16px 0;
 }
 
+/* About + run-detail grids: keep wide-content children (asciibox, code blocks,
+   prose with <pre>) from forcing horizontal scroll on the whole page. */
+.bb-about-grid > *,
+.bb-prose,
+.bb-runhero > * { min-width: 0; }
+.bb-asciibox { max-width: 100%; }
+
 @media (max-width: 1100px) {
   .bb-runhero { grid-template-columns: 1fr; gap: 24px; }
   .bb-runhero-right { border-left: 0; padding-left: 0; border-top: 1px solid var(--bb-rule); padding-top: 18px; justify-content: flex-start; }
   .bb-stats { grid-template-columns: repeat(3, 1fr); }
-  .bb-stat:nth-child(3) { border-right: 0; }
+  .bb-stat:nth-child(3n) { border-right: 0; }
   .bb-stat:nth-child(n+4) { border-top: 1px solid var(--bb-rule); }
   .bb-about-grid { grid-template-columns: 1fr; gap: 32px; }
   .bb-stripe-row { grid-template-columns: 140px 1fr 80px; }
   .bb-stripe-axis { margin-left: 156px; margin-right: 96px; }
   .bb-repro-row { grid-template-columns: 1fr; gap: 4px; }
+}
+
+@media (max-width: 720px) {
+  .bb-runhero-money-value { font-size: 44px; }
+  .bb-runhero-title { font-size: clamp(28px, 7vw, 36px); }
+
+  /* Stripe gantt: drop the per-row label column down so the track can breathe. */
+  .bb-stripe-row {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "label count"
+      "track track";
+    gap: 4px 12px;
+  }
+  .bb-stripe-label { grid-area: label; }
+  .bb-stripe-count { grid-area: count; }
+  .bb-stripe-track { grid-area: track; }
+  .bb-stripe-axis { margin-left: 0; margin-right: 0; }
+
+  .bb-pagenav { flex-direction: column; gap: 8px; }
+  .bb-prose h2 { font-size: 20px; margin: 36px 0 12px; }
+  .bb-prose p, .bb-prose ul, .bb-prose ol { font-size: 14px; }
+  .bb-asciibox { font-size: 10px; padding: 12px; }
+  .bb-tabs { flex-wrap: wrap; }
 }
