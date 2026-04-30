@@ -53,7 +53,7 @@ function BigChart({ points, accent, height = 200, width = 760 }) {
   const yticks = [0, 0.25, 0.5, 0.75, 1].map((f) => ({ y: pad.t + h - f * h, v: max * f }));
   const xticks = [0, 6, 12, 18, 24].map((hr) => ({ x: pad.l + (hr / 24) * w, v: hr }));
   return (
-    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ display: "block" }}>
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ display: "block", width: "100%", height: "auto" }}>
       {yticks.map((t, i) => (
         <g key={i}>
           <line x1={pad.l} x2={pad.l + w} y1={t.y} y2={t.y} stroke="var(--bb-grid)" strokeDasharray="2 3" />
@@ -234,8 +234,8 @@ function Leaderboard({ entries, sortKey, setSortKey, expanded, setExpanded, show
     return arr;
   }, [entries, sortKey]);
 
-  const SortHead = ({ k, children, align = "left" }) => (
-    <th className={`bb-th bb-th-${align} ${sortKey === k ? "bb-th-active" : ""}`} onClick={() => setSortKey(k)}>
+  const SortHead = ({ k, children, align = "left", cls = "" }) => (
+    <th className={`bb-th bb-th-${align} ${sortKey === k ? "bb-th-active" : ""} ${cls}`} onClick={() => setSortKey(k)}>
       <span>{children}</span>
       {sortKey === k && <span className="bb-th-arrow">↓</span>}
     </th>
@@ -259,12 +259,12 @@ function Leaderboard({ entries, sortKey, setSortKey, expanded, setExpanded, show
               <th className="bb-th bb-th-num">#</th>
               <th className="bb-th">orchestrator</th>
               <SortHead k="final_money" align="right">final_money</SortHead>
-              {showSparklines && <th className="bb-th bb-th-spark">trajectory</th>}
-              <SortHead k="bitnodes_completed" align="right">bn</SortHead>
-              <SortHead k="augments_installed" align="right">aug</SortHead>
-              <SortHead k="delegations" align="right">delegations</SortHead>
-              <SortHead k="scripts_run" align="right">scripts</SortHead>
-              <SortHead k="tokens_used" align="right">tokens</SortHead>
+              {showSparklines && <th className="bb-th bb-th-spark bb-col-md">trajectory</th>}
+              <SortHead k="bitnodes_completed" align="right" cls="bb-col-sm">bn</SortHead>
+              <SortHead k="augments_installed" align="right" cls="bb-col-md">aug</SortHead>
+              <SortHead k="delegations" align="right" cls="bb-col-sm">delegations</SortHead>
+              <SortHead k="scripts_run" align="right" cls="bb-col-md">scripts</SortHead>
+              <SortHead k="tokens_used" align="right" cls="bb-col-md">tokens</SortHead>
               <th className="bb-th">status</th>
               <th className="bb-th bb-th-chev"></th>
             </tr>
@@ -312,15 +312,15 @@ function Row({ entry, expanded, onToggle, showSparklines, anonymousReveal }) {
           <div className="bb-money">{formatMoney(entry.final_money)}</div>
         </td>
         {showSparklines && (
-          <td className="bb-td bb-td-spark">
+          <td className="bb-td bb-td-spark bb-col-md">
             <Sparkline points={entry.snapshots} accent="var(--bb-accent)" />
           </td>
         )}
-        <td className="bb-td bb-td-num"><span className={entry.bitnodes_completed > 0 ? "bb-bn-yes" : "bb-bn-no"}>{entry.bitnodes_completed}</span></td>
-        <td className="bb-td bb-td-num bb-mono bb-dim">{entry.augments_installed}</td>
-        <td className="bb-td bb-td-num bb-mono">{formatInt(entry.delegations)}</td>
-        <td className="bb-td bb-td-num bb-mono bb-dim">{formatInt(entry.scripts_run)}</td>
-        <td className="bb-td bb-td-num bb-mono bb-dim">{(entry.tokens_used / 1e6).toFixed(2)}M</td>
+        <td className="bb-td bb-td-num bb-col-sm"><span className={entry.bitnodes_completed > 0 ? "bb-bn-yes" : "bb-bn-no"}>{entry.bitnodes_completed}</span></td>
+        <td className="bb-td bb-td-num bb-mono bb-dim bb-col-md">{entry.augments_installed}</td>
+        <td className="bb-td bb-td-num bb-mono bb-col-sm">{formatInt(entry.delegations)}</td>
+        <td className="bb-td bb-td-num bb-mono bb-dim bb-col-md">{formatInt(entry.scripts_run)}</td>
+        <td className="bb-td bb-td-num bb-mono bb-dim bb-col-md">{(entry.tokens_used / 1e6).toFixed(2)}M</td>
         <td className="bb-td"><StatusPill status={entry.status} /></td>
         <td className="bb-td bb-td-chev">
           <span className={`bb-chev ${expanded ? "bb-chev-open" : ""}`}>›</span>
@@ -389,6 +389,8 @@ function RunDetail({ entry }) {
             <div className="bb-dim bb-mono" style={{ paddingBottom: 12, fontSize: 11 }}>roster not recorded</div>
           )}
           <div className="bb-kvs">
+            <KV k="bitnodes cleared" v={String(entry.bitnodes_completed)} />
+            <KV k="augments installed" v={String(entry.augments_installed)} />
             <KV k="delegations" v={formatInt(entry.delegations)} />
             <KV k="scripts run" v={formatInt(entry.scripts_run)} />
             <KV k="subagent errors" v={String(entry.subagent_errors)} bad={entry.subagent_errors > 30} />
