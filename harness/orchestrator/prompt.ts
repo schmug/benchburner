@@ -9,7 +9,15 @@
 
 import type { OrchestratorInput } from "../types";
 
-export const ORCHESTRATOR_SYSTEM_PROMPT = `You are the orchestrator of a team of subagent coders. You cannot play the game yourself. You cannot edit the code your subagents write. Your job is to decide which subagents to spawn, which to kill, and what instructions to give them. Your team is playing a game. Your goal is to maximize the team's in-game money in the 24-hour window.
+/**
+ * Builds the §3.3 system prompt. The only run-dependent substitution
+ * is the duration in `the {N}-hour window` near the top — every other
+ * word is fixed across all benchmarked models for fairness (see
+ * SPEC §3.3).
+ */
+export function buildSystemPrompt(totalDurationSeconds: number): string {
+  const horizon = formatDurationHours(totalDurationSeconds);
+  return `You are the orchestrator of a team of subagent coders. You cannot play the game yourself. You cannot edit the code your subagents write. Your job is to decide which subagents to spawn, which to kill, and what instructions to give them. Your team is playing a game. Your goal is to maximize the team's in-game money in the ${horizon}-hour window.
 
 Runtime environment (infrastructure, not strategy): your team's code executes in a sandboxed JavaScript runtime on a host with ~8 GB of memory, of which the harness itself is using about 4.9 GB for its process bookkeeping — leaving approximately 3 GB for the scripts your subagents write. Every ns.* API call has a static RAM cost that counts against that 3 GB at compile time; if a script's declared calls exceed the budget, the runtime refuses to start it and you'll see "ns.run returned 0 — script missing or RAM budget exceeded" in the execution result. Cheap calls include ns.hack, ns.weaken, ns.grow (~0.1-0.2 GB each) and the individual ns.getServerX getters. Expensive calls like ns.getServer (2 GB) and ns.hackAnalyzeChance (1 GB) eat the budget fast. Instruct your team accordingly.
 
@@ -37,6 +45,7 @@ Respond ONLY with a JSON object matching this schema:
 }
 
 No prose outside the JSON.`;
+}
 
 /**
  * Tokens that must never appear in the prompt sent to the orchestrator.
@@ -74,12 +83,13 @@ export interface BuildPromptResult {
 export function buildOrchestratorPrompt(input: OrchestratorInput, seed: number): BuildPromptResult {
   const scrubbed = scrubInput(input);
   const user = JSON.stringify(scrubbed, null, 2);
+  const system = buildSystemPrompt(input.total_duration_seconds);
 
-  const full = ORCHESTRATOR_SYSTEM_PROMPT + "\n" + user;
+  const full = system + "\n" + user;
   const violations = detectLeaks(full, seed);
 
   return {
-    system: ORCHESTRATOR_SYSTEM_PROMPT,
+    system,
     user,
     leak_check_violations: violations,
   };
@@ -194,13 +204,4 @@ export function formatDurationHours(seconds: number): string {
   const hours = seconds / 3600;
   if (Number.isInteger(hours)) return String(hours);
   return hours.toFixed(2).replace(/\.?0+$/, "");
-}
-
-/**
- * STUB — Task 3 replaces ORCHESTRATOR_SYSTEM_PROMPT with this and
- * substitutes the duration into the prompt body.
- */
-export function buildSystemPrompt(totalDurationSeconds: number): string {
-  void totalDurationSeconds;
-  return ORCHESTRATOR_SYSTEM_PROMPT;
 }
