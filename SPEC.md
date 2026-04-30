@@ -187,6 +187,7 @@ Invoked every `polling_interval_seconds` (default 60).
 {
   "cycle_number": 42,
   "elapsed_time_seconds": 10800,
+  "total_duration_seconds": 86400,
   "game_state": {
     "current_money": 50000000,
     "bitnode_id": 1,
@@ -230,14 +231,14 @@ A cycle may emit zero or more actions. `noop` is a valid single action if the or
 
 ### 3.3 Orchestrator Prompt Template (Skeleton)
 
-The harness wraps each cycle's input JSON in a system + user prompt. The exact wording should be fixed across all benchmarked models for fairness.
+The harness wraps each cycle's input JSON in a system + user prompt. The exact wording should be fixed across all benchmarked models within a single benchmark cycle for fairness; the only run-dependent substitution is the `{N}-hour window` token in the skeleton below, which is replaced with the run's effective duration in hours (integer for whole-hour runs, up to 2 decimal places with trailing zeros trimmed for fractional-hour runs). Cross-cycle comparisons are only meaningful when `duration_hours` matches.
 
 ```
 SYSTEM: You are the orchestrator of a team of subagent coders. You cannot
 play the game yourself. You cannot edit the code your subagents write.
 Your job is to decide which subagents to spawn, which to kill, and what
 instructions to give them. Your team is playing a game. Your goal is to
-maximize the team's in-game money in the 24-hour window.
+maximize the team's in-game money in the {N}-hour window.
 
 You can only observe what your subagents report back, plus periodic game
 state snapshots from the backend. You have no other visibility.
