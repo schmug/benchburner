@@ -192,8 +192,15 @@ export function detectLeaks(text: string, seed: number): string[] {
     if (re.test(text)) hits.push(tok);
   }
   const seedStr = String(seed);
-  if (seedStr.length >= 3 && text.includes(seedStr)) {
-    hits.push(`seed:${seedStr}`);
+  if (seedStr.length >= 3) {
+    // Word-boundary match mirrors the forbidden-token loop above:
+    // a seed embedded as a digit-substring of an unrelated number
+    // (e.g. 8640 inside total_duration_seconds=86400) is not a real
+    // leak. Without this, the new total_duration_seconds field would
+    // false-trigger the detector for entire classes of seed values
+    // and fail runs at SPEC §3.3 leak audit.
+    const re = new RegExp(`\\b${seedStr}\\b`);
+    if (re.test(text)) hits.push(`seed:${seedStr}`);
   }
   return hits;
 }
