@@ -231,7 +231,7 @@ A cycle may emit zero or more actions. `noop` is a valid single action if the or
 
 ### 3.3 Orchestrator Prompt Template (Skeleton)
 
-The harness wraps each cycle's input JSON in a system + user prompt. The exact wording should be fixed across all benchmarked models within a single benchmark cycle for fairness; the only run-dependent substitution is the `{N}-hour window` token in the skeleton below, which is replaced with the run's effective duration in hours (integer for whole-hour runs, up to 2 decimal places with trailing zeros trimmed for fractional-hour runs). Cross-cycle comparisons are only meaningful when `duration_hours` matches.
+The harness wraps each cycle's input JSON in a system + user prompt. The exact wording (other than the `{N}-hour window` substitution below) should be fixed across all benchmarked models for fairness. `{N}` is replaced at prompt-build time with the run's effective duration in hours: integer for whole-hour runs; otherwise up to 2 decimal places, trailing zeros trimmed. Cross-run comparisons are only meaningful when `duration_hours` matches.
 
 ```
 SYSTEM: You are the orchestrator of a team of subagent coders. You cannot
