@@ -59,7 +59,7 @@ function BigChart({ points, augmentHours, accent = "var(--bb-accent)", height = 
   const yticks = [0, 0.25, 0.5, 0.75, 1].map((f) => ({ y: pad.t + h - f * h, v: max * f }));
   const xticks = [0, 4, 8, 12, 16, 20, 24].map((hr) => ({ x: pad.l + (hr / 24) * w, v: hr }));
   return (
-    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ display: "block" }}>
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ display: "block", width: "100%", height: "auto" }}>
       {yticks.map((t, i) => (
         <g key={i}>
           <line x1={pad.l} x2={pad.l + w} y1={t.y} y2={t.y} stroke="var(--bb-grid)" strokeDasharray="2 3" />
@@ -143,9 +143,11 @@ function RunPage() {
           <div className="bb-header-top">
             <div className="bb-brand">
               <div className="bb-brand-mark">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <rect x="1.5" y="1.5" width="17" height="17" rx="2" stroke="var(--bb-fg)" strokeWidth="1.2"/>
-                  <path d="M5 14 L5 6 L9 6 Q11 6 11 8 Q11 10 9 10 L5 10 M9 10 Q12 10 12 12 Q12 14 9 14 Z" stroke="var(--bb-accent)" strokeWidth="1.2" fill="none"/>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="14" height="14" stroke="var(--bb-accent)" strokeWidth="2" fill="none" />
+                  <circle cx="0" cy="0" r="3.5" fill="var(--bb-accent)">
+                    <animateMotion dur="8s" repeatCount="indefinite" path="M17,17 L3,17 L3,3 L17,3 Z" rotate="0" />
+                  </circle>
                 </svg>
               </div>
               <div className="bb-brand-text">
