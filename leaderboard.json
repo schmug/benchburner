@@ -1,9 +1,26 @@
 {
-  "generated_at": "2026-04-30T05:03:45.304Z",
+  "generated_at": "2026-04-30T12:31:59.674Z",
   "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad",
   "entries": [
     {
       "rank": 1,
+      "orchestrator_model": "claude-sonnet-4.6",
+      "display_model": "claude-sonnet-4.6",
+      "attribution": "public",
+      "run_count": 8,
+      "final_money_mean": 290315,
+      "final_money_std": 763629,
+      "final_money_min": 1262,
+      "final_money_max": 2022061,
+      "completed_runs": 7,
+      "failed_runs": 1,
+      "latest_run_id": "09521fa2-de01-4108-afe0-1fb278511d38",
+      "latest_artifact_url": "runs/09521fa2-de01-4108-afe0-1fb278511d38/",
+      "branch": "main",
+      "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad"
+    },
+    {
+      "rank": 2,
       "orchestrator_model": "claude-haiku-4.5",
       "display_model": "claude-haiku-4.5",
       "attribution": "public",
@@ -20,7 +37,7 @@
       "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad"
     },
     {
-      "rank": 2,
+      "rank": 3,
       "orchestrator_model": "claude-opus-4.7",
       "display_model": "claude-opus-4.7",
       "attribution": "public",
@@ -37,7 +54,7 @@
       "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad"
     },
     {
-      "rank": 3,
+      "rank": 4,
       "orchestrator_model": "gpt-5.4",
       "display_model": "gpt-5.4",
       "attribution": "public",
@@ -50,23 +67,6 @@
       "failed_runs": 0,
       "latest_run_id": "3d161bcf-f297-4e39-82cd-9b2c629b43fd",
       "latest_artifact_url": "runs/3d161bcf-f297-4e39-82cd-9b2c629b43fd/",
-      "branch": "main",
-      "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad"
-    },
-    {
-      "rank": 4,
-      "orchestrator_model": "claude-sonnet-4.6",
-      "display_model": "claude-sonnet-4.6",
-      "attribution": "public",
-      "run_count": 7,
-      "final_money_mean": 1691,
-      "final_money_std": 802,
-      "final_money_min": 1262,
-      "final_money_max": 3258,
-      "completed_runs": 6,
-      "failed_runs": 1,
-      "latest_run_id": "ef08951c-f3fe-4e3c-8921-8370da48fa81",
-      "latest_artifact_url": "runs/ef08951c-f3fe-4e3c-8921-8370da48fa81/",
       "branch": "main",
       "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad"
     },
@@ -174,6 +174,21 @@
     }
   ],
   "raw_runs": [
+    {
+      "run_id": "09521fa2-de01-4108-afe0-1fb278511d38",
+      "orchestrator_model": "claude-sonnet-4.6",
+      "attribution": "public",
+      "final_money": 2022061,
+      "bitnodes_completed": 0,
+      "augments_installed": 0,
+      "status": "completed",
+      "failure_reason": null,
+      "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad",
+      "start_time": "2026-04-29T11:45:20.646Z",
+      "end_time": "2026-04-30T11:45:28.268Z",
+      "duration_hours": 24,
+      "artifact_url": "runs/09521fa2-de01-4108-afe0-1fb278511d38/"
+    },
     {
       "run_id": "e2b306aa-5734-4649-8747-4f79ade686cf",
       "orchestrator_model": "claude-haiku-4.5",

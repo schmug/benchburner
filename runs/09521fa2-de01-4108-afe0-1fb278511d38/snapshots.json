@@ -1,0 +1,327 @@
+[
+  {
+    "snapshot_id": "a2f06466-5609-42c1-9128-d82229e1c020",
+    "hour": 0,
+    "game_state": {
+      "current_money": 1262,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777463126787,
+      "timestamp": "2026-04-29T11:45:26.787Z"
+    },
+    "timestamp": "2026-04-29T11:45:26.793Z"
+  },
+  {
+    "snapshot_id": "68781035-2fca-48ee-a83c-c9c723ed7700",
+    "hour": 1,
+    "game_state": {
+      "current_money": 11433,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777466726337,
+      "timestamp": "2026-04-29T12:45:26.337Z"
+    },
+    "timestamp": "2026-04-29T12:45:26.794Z"
+  },
+  {
+    "snapshot_id": "2ea8fdd5-f505-435c-b853-fde09c431c7c",
+    "hour": 2,
+    "game_state": {
+      "current_money": 23388,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777470326335,
+      "timestamp": "2026-04-29T13:45:26.335Z"
+    },
+    "timestamp": "2026-04-29T13:45:26.796Z"
+  },
+  {
+    "snapshot_id": "1d400319-f3d0-4027-941f-0e35fceaf58d",
+    "hour": 3,
+    "game_state": {
+      "current_money": 23388,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777473926481,
+      "timestamp": "2026-04-29T14:45:26.481Z"
+    },
+    "timestamp": "2026-04-29T14:45:26.794Z"
+  },
+  {
+    "snapshot_id": "5d95a639-8016-43df-bcbc-d637ddedf4c3",
+    "hour": 4,
+    "game_state": {
+      "current_money": 132966,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777477526580,
+      "timestamp": "2026-04-29T15:45:26.580Z"
+    },
+    "timestamp": "2026-04-29T15:45:26.792Z"
+  },
+  {
+    "snapshot_id": "aa5f961e-ca9c-4ee2-a49c-a5edfd591214",
+    "hour": 5,
+    "game_state": {
+      "current_money": 497077,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777481126423,
+      "timestamp": "2026-04-29T16:45:26.423Z"
+    },
+    "timestamp": "2026-04-29T16:45:26.793Z"
+  },
+  {
+    "snapshot_id": "bb3e79e4-5147-4cf8-9f06-775068eb45c7",
+    "hour": 6,
+    "game_state": {
+      "current_money": 799924,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777484726440,
+      "timestamp": "2026-04-29T17:45:26.440Z"
+    },
+    "timestamp": "2026-04-29T17:45:26.793Z"
+  },
+  {
+    "snapshot_id": "beab7f99-dff9-4639-8d66-d0a738d3d47d",
+    "hour": 7,
+    "game_state": {
+      "current_money": 1162750,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777488326644,
+      "timestamp": "2026-04-29T18:45:26.644Z"
+    },
+    "timestamp": "2026-04-29T18:45:26.795Z"
+  },
+  {
+    "snapshot_id": "b4fac2cf-9151-457d-907a-2b2f895e64fe",
+    "hour": 8,
+    "game_state": {
+      "current_money": 1430939,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777491926411,
+      "timestamp": "2026-04-29T19:45:26.411Z"
+    },
+    "timestamp": "2026-04-29T19:45:26.794Z"
+  },
+  {
+    "snapshot_id": "7f5a66da-7c42-447a-9538-d1d446a7f653",
+    "hour": 9,
+    "game_state": {
+      "current_money": 1615214,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777495526750,
+      "timestamp": "2026-04-29T20:45:26.750Z"
+    },
+    "timestamp": "2026-04-29T20:45:26.794Z"
+  },
+  {
+    "snapshot_id": "d95d2654-b3b8-44e6-8502-dca447a39e04",
+    "hour": 10,
+    "game_state": {
+      "current_money": 1744020,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777499126550,
+      "timestamp": "2026-04-29T21:45:26.550Z"
+    },
+    "timestamp": "2026-04-29T21:45:26.794Z"
+  },
+  {
+    "snapshot_id": "26915f9a-d227-40c0-83e1-c5efee455608",
+    "hour": 11,
+    "game_state": {
+      "current_money": 1838971,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777502726366,
+      "timestamp": "2026-04-29T22:45:26.366Z"
+    },
+    "timestamp": "2026-04-29T22:45:26.794Z"
+  },
+  {
+    "snapshot_id": "53cac426-9936-48ee-9e88-e9688b2f367d",
+    "hour": 12,
+    "game_state": {
+      "current_money": 1900619,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777506326696,
+      "timestamp": "2026-04-29T23:45:26.696Z"
+    },
+    "timestamp": "2026-04-29T23:45:26.794Z"
+  },
+  {
+    "snapshot_id": "e23d47b7-65a0-4f22-8065-364b23007580",
+    "hour": 13,
+    "game_state": {
+      "current_money": 1938505,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777509926501,
+      "timestamp": "2026-04-30T00:45:26.501Z"
+    },
+    "timestamp": "2026-04-30T00:45:26.794Z"
+  },
+  {
+    "snapshot_id": "e1d65a6f-a232-4f22-a9ad-454a67a71b10",
+    "hour": 14,
+    "game_state": {
+      "current_money": 1967186,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777513526323,
+      "timestamp": "2026-04-30T01:45:26.323Z"
+    },
+    "timestamp": "2026-04-30T01:45:26.793Z"
+  },
+  {
+    "snapshot_id": "ebee5855-438d-4f32-b84f-f3d66c33bfe7",
+    "hour": 15,
+    "game_state": {
+      "current_money": 1990861,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777517126737,
+      "timestamp": "2026-04-30T02:45:26.737Z"
+    },
+    "timestamp": "2026-04-30T02:45:26.794Z"
+  },
+  {
+    "snapshot_id": "1d0f3023-5433-4008-a43e-29eea586cc47",
+    "hour": 16,
+    "game_state": {
+      "current_money": 2004734,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777520726545,
+      "timestamp": "2026-04-30T03:45:26.545Z"
+    },
+    "timestamp": "2026-04-30T03:45:26.794Z"
+  },
+  {
+    "snapshot_id": "d374028f-c1e6-4ef8-b280-e15f49092d5e",
+    "hour": 17,
+    "game_state": {
+      "current_money": 2012591,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777524326626,
+      "timestamp": "2026-04-30T04:45:26.626Z"
+    },
+    "timestamp": "2026-04-30T04:45:26.794Z"
+  },
+  {
+    "snapshot_id": "03d5ac55-51a5-4f83-a9cc-627790877484",
+    "hour": 18,
+    "game_state": {
+      "current_money": 2017035,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777527926423,
+      "timestamp": "2026-04-30T05:45:26.423Z"
+    },
+    "timestamp": "2026-04-30T05:45:26.794Z"
+  },
+  {
+    "snapshot_id": "c510bc48-2479-41d5-99ba-59f826a5ec67",
+    "hour": 19,
+    "game_state": {
+      "current_money": 2019697,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777531526612,
+      "timestamp": "2026-04-30T06:45:26.612Z"
+    },
+    "timestamp": "2026-04-30T06:45:26.794Z"
+  },
+  {
+    "snapshot_id": "f36d823a-e3af-4ef2-8d58-b403ec1240b2",
+    "hour": 20,
+    "game_state": {
+      "current_money": 2021263,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777535126439,
+      "timestamp": "2026-04-30T07:45:26.439Z"
+    },
+    "timestamp": "2026-04-30T07:45:26.794Z"
+  },
+  {
+    "snapshot_id": "98979f86-f0be-4047-8cb6-5e46f5dfc7ee",
+    "hour": 21,
+    "game_state": {
+      "current_money": 2022061,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777538726699,
+      "timestamp": "2026-04-30T08:45:26.699Z"
+    },
+    "timestamp": "2026-04-30T08:45:26.793Z"
+  },
+  {
+    "snapshot_id": "1124e53f-5955-49bf-a957-4376ecdd3b54",
+    "hour": 22,
+    "game_state": {
+      "current_money": 2022061,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777542326533,
+      "timestamp": "2026-04-30T09:45:26.533Z"
+    },
+    "timestamp": "2026-04-30T09:45:26.794Z"
+  },
+  {
+    "snapshot_id": "ba92c3a5-fe70-4852-bcf2-d6a6d1468065",
+    "hour": 23,
+    "game_state": {
+      "current_money": 2022061,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777545926603,
+      "timestamp": "2026-04-30T10:45:26.603Z"
+    },
+    "timestamp": "2026-04-30T10:45:26.795Z"
+  },
+  {
+    "snapshot_id": "c04b48a3-cd9c-4d50-b6f8-015ad4aa97cc",
+    "hour": 24,
+    "game_state": {
+      "current_money": 2022061,
+      "bitnode_id": 1,
+      "bitnode_complete": false,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1777549526674,
+      "timestamp": "2026-04-30T11:45:26.674Z"
+    },
+    "timestamp": "2026-04-30T11:45:26.795Z"
+  }
+]
