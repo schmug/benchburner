@@ -138,9 +138,19 @@ export function loadRunConfig(yamlPath: string): RunConfig {
 
   // game (both sub-keys required)
   const gameRaw = asRecord(root.game, "game");
+  const seed = asInteger(gameRaw.seed, "game.seed");
+  // Seeds must be non-negative: the orchestrator's leak detector
+  // matches String(seed) against the rendered prompt, and negative
+  // integers stringify with a leading "-" (a non-word character).
+  // Word-boundary regex matching can miss "value=-1234" because both
+  // sides are non-word, leaking the seed. Enforce the contract here
+  // so detectLeaks can stay simple.
+  if (seed < 0) {
+    fail(`game.seed must be a non-negative integer (got ${seed}); negative seeds bypass orchestrator leak detection`);
+  }
   const game = {
     bitburner_commit: asString(gameRaw.bitburner_commit, "game.bitburner_commit"),
-    seed: asInteger(gameRaw.seed, "game.seed"),
+    seed,
   };
 
   // duration_hours
