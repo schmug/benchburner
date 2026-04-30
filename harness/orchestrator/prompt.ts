@@ -189,3 +189,18 @@ export function detectLeaks(text: string, seed: number): string[] {
 }
 
 export const __testing = { scrubInput };
+
+export function formatDurationHours(seconds: number): string {
+  const hours = seconds / 3600;
+  if (Number.isInteger(hours)) return String(hours);
+  return hours.toFixed(2).replace(/\.?0+$/, "");
+}
+
+/**
+ * STUB — Task 3 replaces ORCHESTRATOR_SYSTEM_PROMPT with this and
+ * substitutes the duration into the prompt body.
+ */
+export function buildSystemPrompt(totalDurationSeconds: number): string {
+  void totalDurationSeconds;
+  return ORCHESTRATOR_SYSTEM_PROMPT;
+}
