@@ -1,0 +1,38 @@
+# PR-triggered checks. Cheap, no game boot, no self-hosted runner.
+#
+# Today this runs the time-awareness smoke (standalone, no Bitburner).
+# Other smokes (e.g. harness/game/rfa-smoke.ts) require a live Puppeteer-
+# backed game and belong on the self-hosted runner via run.yml, not here.
+#
+# Security: this workflow consumes no untrusted user input — no
+# github.event.* interpolation in run blocks. Safe by construction.
+
+name: ci
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install deps
+        run: npm ci
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+
+      - name: Time-awareness smoke
+        run: npm run smoke:time-awareness

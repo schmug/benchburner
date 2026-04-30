@@ -95,6 +95,10 @@ export interface LoopOptions {
   game: GameController;
   pool: SubagentPool;
   registry: InferenceRegistry;
+  /** Total run duration in seconds (config.duration_hours * 3600 unless
+   *  BENCHBURNER_DURATION_SEC override is in effect). Single source of
+   *  truth shared with the §3.3 prompt template substitution. */
+  totalDurationSeconds: number;
   /** Directory where orchestrator-prompts.log is appended. */
   logDir: string;
   /** Called on fatal conditions (hang, inference model missing). */
@@ -116,6 +120,7 @@ export class OrchestratorLoop {
   private readonly pool: SubagentPool;
   private readonly registry: InferenceRegistry;
   private readonly logDir: string;
+  private readonly totalDurationSeconds: number;
   private readonly onFatal: (reason: string) => void;
 
   private readonly history: HistoryBuffer;
@@ -152,6 +157,7 @@ export class OrchestratorLoop {
     this.pool = opts.pool;
     this.registry = opts.registry;
     this.logDir = opts.logDir;
+    this.totalDurationSeconds = opts.totalDurationSeconds;
     this.onFatal = opts.onFatal;
     this.history = new HistoryBuffer(opts.config.orchestrator.history_window);
     mkdirSync(this.logDir, { recursive: true });
@@ -296,6 +302,7 @@ export class OrchestratorLoop {
     return {
       cycle_number: this.cycle,
       elapsed_time_seconds: elapsedSeconds,
+      total_duration_seconds: this.totalDurationSeconds,
       game_state: this.latestState ?? { current_money: 0, bitnode_id: 1, bitnode_complete: false },
       subagent_status,
       delegation_history: verbatim,

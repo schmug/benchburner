@@ -149,6 +149,7 @@ async function main(): Promise<void> {
     game,
     pool,
     registry,
+    totalDurationSeconds: effectiveDurationSec,
     logDir: runDir,
     onFatal: (reason) => {
       if (!fatal) fatal = reason;
