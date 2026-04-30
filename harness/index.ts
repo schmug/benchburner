@@ -9,6 +9,13 @@
  *   BENCHBURNER_USE_MOCK=1      # use MockGame instead of PuppeteerGame
  *   BENCHBURNER_RFA_PORT=N      # override RFA WebSocket port (default 12525);
  *                               # use distinct ports to run two harnesses in parallel
+ *   BENCHBURNER_AUTO_PUSH=1     # after the artifact commit, `git push origin HEAD`.
+ *                               # Off by default. Only fires on `orchestrator/*` branches
+ *                               # (so the daily aggregator workflow picks the run up);
+ *                               # on any other branch the push is skipped with a warning
+ *                               # so we don't pollute fix/* or validate/* with run data.
+ *                               # Push failures log loudly but do not crash the run —
+ *                               # artifacts are already committed locally.
  */
 
 import { execFileSync } from "node:child_process";
@@ -272,10 +279,18 @@ async function main(): Promise<void> {
   db.close();
 
   // ── Git commit (best-effort; failure is logged but non-fatal) ──
+  let commitOk = false;
   try {
     commitArtifacts(runDir, config.run_id);
+    commitOk = true;
   } catch (e) {
     console.error(`[harness] git commit failed: ${(e as Error).message}`);
+  }
+
+  // ── Optional auto-push (BENCHBURNER_AUTO_PUSH=1) ──
+  // Only runs after a successful commit so we never push half-state.
+  if (commitOk) {
+    maybePushArtifacts(config.run_id);
   }
 
   process.exit(fatal ? 1 : 0);
@@ -291,6 +306,60 @@ async function safeReadState(game: GameController): Promise<GameState> {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * Opt-in helper: push the artifact commit to origin so the daily
+ * aggregator workflow can pick it up without manual intervention.
+ *
+ * Behavior:
+ *   - No-op unless BENCHBURNER_AUTO_PUSH=1.
+ *   - Skipped (with a warning) when the current branch isn't
+ *     `orchestrator/*` — those are the only branches the aggregator
+ *     harvests, and pushing run artifacts to fix/* or validate/*
+ *     would just clutter PR branches.
+ *   - Push failures (auth, network, non-FF) are logged loudly but
+ *     never thrown: the artifacts are already committed locally and
+ *     the operator can `git push` by hand later.
+ *
+ * Exported so a test harness can drive it without booting the full run.
+ */
+export function maybePushArtifacts(run_id: string): void {
+  if (process.env.BENCHBURNER_AUTO_PUSH !== "1") return;
+  let branch: string;
+  try {
+    branch = execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+      encoding: "utf8",
+    }).trim();
+  } catch (e) {
+    console.warn(
+      `[harness] auto-push: cannot read current branch — ${(e as Error).message}; skipping`,
+    );
+    return;
+  }
+  if (!branch.startsWith("orchestrator/")) {
+    console.warn(
+      `[harness] auto-push: skipping — current branch '${branch}' is not orchestrator/*. ` +
+        `Only orchestrator/<model> branches are harvested by the aggregator workflow.`,
+    );
+    return;
+  }
+  let sha = "";
+  try {
+    sha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim().slice(0, 8);
+  } catch {
+    /* best-effort; sha is just for logging */
+  }
+  console.log(`[harness] auto-push: pushing ${branch} @ ${sha} to origin (run ${run_id})…`);
+  try {
+    execFileSync("git", ["push", "origin", "HEAD"], { stdio: "inherit" });
+    console.log(`[harness] auto-push: pushed ${branch} @ ${sha}`);
+  } catch (e) {
+    console.error(
+      `[harness] auto-push failed: ${(e as Error).message}. ` +
+        `Artifacts are committed locally on ${branch}; push manually with:  git push origin ${branch}`,
+    );
+  }
 }
 
 function commitArtifacts(runDir: string, run_id: string): void {
