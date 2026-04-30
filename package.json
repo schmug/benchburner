@@ -14,6 +14,7 @@
     "aggregator": "node --enable-source-maps dist/aggregator/build.js",
     "aggregator:dev": "tsx aggregator/build.ts",
     "test": "node --test --import tsx dist/test/**/*.test.js || true",
+    "smoke:time-awareness": "tsx harness/orchestrator/time-awareness-smoke.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
