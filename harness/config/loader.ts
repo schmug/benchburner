@@ -66,6 +66,26 @@ function asStringArray(v: unknown, path: string): string[] {
 }
 
 /**
+ * Validate `orchestrator.per_cycle_timeout_seconds`. Must be a positive
+ * integer ≤ 3600 (one hour). The cap is a guard against a misconfig
+ * pinning the per-cycle deadline so high that the hang detector loses
+ * its purpose entirely; if you want longer than 3600s per cycle, you
+ * almost certainly want a different orchestrator model.
+ */
+function asPerCycleTimeout(v: unknown): number {
+  const n = asInteger(v, "orchestrator.per_cycle_timeout_seconds");
+  if (n <= 0) {
+    fail(`orchestrator.per_cycle_timeout_seconds must be positive (got ${n})`);
+  }
+  if (n > 3600) {
+    fail(
+      `orchestrator.per_cycle_timeout_seconds must be ≤ 3600 (got ${n})`,
+    );
+  }
+  return n;
+}
+
+/**
  * Loads and validates a run config from YAML. Replaces run_id="auto"
  * with a freshly generated UUID. Applies all HANDOFF.md default values
  * for any fields the user omitted. Returns a fully-populated RunConfig.
@@ -107,6 +127,13 @@ export function loadRunConfig(yamlPath: string): RunConfig {
             orchestratorRaw.hang_timeout_seconds,
             "orchestrator.hang_timeout_seconds",
           ),
+    ...(orchestratorRaw.per_cycle_timeout_seconds === undefined
+      ? {}
+      : {
+          per_cycle_timeout_seconds: asPerCycleTimeout(
+            orchestratorRaw.per_cycle_timeout_seconds,
+          ),
+        }),
   };
 
   // subagent_roster

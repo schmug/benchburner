@@ -233,16 +233,33 @@ export class OrchestratorLoop {
       const requested = resolved.config.max_completion_tokens ?? 4096;
       const maxTokens = Math.min(headroom, requested);
 
-      // Bound each orchestrator call at half the hang-detection
-      // window so a single stalled fetch can't exceed the whole
-      // hang_timeout_seconds. Without this, an OpenRouter request
-      // that drops without closing the socket (observed on 4 of 8
-      // Phase C runs) starves cycle progress and the run ends with
-      // status="failed / orchestrator hang" at the detector window.
-      const cycleTimeoutMs = Math.max(
-        30_000,
-        Math.floor(this.config.orchestrator.hang_timeout_seconds * 1000 * 0.5),
-      );
+      // Bound each orchestrator call at the configured per-cycle
+      // deadline. When `per_cycle_timeout_seconds` is set on the
+      // run config, use it directly. Otherwise fall back to the
+      // historical formula `max(30s, hang_timeout * 0.5)` — originally
+      // introduced so a single stalled fetch can't exceed the whole
+      // hang_timeout_seconds (an OpenRouter request that drops
+      // without closing the socket — observed on 4 of 8 Phase C
+      // runs — starves cycle progress and the run ends with
+      // status="failed / orchestrator hang" at the detector window).
+      //
+      // Reasoning models (Kimi K2.6, gpt-oss-thinking) need a much
+      // looser cycle deadline than non-reasoning ones because their
+      // chain-of-thought trace adds 100s+ of wall-clock per call,
+      // and the relationship to "the orchestrator has gone silent"
+      // (which is what hang_timeout_seconds covers) is genuinely
+      // separate. Hence the new knob (#20).
+      const explicitCycleTimeoutSec =
+        this.config.orchestrator.per_cycle_timeout_seconds;
+      const cycleTimeoutMs =
+        explicitCycleTimeoutSec !== undefined
+          ? explicitCycleTimeoutSec * 1000
+          : Math.max(
+              30_000,
+              Math.floor(
+                this.config.orchestrator.hang_timeout_seconds * 1000 * 0.5,
+              ),
+            );
       const cycleController = new AbortController();
       const cycleTimer = setTimeout(() => cycleController.abort(), cycleTimeoutMs);
       let raw;

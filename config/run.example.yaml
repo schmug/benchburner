@@ -13,6 +13,15 @@ orchestrator:
   polling_interval_seconds: 60
   history_window: 10                # last-N cycles verbatim in context
   hang_timeout_seconds: 600         # fail the run if no decision for 10 min
+  # per_cycle_timeout_seconds: 900  # OPTIONAL hard ceiling on a single
+                                    # orchestrator inference call. Default
+                                    # is max(30, hang_timeout * 0.5). Set
+                                    # explicitly when running a reasoning
+                                    # orchestrator (Kimi K2.6, gpt-oss-
+                                    # thinking) whose chain-of-thought
+                                    # adds 100s+ to per-call latency
+                                    # unrelated to hang detection. Loader
+                                    # caps at 3600.
 
 subagent_roster:
   - qwen2.5-coder:7b                # all must match ids in config/models.yaml
