@@ -188,6 +188,27 @@ export interface ModelConfig {
    * response comes back empty. Default false.
    */
   supports_structured_output?: boolean;
+  /**
+   * Per-model override of the orchestrator-call completion-token cap
+   * (the harness default is `min(context_window - 1024, 4096)`).
+   *
+   * Reasoning models — Kimi K2.6, gpt-oss-thinking, qwen3-thinking,
+   * deepseek-r1-style — emit a chain-of-thought trace that counts
+   * against the same `max_tokens` budget as the visible answer.
+   * With the 4096 default, the trace frequently consumes the whole
+   * budget before any `content` is emitted: response comes back
+   * with `finish_reason: "length"` and `content: ""`, and the
+   * orchestrator parser sees an empty string.
+   *
+   * Set this to a value comfortably above the model's typical
+   * reasoning length plus the answer; for Kimi K2.6 a 16K-32K
+   * override is appropriate.
+   *
+   * Capped at `context_window - 1024` at use site so a misconfig
+   * can't push the model over its window. Optional: when omitted,
+   * the existing default applies (no behavior change).
+   */
+  max_completion_tokens?: number;
 }
 
 // ────────────────────────────────────────────────────────────────────

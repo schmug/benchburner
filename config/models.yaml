@@ -109,6 +109,20 @@
   model_name: anthropic/claude-haiku-4.5
   supports_structured_output: true
 
+# Kimi K2.6 — Moonshot reasoning model. Chain-of-thought trace counts
+# against `max_tokens`; observed reasoning lengths up to 33K chars in
+# 3 reps against the orchestrator prompt, so max_completion_tokens is
+# set generously above that. With the harness default of 4096 the
+# trace exhausted the budget before any visible content was emitted
+# on every cycle of the 2026-05-02 first run (#22).
+- id: kimi-k2.6
+  adapter: http
+  endpoint: https://openrouter.ai/api
+  api_key_env: OPENROUTER_API_KEY
+  context_window: 200000
+  model_name: moonshotai/kimi-k2.6
+  max_completion_tokens: 32768
+
 - id: gpt-5.4
   adapter: http
   endpoint: https://openrouter.ai/api

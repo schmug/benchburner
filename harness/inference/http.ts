@@ -13,7 +13,14 @@ import type {
 import { AdapterError } from "./adapter";
 
 interface ChatChoice {
-  message?: { content?: string };
+  message?: {
+    content?: string;
+    /** OpenRouter / Anthropic chain-of-thought field, separate from `content`.
+     *  Surfaced by reasoning models (Kimi K2.6, gpt-oss-thinking, etc.).
+     *  We don't return it to the parser, but we do log its length when
+     *  content is empty so the operator can see budget exhaustion. */
+    reasoning?: string;
+  };
   finish_reason?: string;
 }
 
@@ -140,6 +147,19 @@ export class HTTPAdapter implements InferenceAdapter {
     const text = choice?.message?.content ?? "";
     const tokens_used = data.usage?.total_tokens ?? 0;
     const finish_reason = mapFinishReason(choice?.finish_reason);
+
+    // Reasoning-model footgun: when a model's chain-of-thought trace
+    // exhausts the completion-token budget before any visible content
+    // is emitted, the response comes back with `finish_reason: length`
+    // and `content: ""`. Downstream that surfaces as "malformed JSON
+    // from model" — misleading, since no JSON was ever malformed. Log
+    // a clearer signal here so the operator can spot the real cause.
+    if (text.length === 0 && finish_reason === "length") {
+      const reasoningLen = choice?.message?.reasoning?.length ?? 0;
+      console.warn(
+        `[adapter http] empty content with finish_reason=length — likely max_completion_tokens exhausted by reasoning (model=${params.model}, max_tokens=${params.max_tokens}, reasoning_len=${reasoningLen}). Bump max_completion_tokens for this model in models.yaml.`,
+      );
+    }
 
     return { text, tokens_used, finish_reason };
   }

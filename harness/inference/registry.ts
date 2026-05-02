@@ -76,6 +76,15 @@ export function loadModelsYaml(path: string): ModelConfig[] {
     if (typeof e.supports_structured_output === "boolean") {
       cfg.supports_structured_output = e.supports_structured_output;
     }
+    if (e.max_completion_tokens !== undefined) {
+      const m = e.max_completion_tokens;
+      if (typeof m !== "number" || !Number.isFinite(m) || m <= 0 || !Number.isInteger(m)) {
+        throw new Error(
+          `models.yaml entry "${id}" has invalid max_completion_tokens "${String(m)}" (expected positive integer)`,
+        );
+      }
+      cfg.max_completion_tokens = m;
+    }
 
     out.push(cfg);
   }
