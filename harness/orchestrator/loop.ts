@@ -225,10 +225,13 @@ export class OrchestratorLoop {
       const model = this.config.orchestrator.model;
       const resolved = this.registry.get(model);
 
-      const maxTokens = Math.min(
-        resolved.config.context_window - 1024,
-        4096,
-      );
+      // Default cap matches the original 4096 floor; reasoning models
+      // override via `max_completion_tokens` in models.yaml because
+      // their chain-of-thought trace counts against this budget and
+      // can otherwise consume it before any content is emitted.
+      const headroom = resolved.config.context_window - 1024;
+      const requested = resolved.config.max_completion_tokens ?? 4096;
+      const maxTokens = Math.min(headroom, requested);
 
       // Bound each orchestrator call at half the hang-detection
       // window so a single stalled fetch can't exceed the whole

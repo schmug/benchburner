@@ -1,0 +1,35 @@
+run_id: auto
+# PDS7 — 24h validation run, kimi-k2.6 variant.
+#
+# Mirrors run.pds7-sonnet-4.6.yaml exactly except for the orchestrator
+# model. Single-variable A/B vs sonnet so 24h numbers stay comparable;
+# subagent stays claude-haiku-4.5.
+#
+# Two reasoning-model knobs are required to make this run viable
+# (#22, #20):
+#
+#   - hang_timeout_seconds: 600 (vs sibling configs' 120) — bumped
+#     because the harness caps each orchestrator inference call at
+#     half of hang_timeout, so 600 → 300s/cycle, comfortably above
+#     Kimi K2.6's observed 100-250s reasoning latency.
+#
+#   - max_completion_tokens: 32768 on the kimi-k2.6 model entry in
+#     models.yaml (not in this file). Kimi's chain-of-thought trace
+#     counts against the same budget as the visible answer; the
+#     harness default 4096 frequently exhausts before any content is
+#     emitted, returning content="" with finish_reason="length".
+#
+# Seed: 8675309 — same as every other validation run.
+#
+# OpenRouter slug: moonshotai/kimi-k2.6 ($0.74/M in / $3.49/M out).
+
+orchestrator:
+  model: kimi-k2.6
+  polling_interval_seconds: 60
+  history_window: 10
+  hang_timeout_seconds: 600
+subagent_roster: [claude-haiku-4.5]
+subagent_limits: { max_concurrent: 2, token_budget_per_instruction: 2000, timeout_seconds: 300 }
+game: { bitburner_commit: a4b0f22a2e5bcf19826c0bb671373c755fc162ad, seed: 8675309 }
+duration_hours: 24
+attribution_mode: public
