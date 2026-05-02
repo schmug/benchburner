@@ -5,19 +5,27 @@ run_id: auto
 # model. Single-variable A/B vs sonnet so 24h numbers stay comparable;
 # subagent stays claude-haiku-4.5.
 #
-# Two reasoning-model knobs are required to make this run viable
-# (#22, #20):
+# Three reasoning-model knobs are required to make this run viable
+# (PRs #23, #24, both merged on main):
 #
-#   - hang_timeout_seconds: 600 (vs sibling configs' 120) — bumped
-#     because the harness caps each orchestrator inference call at
-#     half of hang_timeout, so 600 → 300s/cycle, comfortably above
-#     Kimi K2.6's observed 100-250s reasoning latency.
+#   - hang_timeout_seconds: 600 (vs sibling configs' 120) — kept for
+#     the run-level "orchestrator hung" detector. With the
+#     per_cycle_timeout_seconds knob below, this no longer dictates
+#     per-call latency.
+#
+#   - per_cycle_timeout_seconds: 900 (PR #24, opt-in knob from #20).
+#     The harness's per-cycle inference deadline used to derive from
+#     hang_timeout (max(30, hang × 0.5)) — too tight for reasoning
+#     models as delegation_history grows. 900 gives headroom: cycles
+#     1-3 ran 52s/125s/219s on the prior attempt before the old
+#     300s deadline fired at cycle 4. 900s should cover the whole
+#     24h run as history accumulates.
 #
 #   - max_completion_tokens: 32768 on the kimi-k2.6 model entry in
-#     models.yaml (not in this file). Kimi's chain-of-thought trace
-#     counts against the same budget as the visible answer; the
-#     harness default 4096 frequently exhausts before any content is
-#     emitted, returning content="" with finish_reason="length".
+#     models.yaml (PR #23, opt-in from #22). Kimi's chain-of-thought
+#     trace counts against the same budget as the visible answer;
+#     the harness default 4096 frequently exhausts before any content
+#     is emitted, returning content="" with finish_reason="length".
 #
 # Seed: 8675309 — same as every other validation run.
 #
@@ -28,6 +36,7 @@ orchestrator:
   polling_interval_seconds: 60
   history_window: 10
   hang_timeout_seconds: 600
+  per_cycle_timeout_seconds: 900
 subagent_roster: [claude-haiku-4.5]
 subagent_limits: { max_concurrent: 2, token_budget_per_instruction: 2000, timeout_seconds: 300 }
 game: { bitburner_commit: a4b0f22a2e5bcf19826c0bb671373c755fc162ad, seed: 8675309 }
