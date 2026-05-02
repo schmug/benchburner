@@ -237,6 +237,24 @@ export interface RunConfig {
     polling_interval_seconds: number;
     history_window: number;
     hang_timeout_seconds: number;
+    /**
+     * Hard upper bound on how long a single orchestrator inference call
+     * may run before the harness aborts the request. Decoupled from
+     * `hang_timeout_seconds` so the cycle-level inference deadline can
+     * be tuned to the orchestrator model's reasoning latency without
+     * also changing the run-level "orchestrator hung" detection window.
+     *
+     * When unset, the harness falls back to the historical formula
+     * `max(30, hang_timeout_seconds * 0.5)`, so existing run configs
+     * are unchanged. Set this explicitly when running a reasoning model
+     * (Kimi K2.6, gpt-oss-thinking, qwen3-thinking) whose chain-of-
+     * thought trace makes per-call latency unrelated to the hang-
+     * detection window — e.g. 900 (15 min) for Kimi K2.6 with a 10-
+     * cycle delegation history.
+     *
+     * Validated by the loader: positive integer, ≤ 3600.
+     */
+    per_cycle_timeout_seconds?: number;
   };
   subagent_roster: string[];
   subagent_limits: {
