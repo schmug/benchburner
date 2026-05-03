@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-02T04:59:13.357Z",
+  "generated_at": "2026-05-03T05:04:35.371Z",
   "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad",
   "entries": [
     {
@@ -171,6 +171,23 @@
       "latest_artifact_url": "runs/438f78a2-8fc2-4ded-a0e0-c764cb4cd1ba/",
       "branch": "main",
       "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad"
+    },
+    {
+      "rank": 11,
+      "orchestrator_model": "kimi-k2.6",
+      "display_model": "kimi-k2.6",
+      "attribution": "public",
+      "run_count": 1,
+      "final_money_mean": 0,
+      "final_money_std": 0,
+      "final_money_min": 0,
+      "final_money_max": 0,
+      "completed_runs": 0,
+      "failed_runs": 1,
+      "latest_run_id": "fba3a1dd-a8f2-448a-a8b4-0cb47d4dd425",
+      "latest_artifact_url": "runs/fba3a1dd-a8f2-448a-a8b4-0cb47d4dd425/",
+      "branch": "main",
+      "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad"
     }
   ],
   "raw_runs": [
@@ -188,6 +205,21 @@
       "end_time": "2026-04-30T11:45:28.268Z",
       "duration_hours": 24,
       "artifact_url": "runs/09521fa2-de01-4108-afe0-1fb278511d38/"
+    },
+    {
+      "run_id": "fba3a1dd-a8f2-448a-a8b4-0cb47d4dd425",
+      "orchestrator_model": "kimi-k2.6",
+      "attribution": "public",
+      "final_money": 16273,
+      "bitnodes_completed": 0,
+      "augments_installed": 0,
+      "status": "failed",
+      "failure_reason": "orchestrator hang: no cycle completed for 624s",
+      "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad",
+      "start_time": "2026-05-03T00:03:00.946Z",
+      "end_time": "2026-05-03T01:09:42.667Z",
+      "duration_hours": 24,
+      "artifact_url": "runs/fba3a1dd-a8f2-448a-a8b4-0cb47d4dd425/"
     },
     {
       "run_id": "e2b306aa-5734-4649-8747-4f79ade686cf",

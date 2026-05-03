@@ -1,0 +1,14 @@
+{
+  "run_id": "fba3a1dd-a8f2-448a-a8b4-0cb47d4dd425",
+  "orchestrator_model": "kimi-k2.6",
+  "attribution": "public",
+  "final_money": 16273,
+  "bitnodes_completed": 0,
+  "augments_installed": 0,
+  "status": "failed",
+  "failure_reason": "orchestrator hang: no cycle completed for 624s",
+  "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad",
+  "start_time": "2026-05-03T00:03:00.946Z",
+  "end_time": "2026-05-03T01:09:42.667Z",
+  "duration_hours": 24
+}

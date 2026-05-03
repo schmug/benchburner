@@ -1,0 +1,184 @@
+[
+  {
+    "script_id": "524f033c-5e1b-4296-be23-98da81520941",
+    "subagent_id": "earner-1",
+    "instruction_id": "4f9e9c30-bb51-472e-a74e-0912cdcbe50f",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\nconst target = 'n00dles';\nns.nuke(target);\nwhile(true) {\nawait ns.weaken(target);\nawait ns.grow(target);\nawait ns.hack(target);\n}\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "524f033c-5e1b-4296-be23-98da81520941",
+      "subagent_id": "earner-1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "last_heartbeat_ms": 1777767226455,
+        "timestamp": "2026-05-03T00:13:46.455Z"
+      },
+      "timestamp": "2026-05-03T00:13:46.591Z"
+    },
+    "tokens_used": 4322,
+    "timestamp": "2026-05-03T00:13:46.086Z"
+  },
+  {
+    "script_id": "256b0161-59ee-4ff7-8085-86b19438ab5f",
+    "subagent_id": "scanner-1",
+    "instruction_id": "bc73fef8-a3ec-4ddb-b481-51d8c2cdc51e",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\n  let lvl = ns.getHackingLevel();\n  let q = ['home'], s = new Set(q);\n  while(q.length) {\n    let h = q.pop();\n    for(let n of ns.scan(h)) {\n      if(!s.has(n)) { s.add(n); q.push(n); }\n    }\n  }\n  let r = [];\n  for(let h of s) {\n    if(h === 'home') continue;\n    let req = ns.getServerRequiredHackingLevel(h);\n    let ports = ns.getServerNumPortsRequired(h);\n    if(!ns.hasRootAccess(h) && req <= lvl && ports === 0) ns.nuke(h);\n    r.push({host:h, req, ports, max:ns.getServerMaxMoney(h), curr:ns.getServerMoneyAvailable(h), root:ns.hasRootAccess(h), sec:ns.getServerSecurityLevel(h), minSec:ns.getServerMinSecurityLevel(h)});\n  }\n  ns.tprint(JSON.stringify(r));\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "256b0161-59ee-4ff7-8085-86b19438ab5f",
+      "subagent_id": "scanner-1",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-05-03T00:15:02.037Z"
+    },
+    "tokens_used": 5159,
+    "timestamp": "2026-05-03T00:15:01.996Z"
+  },
+  {
+    "script_id": "6585539b-5063-4b13-9cba-285a1dce6198",
+    "subagent_id": "earner-1",
+    "instruction_id": "82070028-3509-4d33-9824-41f786cbca8c",
+    "code": "export async function main(ns){\nlet q=['home'],s=new Set(q);\nwhile(q.length){let h=q.pop();for(let n of ns.scan(h))if(!s.has(n)){s.add(n);q.push(n);}}\nlet best='n00dles',bestMax=0,lvl=ns.getHackingLevel();\nfor(let h of s){if(h==='home')continue;if(ns.getServerRequiredHackingLevel(h)>lvl)continue;if(ns.getServerNumPortsRequired(h)>0)continue;if(!ns.hasRootAccess(h))ns.nuke(h);let m=ns.getServerMaxMoney(h);if(m>bestMax){bestMax=m;best=h;}}\nwhile(true){await ns.weaken(best);await ns.grow(best);await ns.hack(best);}}\n",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "6585539b-5063-4b13-9cba-285a1dce6198",
+      "subagent_id": "earner-1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "last_heartbeat_ms": 1777767445152,
+        "timestamp": "2026-05-03T00:17:25.152Z"
+      },
+      "timestamp": "2026-05-03T00:17:25.461Z"
+    },
+    "tokens_used": 5376,
+    "timestamp": "2026-05-03T00:17:24.958Z"
+  },
+  {
+    "script_id": "f07c817e-9000-454a-bbe3-e16c62017cf9",
+    "subagent_id": "earner-1",
+    "instruction_id": "5a336365-81bf-45fb-8a24-6f29e78b3148",
+    "code": "export async function main(ns){if(!ns.hasRootAccess('foodnstuff'))ns.nuke('foodnstuff');while(true){await ns.weaken('foodnstuff');await ns.grow('foodnstuff');await ns.hack('foodnstuff');}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "f07c817e-9000-454a-bbe3-e16c62017cf9",
+      "subagent_id": "earner-1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "last_heartbeat_ms": 1777767627790,
+        "timestamp": "2026-05-03T00:20:27.790Z"
+      },
+      "timestamp": "2026-05-03T00:20:28.061Z"
+    },
+    "tokens_used": 4457,
+    "timestamp": "2026-05-03T00:20:27.557Z"
+  },
+  {
+    "script_id": "5789c856-d5ad-42be-8737-88b51721d25f",
+    "subagent_id": "earner-1",
+    "instruction_id": "4b99f698-b3f7-48f8-a382-37612d9b221c",
+    "code": "export async function main(ns){try{ns.nuke('foodnstuff')}catch(e){}while(true){await ns.weaken('foodnstuff');await ns.grow('foodnstuff');await ns.hack('foodnstuff');}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "5789c856-d5ad-42be-8737-88b51721d25f",
+      "subagent_id": "earner-1",
+      "status": "executed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "exit_reason": "running",
+      "game_state_snapshot": {
+        "current_money": 1262,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": [],
+        "last_heartbeat_ms": 1777767794911,
+        "timestamp": "2026-05-03T00:23:14.911Z"
+      },
+      "timestamp": "2026-05-03T00:23:15.200Z"
+    },
+    "tokens_used": 4276,
+    "timestamp": "2026-05-03T00:23:14.697Z"
+  },
+  {
+    "script_id": "37dd4c72-5616-4885-b090-7fb1dac04383",
+    "subagent_id": "earner-2",
+    "instruction_id": "6095f1f1-5f10-4dbe-b5c6-76f4f6c8424f",
+    "code": "/** @param {NS} ns */\nexport async function main(ns) {\nns.nuke('foodnstuff');\nwhile(true){\nawait ns.weaken('foodnstuff');\nawait ns.grow('foodnstuff');\nawait ns.hack('foodnstuff');\n}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "37dd4c72-5616-4885-b090-7fb1dac04383",
+      "subagent_id": "earner-2",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 8771,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-05-03T00:42:34.105Z"
+    },
+    "tokens_used": 4067,
+    "timestamp": "2026-05-03T00:42:33.609Z"
+  },
+  {
+    "script_id": "e6504228-433b-455e-b0fc-4e3587e16807",
+    "subagent_id": "earner-3",
+    "instruction_id": "e96755b6-6c76-42c2-8bdc-cb402dbb1b28",
+    "code": "export async function main(ns){const target='foodnstuff';ns.nuke(target);while(true){await ns.weaken(target);await ns.grow(target);await ns.hack(target);}}",
+    "executed_in_game": true,
+    "execution_result": {
+      "script_id": "e6504228-433b-455e-b0fc-4e3587e16807",
+      "subagent_id": "earner-3",
+      "status": "failed",
+      "money_gained": 0,
+      "time_elapsed_seconds": 0,
+      "error": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "stderr": "ns.run returned 0 — script missing or RAM budget exceeded",
+      "exit_reason": "failed_to_start",
+      "game_state_snapshot": {
+        "current_money": 8771,
+        "bitnode_id": 1,
+        "bitnode_complete": false,
+        "augments_installed": []
+      },
+      "timestamp": "2026-05-03T00:59:23.207Z"
+    },
+    "tokens_used": 4087,
+    "timestamp": "2026-05-03T00:59:23.139Z"
+  }
+]
