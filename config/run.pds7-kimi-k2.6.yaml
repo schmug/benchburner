@@ -5,21 +5,26 @@ run_id: auto
 # model. Single-variable A/B vs sonnet so 24h numbers stay comparable;
 # subagent stays claude-haiku-4.5.
 #
-# Three reasoning-model knobs are required to make this run viable
-# (PRs #23, #24, both merged on main):
+# Three reasoning-model knobs, raised together (PRs #23, #24, #25):
 #
-#   - hang_timeout_seconds: 600 (vs sibling configs' 120) — kept for
-#     the run-level "orchestrator hung" detector. With the
-#     per_cycle_timeout_seconds knob below, this no longer dictates
-#     per-call latency.
+#   - hang_timeout_seconds: 1800 (PR #25 territory) — the harness's
+#     "orchestrator hung" detector counts wall-clock since the last
+#     completed cycle. With Kimi K2.6's reasoning trace, normal
+#     cycles approach 600s as delegation_history fills (observed
+#     mean of cycles 7-10: 519s on the v3 attempt). The default
+#     600 detector thus reliably kills any otherwise-healthy
+#     reasoning-model run after a few hours. 1800 gives the
+#     reasoning trace room AND keeps the watchdog meaningful for
+#     true hangs. Issue #25 proposes auto-bumping this whenever
+#     per_cycle_timeout_seconds is set — until that lands, raise
+#     by hand here.
 #
-#   - per_cycle_timeout_seconds: 900 (PR #24, opt-in knob from #20).
-#     The harness's per-cycle inference deadline used to derive from
-#     hang_timeout (max(30, hang × 0.5)) — too tight for reasoning
-#     models as delegation_history grows. 900 gives headroom: cycles
-#     1-3 ran 52s/125s/219s on the prior attempt before the old
-#     300s deadline fired at cycle 4. 900s should cover the whole
-#     24h run as history accumulates.
+#   - per_cycle_timeout_seconds: 1200 (PR #24, opt-in knob from #20).
+#     Hard cap on a single orchestrator inference call. Must be
+#     STRICTLY less than hang_timeout_seconds, otherwise the hang
+#     detector fires before the per-call deadline and the per-call
+#     deadline is dead code (this was the v3 failure mode). 1200 <
+#     1800 satisfies the implicit invariant.
 #
 #   - max_completion_tokens: 32768 on the kimi-k2.6 model entry in
 #     models.yaml (PR #23, opt-in from #22). Kimi's chain-of-thought
@@ -35,8 +40,8 @@ orchestrator:
   model: kimi-k2.6
   polling_interval_seconds: 60
   history_window: 10
-  hang_timeout_seconds: 600
-  per_cycle_timeout_seconds: 900
+  hang_timeout_seconds: 1800
+  per_cycle_timeout_seconds: 1200
 subagent_roster: [claude-haiku-4.5]
 subagent_limits: { max_concurrent: 2, token_budget_per_instruction: 2000, timeout_seconds: 300 }
 game: { bitburner_commit: a4b0f22a2e5bcf19826c0bb671373c755fc162ad, seed: 8675309 }
