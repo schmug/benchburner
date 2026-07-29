@@ -1,0 +1,42 @@
+# Endurance run — the SECONDARY config. Copy and edit per orchestrator.
+#
+# The canonical measurement config is 20 minutes (config/run.example.
+# yaml); this one exists for the separate question of whether an
+# orchestrator holds up over a long horizon: re-planning after a
+# strategy fails, recovering from a dead subagent, shifting approach as
+# the game state changes. A 20-minute run cannot observe any of that.
+#
+# Endurance results are NOT interchangeable with canonical results and
+# must not share a leaderboard column. They are a different measurement
+# of a different thing that happens to use the same scalar.
+#
+# Cost: one 24h run occupies a machine for 24h. A full N=5 sweep across
+# six orchestrators is ~30 machine-days, which is why this is not the
+# default. See VALIDATION.md PDS7 — no 24h run has completed cleanly
+# yet, so treat the first few as harness shakedown, not as data.
+
+run_id: auto
+
+orchestrator:
+  model: gpt-oss:20b                  # must match an id in config/models.yaml
+  polling_interval_seconds: 60
+  history_window: 10
+  hang_timeout_seconds: 120
+
+subagent_roster:
+  - claude-haiku-4.5
+
+subagent_limits:
+  max_concurrent: 2
+  token_budget_per_instruction: 2000
+  timeout_seconds: 300
+
+game:
+  bitburner_commit: a4b0f22a2e5bcf19826c0bb671373c755fc162ad
+  seed: 8675309
+
+# 24h → the proportional snapshot default resolves to 3600s, exactly
+# the historical hourly cadence. Endurance runs are bit-identical to
+# pre-change behaviour; only sub-hour runs changed.
+duration_hours: 24
+attribution_mode: public

@@ -49,7 +49,7 @@ async function main(): Promise<void> {
   const maxTokensCap = maxTokensEnv ? Number(maxTokensEnv) : Number.POSITIVE_INFINITY;
 
   const config = loadRunConfig(configPath);
-  const effectiveDurationSec = durationOverrideSec ?? config.duration_hours * 3600;
+  const effectiveDurationSec = durationOverrideSec ?? config.duration_seconds;
   const runDir = path.join("results", config.run_id);
   mkdirSync(runDir, { recursive: true });
 
@@ -132,7 +132,8 @@ async function main(): Promise<void> {
   const snapshot = new SnapshotTimer({
     run_id: config.run_id,
     startTime: startMs,
-    durationHours: Math.ceil(effectiveDurationSec / 3600),
+    durationSeconds: effectiveDurationSec,
+    intervalSeconds: config.snapshot_interval_seconds,
     game,
     bus,
     db,
@@ -273,7 +274,7 @@ async function main(): Promise<void> {
     subagent_tokens: worker.tokensUsedTotal,
   });
 
-  const summary = exportRunArtifacts(db, config.run_id, runDir, config.duration_hours);
+  const summary = exportRunArtifacts(db, config.run_id, runDir, effectiveDurationSec);
   console.log(`[harness] exported artifacts to ${runDir}`);
   console.log(`[harness] final_money=${summary.final_money} status=${summary.status}`);
 

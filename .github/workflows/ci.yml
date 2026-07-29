@@ -34,5 +34,14 @@ jobs:
         env:
           PUPPETEER_SKIP_DOWNLOAD: "true"
 
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Was previously absent because `npm test` was `... || true` against
+      # a dist/ path that never existed — it could not fail, so gating on
+      # it was pointless. It reports real failures now.
+      - name: Unit tests
+        run: npm test
+
       - name: Time-awareness smoke
         run: npm run smoke:time-awareness
