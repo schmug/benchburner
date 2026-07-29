@@ -109,6 +109,30 @@
   model_name: anthropic/claude-haiku-4.5
   supports_structured_output: true
 
+# Claude Opus 5. Added 2026-07-28 so the leaderboard has a current-
+# generation Anthropic orchestrator — every Anthropic number in
+# VALIDATION.md PCS1/PDS6 is 4.7/4.6/4.5.
+#
+# max_completion_tokens is set high for the same reason as kimi-k2.6:
+# Opus 5 is reasoning-capable, and if its trace counts against
+# max_tokens the harness default (4096) would exhaust the budget
+# before any content is emitted, producing a battery of floor scores
+# that look like incapacity but are actually a harness artifact.
+# Watch for the `empty content with finish_reason=length` warning
+# from harness/inference/http.ts on the first run.
+#
+# NOTE: claude-opus-4.7 carries no max_completion_tokens override, so
+# this entry is NOT a strict A/B against the existing PCS1 Opus 4.7
+# numbers. If a like-for-like comparison is wanted, re-run 4.7 with
+# the same override rather than dropping this one.
+- id: claude-opus-5
+  adapter: http
+  endpoint: https://openrouter.ai/api
+  api_key_env: OPENROUTER_API_KEY
+  context_window: 200000
+  model_name: anthropic/claude-opus-5
+  max_completion_tokens: 32768
+
 # Kimi K2.6 — Moonshot reasoning model. Chain-of-thought trace counts
 # against `max_tokens`; observed reasoning lengths up to 33K chars in
 # 3 reps against the orchestrator prompt, so max_completion_tokens is
