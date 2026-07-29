@@ -86,6 +86,31 @@ function asPerCycleTimeout(v: unknown): number {
 }
 
 /**
+ * Resolves the run duration to seconds from exactly one of
+ * `duration_hours` or `duration_minutes`. See the call site for why
+ * "exactly one" rather than a precedence rule.
+ */
+function resolveDuration(root: Record<string, unknown>): number {
+  const hasHours = root.duration_hours !== undefined;
+  const hasMinutes = root.duration_minutes !== undefined;
+
+  if (hasHours === hasMinutes) {
+    fail(
+      `exactly one of duration_hours or duration_minutes is required (got ${
+        hasHours ? "both" : "neither"
+      })`,
+    );
+  }
+
+  const [key, perUnit] = hasHours
+    ? (["duration_hours", 3600] as const)
+    : (["duration_minutes", 60] as const);
+  const value = asNumber(root[key], key);
+  if (value <= 0) fail(`${key} must be > 0`);
+  return value * perUnit;
+}
+
+/**
  * Loads and validates a run config from YAML. Replaces run_id="auto"
  * with a freshly generated UUID. Applies all HANDOFF.md default values
  * for any fields the user omitted. Returns a fully-populated RunConfig.
@@ -180,9 +205,32 @@ export function loadRunConfig(yamlPath: string): RunConfig {
     seed,
   };
 
-  // duration_hours
-  const durationHours = asNumber(root.duration_hours, "duration_hours");
-  if (durationHours <= 0) fail("duration_hours must be > 0");
+  // duration — exactly one of duration_hours / duration_minutes.
+  //
+  // duration_minutes exists because the canonical measurement run is
+  // 20 minutes, which whole hours cannot express. Before it existed,
+  // every canonical run in VALIDATION.md was produced by the dev-only
+  // BENCHBURNER_DURATION_SEC override while its config file claimed
+  // `duration_hours: 1` — so the configs did not describe the runs.
+  //
+  // Requiring exactly one is what keeps that from recurring: a config
+  // carrying both keys is precisely the ambiguity that let the two
+  // drift apart, so it is an error rather than a precedence rule.
+  const durationSeconds = resolveDuration(root);
+
+  // snapshot_interval_seconds (optional; timer defaults it proportionally)
+  let snapshotIntervalSeconds: number | undefined;
+  if (root.snapshot_interval_seconds !== undefined) {
+    const n = asNumber(root.snapshot_interval_seconds, "snapshot_interval_seconds");
+    if (n <= 0) fail("snapshot_interval_seconds must be > 0");
+    if (n > durationSeconds) {
+      fail(
+        `snapshot_interval_seconds (${n}) must not exceed the run duration (${durationSeconds}s); ` +
+          `that yields a single snapshot and strips the orchestrator's snapshot channel`,
+      );
+    }
+    snapshotIntervalSeconds = n;
+  }
 
   // attribution_mode
   let attributionMode: "public" | "anonymous";
@@ -202,7 +250,8 @@ export function loadRunConfig(yamlPath: string): RunConfig {
     subagent_roster: subagentRoster,
     subagent_limits: subagentLimits,
     game,
-    duration_hours: durationHours,
+    duration_seconds: durationSeconds,
+    snapshot_interval_seconds: snapshotIntervalSeconds,
     attribution_mode: attributionMode,
   };
 }

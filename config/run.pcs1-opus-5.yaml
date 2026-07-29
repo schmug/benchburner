@@ -1,0 +1,36 @@
+run_id: auto
+# Claude Opus 5 orchestrator at canonical PCS1 conditions, so the
+# result is directly comparable to the VALIDATION.md PCS1/PDS6 table
+# (gpt-oss:20b, gpt-5.4, opus-4.7, sonnet-4.6, haiku-4.5, qwen-coder).
+#
+# Canonical conditions, held identical to every other row:
+#   subagent roster: [claude-haiku-4.5]
+#   seed:            8675309
+#   bitnode/commit:  a4b0f22 (BITBURNER_COMMIT)
+#   duration:        20 min
+#   max_concurrent:  2
+#   token budget:    2000/instruction
+#
+# NOT COMPARABLE TO THE EXISTING TABLE AS-IS. Every PCS1/PDS6 number
+# was produced when the snapshot cadence was hardcoded to 3600s, which
+# on a 20-minute run fired only the hour-0 snapshot — those runs had no
+# working snapshot channel. This config gets the proportional default
+# (50s, i.e. 24 snapshots), which is the benchmark as CLAUDE.md
+# constraint #3 defines it but is a different information environment.
+# Either re-baseline the other orchestrators under this config, or set
+# `snapshot_interval_seconds: 1200` here to reproduce the old
+# single-snapshot conditions. Do not mix the two in one table.
+#
+# hang_timeout_seconds: 120 — matches run.pcs1-opus-v2.yaml and
+# run.pds6-gpt-5.4.yaml (the post-stall value), not the original
+# 600 from run.pcs1-opus.yaml.
+orchestrator:
+  model: claude-opus-5
+  polling_interval_seconds: 60
+  history_window: 10
+  hang_timeout_seconds: 120
+subagent_roster: [claude-haiku-4.5]
+subagent_limits: { max_concurrent: 2, token_budget_per_instruction: 2000, timeout_seconds: 300 }
+game: { bitburner_commit: a4b0f22a2e5bcf19826c0bb671373c755fc162ad, seed: 8675309 }
+duration_minutes: 20
+attribution_mode: public

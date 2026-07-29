@@ -18,6 +18,6 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true
   },
-  "include": ["harness/**/*.ts", "aggregator/**/*.ts"],
+  "include": ["harness/**/*.ts", "aggregator/**/*.ts", "test/**/*.ts"],
   "exclude": ["node_modules", "dist", "bitburner", "results"]
 }

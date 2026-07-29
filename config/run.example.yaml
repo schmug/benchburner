@@ -35,5 +35,19 @@ game:
   bitburner_commit: a4b0f22a2e5bcf19826c0bb671373c755fc162ad  # pinned, mirrored in BITBURNER_COMMIT
   seed: 8675309                     # opaque to the orchestrator model
 
-duration_hours: 1                   # 1 for smoke test; 24 for real runs
+# Exactly one of duration_minutes / duration_hours is required. Both,
+# or neither, is a load error — the ambiguity is what let configs claim
+# `duration_hours: 1` while the batteries actually ran 20 minutes via
+# the dev-only BENCHBURNER_DURATION_SEC override.
+#
+# 20 minutes is the CANONICAL measurement duration: every ranked number
+# on the leaderboard is a 20m run. Use `duration_hours: 24` only for a
+# declared endurance run — see config/run.endurance-24h.example.yaml.
+duration_minutes: 20
+# snapshot_interval_seconds: 50     # OPTIONAL. Default is duration/24,
+                                    # floored at 30s, which reproduces
+                                    # the historical hourly cadence on a
+                                    # 24h run exactly. Override only to
+                                    # deliberately change the
+                                    # orchestrator's snapshot channel.
 attribution_mode: public            # or 'anonymous'

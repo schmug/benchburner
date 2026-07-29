@@ -4,7 +4,18 @@ This file is the source of truth for **why** this project exists. Read it before
 
 ## What We Are Building
 
-A public benchmark that measures the **orchestration capability** of large language models. Each benchmarked model acts as an *orchestrator* directing a team of *subagent* LLMs to play [Bitburner](https://github.com/bitburner-official/bitburner-src) for 24 hours of real wall-clock time. Orchestrators are scored on the total in-game money their team accumulates.
+A public benchmark that measures the **orchestration capability** of large language models. Each benchmarked model acts as an *orchestrator* directing a team of *subagent* LLMs to play [Bitburner](https://github.com/bitburner-official/bitburner-src) for a fixed window of real wall-clock time. Orchestrators are scored on the total in-game money their team accumulates.
+
+### Run durations: canonical vs endurance
+
+Two durations exist and they are **not interchangeable**:
+
+- **Canonical (20 minutes)** — the ranked measurement. Every number on the leaderboard is a 20-minute run. Config: `duration_minutes: 20`. This is what "a run" means unless stated otherwise.
+- **Endurance (24 hours)** — a separate, declared measurement of whether an orchestrator holds up over a long horizon (re-planning after a failed strategy, recovering from dead subagents, shifting approach as game state changes). Config: `duration_hours: 24`.
+
+The project was specified at 24h and every result it has ever produced was 20 minutes; this section makes the real canonical duration the stated one. Endurance runs remain worth doing — a 20-minute window cannot observe re-planning at all, which is a genuine part of orchestration — but at ~30 machine-days per N=5 sweep they cannot be the default, and no 24h run has yet completed cleanly (VALIDATION.md PDS7).
+
+**Never mix the two in one leaderboard column.**
 
 ## What We Are Not Building
 
@@ -23,8 +34,8 @@ These shape every design decision. If a choice conflicts with these, the choice 
 
 1. **The orchestrator cannot play the game directly.** It only spawns, kills, and instructs subagents.
 2. **The orchestrator cannot edit subagent output.** It accepts or rejects whole results.
-3. **The orchestrator sees only what subagents report + hourly game state snapshots.** No direct Bitburner access, no wiki, no strategy guides.
-4. **Subagents have no long-term memory across runs.** Each 24h cycle starts fresh.
+3. **The orchestrator sees only what subagents report + periodic game state snapshots.** No direct Bitburner access, no wiki, no strategy guides. Snapshot cadence is proportional to run length (24 per run), not fixed at one hour — a fixed hourly cadence silently deleted this entire channel on sub-hour runs.
+4. **Subagents have no long-term memory across runs.** Each run starts fresh.
 5. **Batch architecture.** Runs happen offline, results commit to Git, a static leaderboard builds once daily. No live API.
 6. **Deterministic game state.** Bitburner is pinned to a specific fork commit and a pinned RNG seed — but the seed is **opaque to the orchestrator** (exposing it lets models overfit to one scenario instead of developing general orchestration strategy).
 7. **Subagent roster is curated per run.** All orchestrators in a given cycle choose from the same pool. Fairness matters.
@@ -79,7 +90,7 @@ Claude Code should default to these unless there's a strong reason to deviate. W
 | Message bus | In-memory queue | Single-process batch job; no Redis needed. |
 | State store | SQLite | Self-contained, file-based, commits cleanly with artifacts. |
 | Inference | Pluggable via adapter pattern; default Ollama local | Works offline, controllable; adapters for vLLM / HTTP APIs. |
-| Game instance | Headless Node fork of Bitburner | Pinned commit; no time acceleration (real-time 24h). |
+| Game instance | Headless Node fork of Bitburner | Pinned commit; no time acceleration (real wall-clock). |
 | CI | GitHub Actions with self-hosted runners | Matches Cory's existing infra; avoids cloud inference costs. |
 | Hosting | Cloudflare Pages | Static only; minimal attack surface. |
 
@@ -98,8 +109,8 @@ These are calibration details. Make reasonable calls; flag them in code comments
 
 ## Failure Handling
 
-- If a run fails mid-cycle (orchestrator hangs, inference endpoint dies, game crashes), **do not retry automatically within the 24h window**. Log the failure, commit partial artifacts with status `failed`, surface the failure reason on the leaderboard.
-- Every orchestrator gets exactly one 24h attempt per cycle. Fairness > robustness.
+- If a run fails mid-cycle (orchestrator hangs, inference endpoint dies, game crashes), **do not retry automatically within the run window**. Log the failure, commit partial artifacts with status `failed`, surface the failure reason on the leaderboard.
+- Every orchestrator gets exactly one attempt per cycle. Fairness > robustness.
 - Partial runs still count — if an orchestrator makes $500M before crashing at hour 18, that's the score, with a failure flag.
 
 ## Monetization Posture
@@ -114,8 +125,8 @@ Do not design monetization features speculatively. If demand emerges, it emerges
 
 ## What "Done" Looks Like for the First Milestone
 
-1. The harness can run a single orchestrator + subagent roster against a pinned Bitburner instance for 24 wall-clock hours.
-2. Delegation logs, generated scripts, hourly snapshots, and final stats are committed as JSON to a run directory on an orchestrator branch.
+1. The harness can run a single orchestrator + subagent roster against a pinned Bitburner instance for the canonical 20-minute window, and separately survive a 24-hour endurance run.
+2. Delegation logs, generated scripts, periodic snapshots, and final stats are committed as JSON to a run directory on an orchestrator branch.
 3. The aggregator produces a valid leaderboard JSON and basic HTML from one or more branches.
 4. Cloudflare Pages can serve the static leaderboard.
 

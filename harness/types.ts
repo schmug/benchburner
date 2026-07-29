@@ -287,7 +287,20 @@ export interface RunConfig {
     bitburner_commit: string;
     seed: number;
   };
-  duration_hours: number;
+  /**
+   * Canonical run length. Seconds rather than hours because the
+   * canonical measurement run is 20 minutes; YAML accepts either
+   * `duration_hours` or `duration_minutes` and the loader resolves
+   * both to this.
+   */
+  duration_seconds: number;
+  /**
+   * Overrides the proportional snapshot cadence. Left undefined by
+   * almost every config — set it only to deliberately alter the
+   * orchestrator's snapshot channel, since doing so makes a run
+   * incomparable to runs that did not.
+   */
+  snapshot_interval_seconds?: number;
   attribution_mode: "public" | "anonymous";
 }
 
@@ -371,5 +384,14 @@ export interface RunSummary {
   bitburner_commit: string;
   start_time: string;
   end_time: string | null;
+  /**
+   * Kept for backward compatibility: existing run artifacts carry it
+   * and aggregator/build.ts reads it. Now derived from the run's
+   * effective duration, so it is fractional on sub-hour runs — it used
+   * to be copied from config.duration_hours, which meant every
+   * 20-minute PCS1/PDS6 run recorded itself as a 1-hour run.
+   */
   duration_hours: number;
+  /** Precise effective run length. Prefer this over duration_hours. */
+  duration_seconds: number;
 }

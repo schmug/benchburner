@@ -33,11 +33,17 @@ function writeJson(path: string, value: unknown): void {
   writeFileSync(path, JSON.stringify(value, null, 2) + "\n", "utf8");
 }
 
+/**
+ * Takes the run's *effective* duration in seconds, not the configured
+ * one. Callers previously passed config.duration_hours, which ignored
+ * the BENCHBURNER_DURATION_SEC override and so recorded every
+ * 20-minute PCS1/PDS6 run as a 1-hour run in its own summary.json.
+ */
 export function exportRunArtifacts(
   db: Db,
   run_id: string,
   outDir: string,
-  duration_hours: number,
+  duration_seconds: number,
 ): RunSummary {
   mkdirSync(outDir, { recursive: true });
 
@@ -74,7 +80,8 @@ export function exportRunArtifacts(
     bitburner_commit: runRow.bitburner_commit,
     start_time: runRow.start_time,
     end_time: runRow.end_time,
-    duration_hours,
+    duration_hours: duration_seconds / 3600,
+    duration_seconds,
   };
   writeJson(join(outDir, "summary.json"), summary);
 

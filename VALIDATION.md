@@ -15,6 +15,41 @@ Conventions:
 
 ---
 
+## ⚠️ Snapshot-cadence break — 2026-07-28
+
+**Every result recorded below this line was produced under a snapshot
+cadence that no longer exists, and is not comparable to runs made after
+this date.**
+
+Until 2026-07-28 the snapshot interval was hardcoded to 3600s. On a
+20-minute run the timer therefore fired exactly once, at index 0. Every
+PCS1 / PDS1 / PDS6 number in this file was produced by an orchestrator
+that had **no working snapshot channel** — it saw only subagent reports,
+not the periodic game state CLAUDE.md constraint #3 grants it. The
+cadence is now `duration / 24`, so a canonical 20-minute run gets 24
+snapshots at 50s.
+
+Consequences to hold onto:
+
+1. **The family-ordering result is now provisional.** "Anthropic-family
+   orchestrators sit at the floor" was measured with one of the two
+   information channels missing. It may hold, strengthen, or vanish
+   under the corrected cadence — a model that would have used snapshots
+   to notice a dead strategy was never given the chance.
+2. **Do not append post-fix runs to the pre-fix tables.** Re-baseline
+   all six orchestrators at N=5 (~$15–30, ~10 machine-hours) before
+   publishing any ranking, or reproduce the old conditions explicitly
+   with `snapshot_interval_seconds: 1200`.
+3. **The 60% floor-rate for Anthropic models is not yet a citable
+   finding.** It is the most externally interesting number the project
+   has; it is also the one most exposed to this bug.
+
+Runs after this line also record their true duration: `summary.json`
+previously copied `config.duration_hours` and so labelled every
+20-minute run as a 1-hour run.
+
+---
+
 ## Phase 0 — Bootstrap: prove signal exists
 
 **Gate:** no other validation is meaningful until a single run

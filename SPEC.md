@@ -6,14 +6,14 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    24-hour Run Harness                       │
+│                        Run Harness                           │
 │                                                               │
 │  ┌──────────────┐   instructions   ┌──────────────────┐     │
 │  │ Orchestrator │ ───────────────> │ In-Memory Bus    │     │
 │  │   (1 model)  │ <─────────────── │                  │     │
 │  └──────┬───────┘     results      └────────┬─────────┘     │
 │         │                                    │               │
-│         │ hourly snapshots                   │ dispatch      │
+│         │ periodic snapshots                 │ dispatch      │
 │         │ + game exec results                ▼               │
 │         │                          ┌──────────────────┐     │
 │         │                          │   Subagent Pool  │     │
@@ -159,9 +159,18 @@ This shape is deliberately close to how modern coding agents work
 orchestrator's ability to direct *agentic* coding subagents, not
 one-shot completion subagents.
 
-### 2.4 Backend → Orchestrator (Hourly Snapshot)
+### 2.4 Backend → Orchestrator (Periodic Snapshot)
 
-Emitted at the top of every hour (H=0..24).
+Emitted 24 times per run, at `duration / 24` intervals (floored at 30s)
+— so hourly on a 24h endurance run, every 50s on a canonical 20-minute
+run. The `hour` field is a snapshot index (0..24), not a wall-clock
+hour; it kept its name because the storage column and existing run
+artifacts use it.
+
+The cadence is proportional rather than fixed because a hardcoded
+one-hour interval reduced every sub-hour run to a single index-0
+snapshot, removing the orchestrator's second information channel
+entirely while appearing to work.
 
 ```json
 {
@@ -323,7 +332,7 @@ results/<run_id>/
 ├── summary.json          # { run_id, model, final_money, stats, status }
 ├── delegations.json      # full delegation log
 ├── scripts.json          # all generated scripts
-└── snapshots.json        # hourly snapshots
+└── snapshots.json        # periodic snapshots (24 per run)
 ```
 
 ## 5. Bitburner Integration
@@ -337,7 +346,7 @@ results/<run_id>/
 ### 5.2 Runtime
 
 - Headless Node.js runtime (no Electron UI). Use existing community headless builds as reference.
-- Real-time; no tick acceleration. 24 wall-clock hours = 24 in-game hours.
+- Real-time; no tick acceleration. Wall-clock time = in-game time.
 - RNG seed pinned via fork-level patch to make the seed injectable at boot.
 
 ### 5.3 Script Execution Interface
@@ -395,8 +404,8 @@ Adding a new model does **not** require code changes. It requires a config entry
 
 1. **Init**: load run config (orchestrator model, subagent roster, seed). Create `run_id`. Initialize SQLite. Boot pinned Bitburner instance.
 2. **Warm-up** (< 1 min): orchestrator gets an initial empty-state input, can spawn first subagents.
-3. **Main loop** (24h): polling loop fires orchestrator decisions every 60s. Subagents run async. Scripts execute in-game as they arrive. Snapshots emit hourly.
-4. **Shutdown**: at T+24h, freeze the bus. Let in-flight subagent calls timeout within 5 min. Dump final game state. Export JSON artifacts. Commit to orchestrator branch.
+3. **Main loop** (the configured duration): polling loop fires orchestrator decisions every 60s. Subagents run async. Scripts execute in-game as they arrive. Snapshots emit at `duration / 24`.
+4. **Shutdown**: at end of duration, freeze the bus. Let in-flight subagent calls timeout within 5 min. Dump final game state. Export JSON artifacts. Commit to orchestrator branch.
 
 ## 8. Aggregator
 
@@ -471,9 +480,29 @@ subagent_limits:
 game:
   bitburner_commit: abc123def
   seed: 8675309          # opaque to orchestrator
-duration_hours: 24
+duration_minutes: 20     # canonical; or duration_hours: 24 for endurance
 attribution_mode: public  # or 'anonymous'
 ```
+
+**Duration.** Exactly one of `duration_minutes` or `duration_hours` is
+required; supplying both or neither is a load error. The canonical
+ranked duration is 20 minutes (`duration_minutes: 20`); `duration_hours:
+24` selects the separate endurance measurement. See CLAUDE.md
+§ "Run durations: canonical vs endurance" — the two never share a
+leaderboard column.
+
+Requiring exactly one key is deliberate. When only `duration_hours`
+existed, the 20-minute canonical duration was unreachable from config
+and every battery reached it via `BENCHBURNER_DURATION_SEC`, a dev-only
+env override — so every PCS1/PDS6 config claimed `duration_hours: 1`
+while its runs lasted 1200s, and the artifacts recorded the config's
+lie rather than what ran.
+
+**Optional `snapshot_interval_seconds`.** Overrides the snapshot
+cadence, which otherwise defaults to `duration / 24` (floored at 30s).
+Must be > 0 and must not exceed the run duration. Setting it makes a run
+incomparable to runs that did not set it, since it changes what the
+orchestrator can observe.
 
 ### 10.2 `config/models.yaml`
 
