@@ -360,6 +360,27 @@ export interface ScriptRow {
   timestamp: string;
 }
 
+/** How a single orchestrator tick ended. */
+export type CycleStatus = "ok" | "malformed" | "failed";
+
+export interface CycleRow {
+  run_id: string;
+  cycle_number: number;
+  status: CycleStatus;
+  /**
+   * The orchestrator's free-form explanation of its own decisions.
+   * SPEC §3.2 logs it but does not score it; until this row existed it
+   * was parsed and then discarded, so no artifact ever carried the
+   * reasoning behind a run's delegation pattern.
+   */
+  reasoning: string | null;
+  actions: string; // JSON array of OrchestratorAction
+  tokens_used: number;
+  latency_ms: number;
+  error: string | null;
+  timestamp: string;
+}
+
 export interface SnapshotRow {
   snapshot_id: string;
   run_id: string;

@@ -96,6 +96,8 @@
     background:var(--panel-2); border:1px solid var(--rule); border-radius:3px;
     padding:7px 9px; max-height:120px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere;
   }
+  /* an instruction nested under the cycle that dispatched it */
+  .nested { margin-top:9px; margin-left:11px; padding-left:12px; border-left:2px solid var(--rule); }
   .empty { padding:26px 14px; text-align:center; color:var(--ink-3); font-family:var(--mono); font-size:12px; }
   svg { display:block; width:100%; height:auto; }
   .banner { background:color-mix(in srgb,var(--err) 12%,var(--panel)); border:1px solid color-mix(in srgb,var(--err) 40%,transparent); color:var(--err); border-radius:5px; padding:11px 14px; margin-bottom:16px; font-family:var(--mono); font-size:12px; }
@@ -125,8 +127,8 @@
       <div id="subagents"></div>
     </div>
     <div class="panel">
-      <h2>orchestrator → subagent · newest first</h2>
-      <div class="feed" id="delegations"></div>
+      <h2>orchestrator decisions · newest first</h2>
+      <div class="feed" id="cycles"></div>
     </div>
   </div>
 
@@ -244,46 +246,87 @@ function renderSubagents(subs) {
   }
 }
 
-function renderDelegations(ds) {
-  const box = $("delegations");
+// Each orchestrator tick, with its own reasoning, followed by whatever
+// instructions that tick dispatched. A tick that only spawned, killed,
+// noop'd or failed shows up here too — those are the decisions that
+// leave no delegation behind.
+function renderCycles(cycles, ds) {
+  const box = $("cycles");
   clear(box);
-  if (!ds || ds.length === 0) {
-    box.append(el("div", "empty", "no instructions dispatched yet"));
+  if (!cycles || cycles.length === 0) {
+    box.append(el("div", "empty",
+      (ds && ds.length) ? "this run predates cycle recording — no reasoning stored"
+                        : "no orchestrator cycles yet"));
+    if (ds && ds.length) renderDelegationsInto(box, ds);
     return;
   }
-  for (const d of ds.slice(0, 60)) {
+  const byCycle = new Map();
+  for (const d of (ds || [])) {
+    if (!byCycle.has(d.cycle_number)) byCycle.set(d.cycle_number, []);
+    byCycle.get(d.cycle_number).push(d);
+  }
+
+  for (const c of cycles.slice(0, 40)) {
     const item = el("div", "item");
     const head = el("div", "item-head");
-    head.append(
-      el("span", "cyc", "cycle " + int(d.cycle_number)),
-      el("span", "who", d.subagent_id),
-      el("span", "tag t-" + d.state, d.state),
-    );
-    if (d.action_type && d.action_type !== "instruct") {
-      head.append(el("span", "cyc", d.action_type));
-    }
+    const statusTag = { ok: "t-success", malformed: "t-error", failed: "t-error" }[c.status] || "t-pending";
+    head.append(el("span", "cyc", "cycle " + int(c.cycle_number)));
+    const verbs = (c.actions || []).map((a) => a.action_type);
+    head.append(el("span", "tag " + statusTag, c.status === "ok" ? (verbs.join(" · ") || "noop") : c.status));
     item.append(head);
-    if (d.task) item.append(el("div", "task", d.task));
+
+    if (c.reasoning) item.append(el("div", "task", c.reasoning));
+    else if (c.status === "ok") item.append(el("div", "meta", "(model returned no reasoning)"));
 
     const bits = [];
-    if (d.tokens_used) bits.push(int(d.tokens_used) + " tok");
-    if (d.iterations) bits.push(d.iterations + " iter");
+    if (c.tokens_used) bits.push(int(c.tokens_used) + " tok");
+    if (c.latency_ms) bits.push((c.latency_ms / 1000).toFixed(1) + "s");
     if (bits.length) item.append(el("div", "meta", bits.join(" · ")));
+    if (c.error) item.append(el("div", "errline", c.error));
 
-    if (d.iteration_summaries && d.iteration_summaries.length) {
-      const wrap = el("div", "iters");
-      for (const it of d.iteration_summaries) {
-        const bad = it.exit_reason && it.exit_reason !== "exited" && it.exit_reason !== "running";
-        const label = `#${it.iteration} ${it.exit_reason || "?"}` +
-          (it.money_gained ? ` +${money(it.money_gained)}` : "");
-        wrap.append(el("span", "iter" + (bad ? " bad" : ""), label));
-      }
-      item.append(wrap);
+    for (const d of (byCycle.get(c.cycle_number) || [])) {
+      item.append(delegationNode(d, true));
     }
-    if (d.error) item.append(el("div", "errline", d.error));
-    if (d.reasoning) item.append(el("div", "out", d.reasoning));
     box.append(item);
   }
+}
+
+function renderDelegationsInto(box, ds) {
+  for (const d of ds.slice(0, 60)) box.append(delegationNode(d, false));
+}
+
+function delegationNode(d, nested) {
+  const item = el("div", nested ? "nested" : "item");
+  const head = el("div", "item-head");
+  head.append(
+    el("span", "who", d.subagent_id),
+    el("span", "tag t-" + d.state, d.state),
+  );
+  if (!nested) head.append(el("span", "cyc", "cycle " + int(d.cycle_number)));
+  if (d.action_type && d.action_type !== "instruct") {
+    head.append(el("span", "cyc", d.action_type));
+  }
+  item.append(head);
+  if (d.task) item.append(el("div", "task", d.task));
+
+  const bits = [];
+  if (d.tokens_used) bits.push(int(d.tokens_used) + " tok");
+  if (d.iterations) bits.push(d.iterations + " iter");
+  if (bits.length) item.append(el("div", "meta", bits.join(" · ")));
+
+  if (d.iteration_summaries && d.iteration_summaries.length) {
+    const wrap = el("div", "iters");
+    for (const it of d.iteration_summaries) {
+      const bad = it.exit_reason && it.exit_reason !== "exited" && it.exit_reason !== "running";
+      const label = `#${it.iteration} ${it.exit_reason || "?"}` +
+        (it.money_gained ? ` +${money(it.money_gained)}` : "");
+      wrap.append(el("span", "iter" + (bad ? " bad" : ""), label));
+    }
+    item.append(wrap);
+  }
+  if (d.error) item.append(el("div", "errline", d.error));
+  if (d.reasoning) item.append(el("div", "out", d.reasoning));
+  return item;
 }
 
 function renderExecutions(es) {
@@ -338,8 +381,8 @@ function render(v) {
   t.append(
     tile("money", money(v.money.current), "v-money", "+" + money(v.money.gained) + " this run"),
     tile("elapsed", dur(v.run.elapsed_seconds), null, v.money.series.length + " snapshots"),
-    tile("instructions", int(v.totals.delegations), null,
-      v.totals.latest_delegated_cycle ? "latest at cycle " + int(v.totals.latest_delegated_cycle) : "none dispatched"),
+    tile("cycles", int(v.totals.cycles || v.totals.latest_delegated_cycle),
+      null, int(v.totals.delegations) + " instructions"),
     tile("in flight", int(v.totals.pending), v.totals.pending ? "v-pend" : null, "awaiting subagent"),
     tile("errors", int(v.totals.errors), v.totals.errors ? "v-err" : null, "failed instructions"),
     tile("scripts run", int(v.totals.scripts_run), null, "in game"),
@@ -349,7 +392,7 @@ function render(v) {
 
   chart(v.money.series);
   renderSubagents(v.subagents);
-  renderDelegations(v.delegations);
+  renderCycles(v.cycles, v.delegations);
   renderExecutions(v.executions);
 }
 

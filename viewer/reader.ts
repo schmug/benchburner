@@ -26,6 +26,7 @@
 import Database from "better-sqlite3";
 
 import type {
+  CycleStatus,
   ExecutionResult,
   GameState,
   OrchestratorAction,
@@ -129,11 +130,28 @@ export interface LiveTokens {
   subagent_observed: number;
 }
 
+/** One orchestrator tick, including ticks that delegated nothing. */
+export interface LiveCycle {
+  cycle_number: number;
+  status: CycleStatus;
+  /** The orchestrator's own account of why it decided what it decided. */
+  reasoning: string | null;
+  actions: OrchestratorAction[];
+  /** How many delegations this tick actually produced (often zero). */
+  delegation_count: number;
+  tokens_used: number;
+  latency_ms: number;
+  error: string | null;
+  timestamp: string;
+}
+
 export interface LiveView {
   generated_at: string;
   run: LiveRun;
   money: LiveMoney;
   tokens: LiveTokens;
+  /** Newest cycle first. Empty for runs recorded before the table existed. */
+  cycles: LiveCycle[];
   subagents: LiveSubagent[];
   /** Newest cycle first — a dashboard reads top-down. */
   delegations: LiveDelegation[];
@@ -141,10 +159,15 @@ export interface LiveView {
   executions: LiveExecution[];
   totals: {
     /**
-     * Newest cycle number that produced an instruction — NOT the
-     * orchestrator's cycle count. A cycle that only spawned or killed a
-     * subagent writes no delegation row, so the artifacts cannot tell us
-     * how many cycles have actually run.
+     * True orchestrator tick count, from the `cycles` table. Zero for
+     * runs recorded before that table existed — in which case
+     * `latest_delegated_cycle` is the only available lower bound.
+     */
+    cycles: number;
+    /**
+     * Newest cycle number that produced an instruction. Lower than
+     * `cycles` whenever the orchestrator noop'd, only spawned/killed, or
+     * its cycle failed.
      */
     latest_delegated_cycle: number;
     delegations: number;
@@ -193,6 +216,30 @@ interface SnapshotRowRaw {
   hour: number;
   game_state: string;
   timestamp: string;
+}
+
+interface CycleRowRaw {
+  cycle_number: number;
+  status: CycleStatus;
+  reasoning: string | null;
+  actions: string;
+  tokens_used: number | null;
+  latency_ms: number | null;
+  error: string | null;
+  timestamp: string;
+}
+
+/**
+ * Run artifacts predate the `cycles` table, and the viewer opens the
+ * database read-only so it cannot migrate one into existence. Probing
+ * beats catching: a thrown "no such table" is indistinguishable from a
+ * genuinely corrupt database.
+ */
+function tableExists(db: Database.Database, name: string): boolean {
+  const row = db
+    .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`)
+    .get(name);
+  return row !== undefined;
 }
 
 /**
@@ -363,6 +410,40 @@ export function readLiveView(dbPath: string, now: Date = new Date()): LiveView {
       ensure(e.subagent_id).money_earned += e.money_gained;
     }
 
+    // ── orchestrator cycles ────────────────────────────────────
+    // The 86 runs published before this table existed have no `cycles`
+    // relation at all, so a missing table degrades to "no reasoning
+    // available" rather than taking down the whole view.
+    const delegationsPerCycle = new Map<number, number>();
+    for (const d of delegations) {
+      delegationsPerCycle.set(
+        d.cycle_number,
+        (delegationsPerCycle.get(d.cycle_number) ?? 0) + 1,
+      );
+    }
+
+    let cycles: LiveCycle[] = [];
+    if (tableExists(db, "cycles")) {
+      const cycleRows = db
+        .prepare(
+          `SELECT cycle_number, status, reasoning, actions, tokens_used,
+                  latency_ms, error, timestamp
+             FROM cycles ORDER BY cycle_number DESC`,
+        )
+        .all() as CycleRowRaw[];
+      cycles = cycleRows.map((row) => ({
+        cycle_number: row.cycle_number,
+        status: row.status,
+        reasoning: row.reasoning,
+        actions: parseJson<OrchestratorAction[]>(row.actions) ?? [],
+        delegation_count: delegationsPerCycle.get(row.cycle_number) ?? 0,
+        tokens_used: row.tokens_used ?? 0,
+        latency_ms: row.latency_ms ?? 0,
+        error: row.error,
+        timestamp: row.timestamp,
+      }));
+    }
+
     const subagentRecorded = runRow.subagent_tokens ?? 0;
     const subagentObserved = delegations.reduce(
       (sum, d) => sum + (d.tokens_used ?? 0),
@@ -411,7 +492,9 @@ export function readLiveView(dbPath: string, now: Date = new Date()): LiveView {
       ),
       delegations,
       executions,
+      cycles,
       totals: {
+        cycles: cycles.length,
         latest_delegated_cycle: delegations.length ? delegations[0].cycle_number : 0,
         delegations: delegations.length,
         pending: delegations.filter((d) => d.state === "pending").length,

@@ -74,15 +74,23 @@ produces a plausible, wrong number on screen.
   want a true cycle count on the page, the orchestrator loop has to
   persist one.
 
+## The decisions feed
+
+The main panel is one entry per orchestrator tick, carrying that tick's
+own `reasoning`, with any instructions it dispatched nested underneath.
+
+This is per-cycle rather than per-delegation for a reason that shows up
+immediately in practice. On a local qwen2.5-coder:7b run, six cycles
+produced **one** delegation — the other five were kill/spawn thrash after
+subagent scripts kept failing. A `reasoning` column on `delegations`
+would have recorded one of those six decisions and silently dropped the
+loop that characterised the whole run.
+
+Cycles recorded before this table existed show as "this run predates
+cycle recording"; the delegation feed still renders.
+
 ## Not done here
 
-- **The orchestrator's own reasoning is not shown, because it is not
-  saved.** `parseOrchestratorOutput` returns `{actions, reasoning}` and
-  `runCycle` uses only `parsed.actions`
-  (`harness/orchestrator/loop.ts`). The feed shows *what* the
-  orchestrator decided and the subagent's explanation, but never the
-  orchestrator's own. Capturing it is a one-line change plus a column,
-  and it is the single most informative thing missing from this page.
 - **No leak scrubbing on display.** `detectLeaks` exists to stop
   forbidden tokens reaching the *model*; showing them to the operator on
   localhost leaks nothing, and hiding them would obscure debugging

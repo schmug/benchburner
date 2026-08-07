@@ -25,6 +25,7 @@ import path from "node:path";
 import type { Bus } from "../bus/bus";
 import type { Db } from "../storage/db";
 import {
+  insertCycle,
   insertDelegation,
   insertScript,
   updateDelegationResult,
@@ -32,6 +33,7 @@ import {
 } from "../storage/writers";
 import type { InferenceRegistry } from "../inference/registry";
 import type {
+  CycleStatus,
   ExecutionResult,
   GameController,
   GameState,
@@ -292,13 +294,69 @@ export class OrchestratorLoop {
 
       this.lastCycleCompletedAt = Date.now();
       const ms = this.lastCycleCompletedAt - cycleStart;
+
+      // Record the tick itself, not just the delegations it produced.
+      // A noop, a spawn-only cycle, or malformed model output creates no
+      // delegation row, so without this the orchestrator's own account of
+      // its decisions — and the fact that a decision happened at all —
+      // leaves no trace in the artifacts.
+      this.recordCycle({
+        status: parsed ? "ok" : "malformed",
+        reasoning: parsed?.reasoning ?? null,
+        actions: parsed?.actions ?? [],
+        tokens_used: raw.tokens_used,
+        latency_ms: ms,
+        error: parsed ? null : "malformed JSON from model; treated as noop",
+      });
       console.log(
         `[orchestrator] cycle ${this.cycle} done in ${ms}ms — actions=${parsed?.actions.length ?? 0}, pool=${this.pool.size()}, money=${this.latestState?.current_money ?? "?"}`,
       );
     } catch (e) {
-      console.error(`[orchestrator] cycle ${this.cycle} failed:`, (e as Error).message);
+      const message = (e as Error).message;
+      console.error(`[orchestrator] cycle ${this.cycle} failed:`, message);
+      // A run whose every cycle aborts on an inference timeout used to
+      // produce artifacts indistinguishable from one that deliberately
+      // did nothing. Record the failure so the difference is visible.
+      this.recordCycle({
+        status: "failed",
+        reasoning: null,
+        actions: [],
+        tokens_used: 0,
+        latency_ms: Date.now() - cycleStart,
+        error: message,
+      });
     } finally {
       this.cycleInFlight = false;
+    }
+  }
+
+  /**
+   * Persists one orchestrator tick. Never throws: a storage problem must
+   * not take down a run that is otherwise progressing, and this row is
+   * observability, not control flow.
+   */
+  private recordCycle(row: {
+    status: CycleStatus;
+    reasoning: string | null;
+    actions: OrchestratorAction[];
+    tokens_used: number;
+    latency_ms: number;
+    error: string | null;
+  }): void {
+    try {
+      insertCycle(this.db, {
+        run_id: this.run_id,
+        cycle_number: this.cycle,
+        status: row.status,
+        reasoning: row.reasoning,
+        actions: row.actions,
+        tokens_used: row.tokens_used,
+        latency_ms: row.latency_ms,
+        error: row.error,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.error(`[orchestrator] failed to record cycle ${this.cycle}:`, (e as Error).message);
     }
   }
 

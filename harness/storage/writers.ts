@@ -9,6 +9,7 @@
 
 import type { Db } from "./db";
 import type {
+  CycleStatus,
   ExecutionResult,
   OrchestratorAction,
   Result,
@@ -27,6 +28,7 @@ type Stmts = {
   insertScript: import("better-sqlite3").Statement;
   updateScriptExecution: import("better-sqlite3").Statement;
   insertSnapshot: import("better-sqlite3").Statement;
+  insertCycle: import("better-sqlite3").Statement;
 };
 
 const stmtCache = new WeakMap<Db, Stmts>();
@@ -89,6 +91,17 @@ function stmts(db: Db): Stmts {
         snapshot_id, run_id, hour, game_state, timestamp
       ) VALUES (
         @snapshot_id, @run_id, @hour, @game_state, @timestamp
+      )
+    `),
+    // REPLACE rather than INSERT: a cycle is identified by (run, tick),
+    // so a retry must overwrite that tick rather than double-count it.
+    insertCycle: db.raw.prepare(`
+      INSERT OR REPLACE INTO cycles (
+        run_id, cycle_number, status, reasoning, actions,
+        tokens_used, latency_ms, error, timestamp
+      ) VALUES (
+        @run_id, @cycle_number, @status, @reasoning, @actions,
+        @tokens_used, @latency_ms, @error, @timestamp
       )
     `),
   };
@@ -231,6 +244,38 @@ export function updateScriptExecution(
 // ────────────────────────────────────────────────────────────────────
 // snapshots
 // ────────────────────────────────────────────────────────────────────
+
+/**
+ * Records one orchestrator tick — including ticks that produced no
+ * delegation. The `reasoning` field is the orchestrator's own account of
+ * why it did what it did; SPEC §3.2 logs it but does not score it.
+ */
+export function insertCycle(
+  db: Db,
+  row: {
+    run_id: string;
+    cycle_number: number;
+    status: CycleStatus;
+    reasoning: string | null;
+    actions: OrchestratorAction[];
+    tokens_used: number;
+    latency_ms: number;
+    error?: string | null;
+    timestamp: string;
+  },
+): void {
+  stmts(db).insertCycle.run({
+    run_id: row.run_id,
+    cycle_number: row.cycle_number,
+    status: row.status,
+    reasoning: row.reasoning,
+    actions: JSON.stringify(row.actions),
+    tokens_used: row.tokens_used,
+    latency_ms: row.latency_ms,
+    error: row.error ?? null,
+    timestamp: row.timestamp,
+  });
+}
 
 export function insertSnapshot(
   db: Db,

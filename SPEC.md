@@ -312,7 +312,30 @@ All tables live in a single SQLite file per run: `results/<run_id>/state.db`.
 | tokens_used | INTEGER | |
 | timestamp | TEXT | |
 
-### 4.4 `snapshots`
+### 4.4 `cycles`
+
+One row per orchestrator tick — including ticks that produce no delegation.
+
+| column | type | notes |
+|---|---|---|
+| run_id | TEXT FK | part of PK |
+| cycle_number | INTEGER | part of PK |
+| status | TEXT | `ok` / `malformed` / `failed` |
+| reasoning | TEXT | the orchestrator's own §3.2 `reasoning`; null if the model gave none |
+| actions | TEXT | JSON array of the cycle's actions |
+| tokens_used | INTEGER | orchestrator inference for this cycle |
+| latency_ms | INTEGER | wall-clock for this cycle |
+| error | TEXT | null unless status ≠ ok |
+| timestamp | TEXT | ISO-8601 |
+
+`reasoning` is logged, not scored (§3.2). It lives here rather than on
+`delegations` because it is per-cycle: a cycle that noops, only
+spawns/kills, returns malformed JSON, or throws writes **no** delegation
+row, and those are frequently the cycles most worth explaining. Recording
+the tick itself also gives readers a true cycle count — `delegations`
+alone only reveals the highest cycle that happened to delegate.
+
+### 4.5 `snapshots`
 
 | column | type | notes |
 |---|---|---|
@@ -322,7 +345,7 @@ All tables live in a single SQLite file per run: `results/<run_id>/state.db`.
 | game_state | TEXT | JSON |
 | timestamp | TEXT | |
 
-### 4.5 JSON Exports
+### 4.6 JSON Exports
 
 At run end, the SQLite file is dumped to human-readable JSON files beside it for Git-friendly diffs and Pages consumption:
 
@@ -332,7 +355,8 @@ results/<run_id>/
 ├── summary.json          # { run_id, model, final_money, stats, status }
 ├── delegations.json      # full delegation log
 ├── scripts.json          # all generated scripts
-└── snapshots.json        # periodic snapshots (24 per run)
+├── snapshots.json        # periodic snapshots (24 per run)
+└── cycles.json           # every orchestrator tick + its reasoning
 ```
 
 ## 5. Bitburner Integration

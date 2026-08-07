@@ -1,11 +1,13 @@
 /**
- * JSON export pass. Dumps the per-run SQLite state into the four
+ * JSON export pass. Dumps the per-run SQLite state into the
  * human-readable artifacts under `results/<run_id>/`:
  *
  *   - summary.json     SPEC §8 leaderboard-entry shape
  *   - delegations.json full delegation log, oldest first
  *   - scripts.json     all generated scripts + execution metadata
  *   - snapshots.json   hourly game-state snapshots
+ *   - cycles.json      every orchestrator tick + its own reasoning,
+ *                      including ticks that delegated nothing
  *
  * These are what the aggregator + Pages site consume; the .db stays
  * around too, but JSON is the Git-friendly source of truth.
@@ -16,6 +18,7 @@ import { join } from "node:path";
 
 import type { Db } from "./db";
 import type {
+  CycleRow,
   DelegationRow,
   RunRow,
   RunSummary,
@@ -134,6 +137,28 @@ export function exportRunArtifacts(
     timestamp: r.timestamp,
   }));
   writeJson(join(outDir, "snapshots.json"), snapshots);
+
+  // ── cycles.json ─────────────────────────────────────────────────
+  // One entry per orchestrator tick, carrying its `reasoning`. Unlike
+  // delegations.json this includes ticks that produced no delegation —
+  // noop, spawn/kill-only, malformed model output, and failed cycles —
+  // so the artifact records why a run did nothing, not just that it did.
+  const cycleRows = db.raw
+    .prepare<[string], CycleRow>(
+      `SELECT * FROM cycles WHERE run_id = ? ORDER BY cycle_number ASC`,
+    )
+    .all(run_id);
+  const cycles = cycleRows.map((r) => ({
+    cycle_number: r.cycle_number,
+    status: r.status,
+    reasoning: r.reasoning,
+    actions: parseNullable<unknown>(r.actions),
+    tokens_used: r.tokens_used,
+    latency_ms: r.latency_ms,
+    error: r.error,
+    timestamp: r.timestamp,
+  }));
+  writeJson(join(outDir, "cycles.json"), cycles);
 
   return summary;
 }

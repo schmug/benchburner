@@ -26,6 +26,7 @@ import test, { after, describe } from "node:test";
 import { openDb } from "../../harness/storage/db";
 import {
   insertRun,
+  insertCycle,
   insertDelegation,
   updateDelegationResult,
   insertScript,
@@ -179,6 +180,49 @@ function fixtureDb(): string {
     timestamp: T0,
   });
 
+  // ── orchestrator ticks, including one that delegated nothing ──
+  insertCycle(db, {
+    run_id: RUN_ID,
+    cycle_number: 1,
+    status: "ok",
+    reasoning: "Spawning a first worker to probe the lowest-security target.",
+    actions: [{ action_type: "spawn", subagent_id: "sub-a" }],
+    tokens_used: 400,
+    latency_ms: 3100,
+    timestamp: T0,
+  });
+  insertCycle(db, {
+    run_id: RUN_ID,
+    cycle_number: 2,
+    status: "failed",
+    reasoning: null,
+    actions: [],
+    tokens_used: 0,
+    latency_ms: 120000,
+    error: "Ollama request failed: This operation was aborted",
+    timestamp: T0,
+  });
+  insertCycle(db, {
+    run_id: RUN_ID,
+    cycle_number: 3,
+    status: "ok",
+    reasoning: "sub-a earned 45k; instructing it to scale the same approach.",
+    actions: [{ action_type: "instruct", subagent_id: "sub-a" }],
+    tokens_used: 900,
+    latency_ms: 5200,
+    timestamp: T0,
+  });
+  insertCycle(db, {
+    run_id: RUN_ID,
+    cycle_number: 4,
+    status: "ok",
+    reasoning: "Holding steady while sub-a's committed script accrues income.",
+    actions: [{ action_type: "noop" }],
+    tokens_used: 350,
+    latency_ms: 2800,
+    timestamp: T0,
+  });
+
   insertSnapshot(db, {
     snapshot_id: "snap-0",
     run_id: RUN_ID,
@@ -288,24 +332,57 @@ describe("viewer/reader — failures", () => {
   });
 });
 
-describe("viewer/reader — cycle counting", () => {
-  /**
-   * Only `insertDelegation` persists a cycle number, so a cycle that
-   * merely spawned or killed a subagent leaves no trace in the database.
-   * The view must therefore not claim to know how many cycles the
-   * orchestrator has run — it can only report the newest cycle that
-   * produced an instruction. Naming this `cycles` on a dashboard reads
-   * as the orchestrator's tick count and understates it.
-   */
-  test("reports the latest delegated cycle, not a cycle total", () => {
+describe("viewer/reader — cycles and orchestrator reasoning", () => {
+  test("surfaces the orchestrator's reasoning, newest cycle first", () => {
     const v = readLiveView(fixtureDb());
-    assert.equal(v.totals.latest_delegated_cycle, 3);
-    assert.equal(v.totals.delegations, 3);
-    assert.equal(
-      "cycles" in v.totals,
-      false,
-      "a field named `cycles` would overstate what the artifacts know",
+    assert.deepEqual(
+      v.cycles.map((c) => c.cycle_number),
+      [4, 3, 2, 1],
     );
+    assert.equal(
+      v.cycles.find((c) => c.cycle_number === 1)?.reasoning,
+      "Spawning a first worker to probe the lowest-security target.",
+    );
+  });
+
+  test("keeps cycles that delegated nothing — the reason a delegations column would not do", () => {
+    const v = readLiveView(fixtureDb());
+    const noop = v.cycles.find((c) => c.cycle_number === 4);
+    assert.ok(noop, "the noop cycle was dropped");
+    assert.equal(noop.delegation_count, 0);
+    assert.match(noop.reasoning ?? "", /Holding steady/);
+    assert.deepEqual(
+      noop.actions.map((a) => a.action_type),
+      ["noop"],
+    );
+  });
+
+  test("reports a true cycle count now that every tick is recorded", () => {
+    const v = readLiveView(fixtureDb());
+    assert.equal(v.totals.cycles, 4, "4 ticks ran, only 3 delegated");
+    assert.equal(v.totals.delegations, 3);
+    assert.equal(v.totals.latest_delegated_cycle, 3);
+  });
+
+  test("carries failed and malformed cycles so a stalled run is visible", () => {
+    const v = readLiveView(fixtureDb());
+    const bad = v.cycles.find((c) => c.cycle_number === 2);
+    assert.equal(bad?.status, "failed");
+    assert.match(bad?.error ?? "", /aborted/);
+  });
+
+  test("still reads a run database written before the cycles table existed", () => {
+    const file = fixtureDb();
+    const db = openDb(file);
+    db.raw.exec(`DROP TABLE cycles`);
+    db.close();
+
+    // The 86 already-published runs have no cycles table. The viewer has
+    // to degrade to "no reasoning available", not throw.
+    const v = readLiveView(file);
+    assert.deepEqual(v.cycles, []);
+    assert.equal(v.totals.cycles, 0);
+    assert.equal(v.totals.delegations, 3, "the rest of the view still works");
   });
 });
 

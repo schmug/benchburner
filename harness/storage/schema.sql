@@ -46,6 +46,23 @@ CREATE TABLE IF NOT EXISTS scripts (
   timestamp         TEXT NOT NULL               -- ISO-8601
 );
 
+-- One row per orchestrator tick, including ticks that produced no
+-- delegation (noop, spawn/kill only, malformed model output, or a thrown
+-- cycle). This is where the orchestrator's own `reasoning` lives — the
+-- "why" behind each decision — which is per-cycle, not per-delegation.
+CREATE TABLE IF NOT EXISTS cycles (
+  run_id        TEXT NOT NULL REFERENCES runs(run_id),
+  cycle_number  INTEGER NOT NULL,
+  status        TEXT NOT NULL,                -- ok | malformed | failed
+  reasoning     TEXT,                         -- null when the model gave none
+  actions       TEXT NOT NULL,                -- JSON array of orchestrator actions
+  tokens_used   INTEGER NOT NULL DEFAULT 0,
+  latency_ms    INTEGER NOT NULL DEFAULT 0,
+  error         TEXT,                         -- null unless status != ok
+  timestamp     TEXT NOT NULL,                -- ISO-8601
+  PRIMARY KEY (run_id, cycle_number)
+);
+
 CREATE TABLE IF NOT EXISTS snapshots (
   snapshot_id  TEXT PRIMARY KEY,
   run_id       TEXT NOT NULL REFERENCES runs(run_id),
