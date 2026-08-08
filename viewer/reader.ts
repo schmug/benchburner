@@ -98,6 +98,13 @@ export interface LiveDelegation {
   tokens_used?: number;
   iterations?: number;
   iteration_summaries?: Result["iteration_summaries"];
+  /**
+   * The script the subagent committed for this instruction, joined from
+   * `scripts`. Watching an expensive model work is mostly watching what
+   * it actually wrote.
+   */
+  code?: string;
+  code_lines?: number;
   timestamp: string;
 }
 
@@ -208,6 +215,8 @@ interface DelegationRowRaw {
 interface ScriptRowRaw {
   script_id: string;
   subagent_id: string;
+  instruction_id: string;
+  code: string | null;
   execution_result: string | null;
   timestamp: string;
 }
@@ -301,10 +310,20 @@ export function readLiveView(dbPath: string, now: Date = new Date()): LiveView {
 
     const scriptRows = db
       .prepare(
-        `SELECT script_id, subagent_id, execution_result, timestamp
+        `SELECT script_id, subagent_id, instruction_id, code,
+                execution_result, timestamp
            FROM scripts ORDER BY timestamp DESC`,
       )
       .all() as ScriptRowRaw[];
+
+    // instruction_id → committed source, so a delegation can show what
+    // the subagent actually wrote alongside why it wrote it.
+    const codeByInstruction = new Map<string, string>();
+    for (const row of scriptRows) {
+      if (row.code && !codeByInstruction.has(row.instruction_id)) {
+        codeByInstruction.set(row.instruction_id, row.code);
+      }
+    }
 
     const snapshotRows = db
       .prepare(
@@ -317,7 +336,10 @@ export function readLiveView(dbPath: string, now: Date = new Date()): LiveView {
       const action = parseJson<OrchestratorAction>(row.action);
       const result = parseJson<Result>(row.result);
       const instruction = action?.instruction;
+      const code = codeByInstruction.get(row.instruction_id) ?? result?.code;
       return {
+        code,
+        code_lines: code ? code.split("\n").length : undefined,
         delegation_id: row.delegation_id,
         cycle_number: row.cycle_number,
         subagent_id: row.subagent_id,

@@ -44,6 +44,13 @@ export interface Result {
     exit_reason?: string;
     money_gained?: number;
     stderr?: string;
+    /**
+     * The subagent's own reasoning on that turn — what it was trying and
+     * why. Only the final turn's notes become `reasoning` above, so
+     * without this the intermediate thinking behind a multi-iteration
+     * instruction is lost.
+     */
+    notes?: string;
   }>;
   timestamp: string;
 }

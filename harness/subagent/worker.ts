@@ -208,7 +208,9 @@ export class SubagentWorker {
       return;
     }
 
-    const iterations: Array<{ iteration: number; exit_reason?: string; money_gained?: number; stderr?: string }> = [];
+    // Derived from Result so the two cannot drift — this was a local
+    // duplicate that silently omitted fields added to the shared type.
+    const iterations: NonNullable<Result["iteration_summaries"]> = [];
     const transcript: string[] = [buildInitialPrompt(instr)];
     let totalTokens = 0;
     let lastCode = "";
@@ -322,6 +324,11 @@ export class SubagentWorker {
         exit_reason: exec.exit_reason,
         money_gained: exec.money_gained,
         stderr: exec.stderr?.slice(0, 500),
+        // The turn's own reasoning. `lastNotes` only survives for the
+        // final turn (it becomes Result.reasoning), so capture each
+        // one here or the thinking behind a multi-iteration
+        // instruction is lost.
+        notes: turn.notes?.slice(0, 1000),
       });
 
       transcript.push(formatExecutionFeedback(i, turn, exec));

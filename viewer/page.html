@@ -91,6 +91,20 @@
   .iters { margin-top:6px; display:flex; flex-wrap:wrap; gap:5px; }
   .iter { font-family:var(--mono); font-size:10px; padding:2px 6px; border-radius:2px; border:1px solid var(--rule); color:var(--ink-2); }
   .iter.bad { color:var(--err); border-color:color-mix(in srgb,var(--err) 40%,transparent); }
+  /* one write-run-observe turn, with the subagent's thinking for that turn */
+  .turns { margin-top:8px; display:flex; flex-direction:column; gap:7px; }
+  .turn { border-left:2px solid var(--rule); padding-left:10px; }
+  .turn-head { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .turn-n { font-family:var(--mono); font-size:10.5px; color:var(--ink-3); }
+  .turn-notes { margin-top:4px; font-size:12.5px; color:var(--ink-2); overflow-wrap:anywhere; }
+  details.code { margin-top:8px; }
+  details.code > summary { padding:5px 0; font-family:var(--mono); font-size:10.5px; color:var(--ink-3); font-weight:500; cursor:pointer; }
+  details.code[open] > summary { border-bottom:none; }
+  details.code pre {
+    margin:4px 0 0; background:var(--panel-2); border:1px solid var(--rule); border-radius:3px;
+    padding:9px 11px; font-family:var(--mono); font-size:11px; line-height:1.55;
+    color:var(--ink); max-height:280px; overflow:auto; white-space:pre;
+  }
   .out {
     margin-top:6px; font-family:var(--mono); font-size:11px; color:var(--ink-2);
     background:var(--panel-2); border:1px solid var(--rule); border-radius:3px;
@@ -314,18 +328,35 @@ function delegationNode(d, nested) {
   if (d.iterations) bits.push(d.iterations + " iter");
   if (bits.length) item.append(el("div", "meta", bits.join(" · ")));
 
+  // Each write-run-observe turn: what it tried, what the game said, and
+  // what it was thinking at the time.
   if (d.iteration_summaries && d.iteration_summaries.length) {
-    const wrap = el("div", "iters");
+    const wrap = el("div", "turns");
     for (const it of d.iteration_summaries) {
       const bad = it.exit_reason && it.exit_reason !== "exited" && it.exit_reason !== "running";
-      const label = `#${it.iteration} ${it.exit_reason || "?"}` +
-        (it.money_gained ? ` +${money(it.money_gained)}` : "");
-      wrap.append(el("span", "iter" + (bad ? " bad" : ""), label));
+      const turn = el("div", "turn");
+      const head = el("div", "turn-head");
+      head.append(
+        el("span", "turn-n", "#" + it.iteration),
+        el("span", "iter" + (bad ? " bad" : ""), it.exit_reason || "ran"),
+      );
+      if (it.money_gained) head.append(el("span", "cyc", "+" + money(it.money_gained)));
+      turn.append(head);
+      if (it.notes) turn.append(el("div", "turn-notes", it.notes));
+      if (it.stderr) turn.append(el("div", "out", it.stderr));
+      wrap.append(turn);
     }
     item.append(wrap);
   }
   if (d.error) item.append(el("div", "errline", d.error));
   if (d.reasoning) item.append(el("div", "out", d.reasoning));
+
+  if (d.code) {
+    const det = el("details", "code");
+    det.append(el("summary", null, `committed script · ${int(d.code_lines)} lines`));
+    det.append(el("pre", null, d.code));
+    item.append(det);
+  }
   return item;
 }
 
