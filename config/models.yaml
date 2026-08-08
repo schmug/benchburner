@@ -169,3 +169,30 @@
 #   api_key_env: TOGETHER_API_KEY
 #   context_window: 8192
 #   model_name: meta-llama/Llama-3-70b-chat-hf
+
+# ── Local Claude Code CLI (no API key) ────────────────────────────
+#
+# Uses the `claude` binary already authenticated on this machine, so a
+# run needs no OPENROUTER_API_KEY. The CLI is driven as a completion
+# endpoint (--max-turns 1, no tools), never as a nested agent — see
+# harness/inference/claude-cli.ts for why that distinction matters and
+# for the four flags that keep repo context (CLAUDE.md names the game)
+# out of the subagent's session.
+#
+# `endpoint` is repurposed as the binary path; "claude" means PATH.
+#
+# Cost: ~39K tokens / ~$0.21 per call in steady state on this machine,
+# almost all of it a preamble no flag removes. Whether that is billed or
+# covered by a subscription depends on how the CLI is authenticated.
+
+- id: claude-opus-5-cli
+  adapter: claude-cli
+  endpoint: claude
+  context_window: 200000
+  model_name: claude-opus-5
+
+- id: claude-haiku-4.5-cli
+  adapter: claude-cli
+  endpoint: claude
+  context_window: 200000
+  model_name: claude-haiku-4-5-20251001

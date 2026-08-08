@@ -181,7 +181,7 @@ export interface InferenceAdapter {
 
 export interface ModelConfig {
   id: string;
-  adapter: "ollama" | "http" | "test-hang" | "test-scripted" | "null-orchestrator";
+  adapter: "ollama" | "http" | "claude-cli" | "test-hang" | "test-scripted" | "null-orchestrator";
   endpoint: string;
   context_window: number;
   model_name?: string;
