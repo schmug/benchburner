@@ -189,7 +189,10 @@ Instruction quality is not observable without both.
 - Replace `ns.getPlayer()` (0.5 GB) with
   `ns.getServerMoneyAvailable("home")` (0.1 GB).
 
-Dispatcher 5.2 → **~3.6 GB**; subagent budget 2.8 → **~4.4 GB**. That
+Dispatcher 5.2 → **3.8 GB**; subagent budget 2.8 → **4.2 GB** (measured
+in-game with `ns.getScriptRam`, not estimated — an earlier draft of this
+section said ~3.6/~4.4, which omitted `ns.getRecentScripts` at 0.2 GB and
+the retained `ns.getRunningScript` at 0.3 GB). That
 makes `scp`+`exec` (3.5) and `purchaseServer` (3.85) startable, so the
 orchestrator gains a real decision: grind one host, borrow RAM from
 nuked servers, or spend money on servers.
