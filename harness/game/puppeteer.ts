@@ -48,6 +48,50 @@ function staleState(): GameState {
   };
 }
 
+/**
+ * Restores the fields the dispatcher stopped reporting to save RAM.
+ *
+ * The full dispatcher omits bitnode_id (ns.getResetInfo costs 1.0 GB a
+ * tick for a run-constant), so the boot-probed value is authoritative
+ * and overwrites whatever is on the object.
+ *
+ * `dispatcher-light.js` is the exception: it does not process the queue,
+ * so it has the headroom to report bitnode_id itself — and the boot
+ * probe cannot run in that mode at all, leaving `cachedBitnodeId` at its
+ * untested default. There the reported reading wins.
+ *
+ * Exported as a pure function so both branches are testable without
+ * booting Chromium.
+ */
+export function mergeCachedFields(
+  state: GameState,
+  opts: { cachedBitnodeId: number; lightDispatcher: boolean },
+): GameState {
+  const reported = state.bitnode_id;
+  const useReported = opts.lightDispatcher && typeof reported === "number";
+  return {
+    ...state,
+    bitnode_id: useReported ? reported : opts.cachedBitnodeId,
+    bitnode_complete: false,
+  };
+}
+
+/**
+ * Poll budget for a probe result. The dispatcher bounds probe execution
+ * at ~120 s; the rest is buffer for its timeout handling and the result
+ * write.
+ */
+const PROBE_RESULT_TIMEOUT_MS = 180_000;
+
+/**
+ * The boot probe is a two-line ns.print. A dispatcher that services the
+ * queue at all answers it in about a second, so there is nothing to gain
+ * from the full probe budget — and a dispatcher that never services it
+ * (the light one, or a future variant that drops queue handling) should
+ * cost the boot sequence seconds rather than three minutes.
+ */
+const BOOT_PROBE_TIMEOUT_MS = 15_000;
+
 const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 // Resolve to source dir regardless of whether we're running via tsx or compiled.
 const HARNESS_GAME_SRC_DIR = path.resolve(MODULE_DIR);
@@ -209,6 +253,14 @@ export class PuppeteerGame implements GameController {
    * reporting a default.
    */
   private async probeBitnodeId(): Promise<void> {
+    // The probe is dispatched through /__queue.json, and
+    // dispatcher-light.js never reads that file — so in light mode the
+    // entry is never serviced and the probe can only ever run out its
+    // deadline. It used to inherit the 180 s probe budget, which turned
+    // every golden-script boot into a three-minute stall that ended by
+    // discarding the bitnode_id the light dispatcher had been reporting
+    // correctly the whole time. It reports its own; leave it alone.
+    if (this.opts.lightDispatcher) return;
     try {
       const probeId = "__bootprobe";
       await this.submitScript({
@@ -223,6 +275,7 @@ export class PuppeteerGame implements GameController {
         script_id: probeId,
         subagent_id: "boot",
         kind: "probe",
+        timeout_ms: BOOT_PROBE_TIMEOUT_MS,
       });
       const m = /BITNODE=(\d+)/.exec(res.stdout ?? "");
       if (m) this.bitnodeId = Number(m[1]);
@@ -260,10 +313,13 @@ export class PuppeteerGame implements GameController {
     script_id,
     subagent_id,
     kind = "probe",
+    timeout_ms,
   }: {
     script_id: string;
     subagent_id: string;
     kind?: "probe" | "committed";
+    /** Probe-result poll budget; defaults to PROBE_RESULT_TIMEOUT_MS. */
+    timeout_ms?: number;
   }): Promise<ExecutionResult> {
     this.requireReady();
     const resultPath = `/__results/${script_id}.json`;
@@ -322,9 +378,10 @@ export class PuppeteerGame implements GameController {
       };
     }
 
-    // Probe: wait for the dispatcher to produce a result file within
-    // 120 s + a small buffer for timeout + write.
-    const deadline = Date.now() + 180_000;
+    // Probe: wait for the dispatcher to produce a result file. Callers
+    // that know their script is trivial pass a shorter timeout_ms rather
+    // than sitting out the full dispatcher-bounded budget.
+    const deadline = Date.now() + (timeout_ms ?? PROBE_RESULT_TIMEOUT_MS);
     while (Date.now() < deadline) {
       await sleep(1_000);
       const content = await this.safeGetFile(resultPath);
@@ -345,7 +402,7 @@ export class PuppeteerGame implements GameController {
       money_gained: 0,
       time_elapsed_seconds: 0,
       error: "harness polling timed out waiting for dispatcher result",
-      game_state_snapshot: await this.readState().catch(() => staleState()),
+      game_state_snapshot: await this.readState().catch(() => this.withCachedFields(staleState())),
       timestamp: new Date().toISOString(),
     };
   }
@@ -410,11 +467,10 @@ export class PuppeteerGame implements GameController {
    * the flag, never by which keys are present.
    */
   private withCachedFields(state: GameState): GameState {
-    return {
-      ...state,
-      bitnode_id: this.bitnodeId,
-      bitnode_complete: false,
-    };
+    return mergeCachedFields(state, {
+      cachedBitnodeId: this.bitnodeId,
+      lightDispatcher: this.opts.lightDispatcher,
+    });
   }
 
   /**

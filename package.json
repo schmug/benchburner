@@ -14,6 +14,7 @@
     "aggregator": "node --enable-source-maps dist/aggregator/build.js",
     "aggregator:dev": "tsx aggregator/build.ts",
     "test": "node --test --import tsx \"test/**/*.test.ts\"",
+    "smoke:ram-budget": "tsx harness/game/ram-budget-smoke.ts",
     "smoke:time-awareness": "tsx harness/orchestrator/time-awareness-smoke.ts",
     "typecheck": "tsc --noEmit",
     "viewer": "tsx viewer/server.ts"
