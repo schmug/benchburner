@@ -52,6 +52,13 @@
 - Consumes: nothing.
 - Produces: `PuppeteerGame` continues to satisfy `GameController.readState(): Promise<GameState>` with `bitnode_id` populated from a boot probe rather than per-tick.
 
+> **Probe output must use `ns.print`, never `ns.tprint`.** `ExecutionResult.stdout`
+> is populated from `stats.logs`, which only `ns.print` writes; `ns.tprint` goes to
+> the in-game terminal and never reaches the harness. A probe using `tprint` fails
+> to parse and looks like the defect it was meant to measure. (The dispatcher's own
+> `ns.tprint` error surface in Task 5 is correct and stays — that one is *meant* for
+> the terminal.)
+
 - [ ] **Step 1: Write the RAM budget smoke test**
 
 Create `harness/game/ram-budget-smoke.ts`:
@@ -74,8 +81,8 @@ const MAX_DISPATCHER_GB = 4.0;
 
 const probe = `/** @param {NS} ns */
 export async function main(ns) {
-  ns.tprint('DISPATCHER_RAM=' + ns.getScriptRam('/__dispatcher.js', 'home'));
-  ns.tprint('HOME_MAX=' + ns.getServerMaxRam('home'));
+  ns.print('DISPATCHER_RAM=' + ns.getScriptRam('/__dispatcher.js', 'home'));
+  ns.print('HOME_MAX=' + ns.getServerMaxRam('home'));
 }`;
 
 async function main(): Promise<void> {
@@ -133,7 +140,15 @@ Expected: `dispatcher≈5.2GB free≈2.8GB`, then `FAIL` for all three shapes an
 
 - [ ] **Step 3: Replace `ns.getPlayer()` with `ns.getServerMoneyAvailable("home")`**
 
-In `harness/game/dispatcher.js`, there are four `ns.getPlayer()` calls, all reading `.money`. `getServerMoneyAvailable("home")` returns `Player.money` directly (`NetscriptFunctions.ts:996`) for 0.1 GB instead of 0.5 GB.
+In `harness/game/dispatcher.js` there are **five** `ns.getPlayer()` calls (lines 23, 55, 75, 145 and 218) and **two** `ns.getResetInfo()` calls (24 and 202) — the last of each pair lives in `writeResult`, not `main`. `getServerMoneyAvailable("home")` returns `Player.money` directly (`NetscriptFunctions.ts:996`) for 0.1 GB instead of 0.5 GB.
+
+> **Every reference must go, including unreachable ones.** Bitburner computes a
+> script's RAM cost **statically over the whole file** — one surviving mention
+> re-charges the full cost even inside `if (false)`. Measured: leaving the two
+> `writeResult` sites in place yields **5.3 GB, worse than the 5.2 GB baseline**,
+> because you pay the new `getServerMoneyAvailable` on top of both un-removed
+> calls. Every diff line would look correct and the node would ship a regression.
+> `harness/subagent/worker.ts:85` already documents this behaviour to subagents.
 
 Add near the top of `main`:
 
@@ -187,7 +202,7 @@ At the end of `start()`, after the dispatcher is confirmed alive, add:
         script_id: probeId,
         code:
           "/** @param {NS} ns */\nexport async function main(ns) {" +
-          " ns.tprint('BITNODE=' + ns.getResetInfo().currentNode); }",
+          " ns.print('BITNODE=' + ns.getResetInfo().currentNode); }",
       });
       const res = await this.runScript({
         script_id: probeId,
@@ -1302,8 +1317,8 @@ Add to `harness/game/ram-budget-smoke.ts`, inside `main()` before `game.stop()`:
       code:
         "/** @param {NS} ns */\nexport async function main(ns) {" +
         " const t = ns.read('/doc/index.txt');" +
-        " ns.tprint('DOC_INDEX_LEN=' + (t ? t.length : 0));" +
-        " ns.tprint('DOC_READ_RAM=' + ns.getScriptRam(ns.getScriptName(), 'home')); }",
+        " ns.print('DOC_INDEX_LEN=' + (t ? t.length : 0));" +
+        " ns.print('DOC_READ_RAM=' + ns.getScriptRam(ns.getScriptName(), 'home')); }",
     });
     const dr = await game.runScript({ script_id: "docread", subagent_id: "smoke", kind: "probe" });
     const len = Number(/DOC_INDEX_LEN=(\d+)/.exec(dr.stdout ?? "")?.[1]);
