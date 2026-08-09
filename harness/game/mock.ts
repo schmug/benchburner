@@ -137,6 +137,12 @@ export class MockGame implements GameController {
     };
   }
 
+  async killScript(_subagent_id: string): Promise<void> {
+    // MockGame has no in-game process: runScript resolves synchronously
+    // with a simulated outcome, so nothing outlives the call and there is
+    // nothing to stop. Present because GameController requires it.
+  }
+
   async readState(): Promise<GameState> {
     // readState is safe even after stop() — reflects frozen final state.
     if (!this.started) {

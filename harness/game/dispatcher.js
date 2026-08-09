@@ -18,6 +18,15 @@ export async function main(ns) {
   const money = () => ns.getServerMoneyAvailable("home");
 
   while (true) {
+    // ── Read the queue first so state can report running scripts ──
+    let queue = [];
+    try {
+      const raw = ns.read(QUEUE);
+      queue = raw ? JSON.parse(raw) : [];
+    } catch (_) {
+      queue = [];
+    }
+
     // ── Publish state ────────────────────────────────────────────
     // last_heartbeat_ms is the wall-clock the harness uses to tell
     // a running dispatcher from a dead one. waitForDispatcherAlive
@@ -29,11 +38,46 @@ export async function main(ns) {
     // costs 1.0 GB per tick to report a value that cannot change during a
     // run. PuppeteerGame reads it once at boot and merges it back in.
     try {
+      // Per-subagent earnings. money_gained in a result is a global
+      // player delta and cannot be attributed once several scripts run
+      // at once; onlineMoneyMade is the script's own. getRunningScript
+      // is already in this file's static RAM cost (the exit path below
+      // uses it), so this reporting is free.
+      //
+      // Totalled across the subagent's committed scripts, not assigned
+      // per script: `replace` defaults to false, so a subagent owning
+      // several running scripts is the normal case now, and a map keyed
+      // by subagent_id would otherwise report whichever came last.
+      const liveScripts = {};
+      for (const t of queue) {
+        if (t.status !== "running" || t.kind !== "committed" || !t.subagent_id) continue;
+        let st = null;
+        try { st = ns.getRunningScript(t.pid); } catch (_) { st = null; }
+        const acc = liveScripts[t.subagent_id] || {
+          running: false,
+          money_made: 0,
+          ram: 0,
+          uptime_seconds: 0,
+          scripts: 0,
+        };
+        if (st) {
+          acc.running = true;
+          acc.scripts += 1;
+          acc.money_made += st.onlineMoneyMade ?? 0;
+          acc.ram += st.ramUsage ?? 0;
+          // The oldest surviving script: how long this subagent has had
+          // anything running at all.
+          const up = st.onlineRunningTime ?? 0;
+          if (up > acc.uptime_seconds) acc.uptime_seconds = up;
+        }
+        liveScripts[t.subagent_id] = acc;
+      }
       ns.write(
         STATE,
         JSON.stringify({
           current_money: Math.floor(money()),
           augments_installed: [],
+          live_scripts: liveScripts,
           last_heartbeat_ms: Date.now(),
           timestamp: new Date().toISOString(),
         }),
@@ -46,41 +90,25 @@ export async function main(ns) {
     }
 
     // ── Process queue ────────────────────────────────────────────
-    let queue = [];
-    try {
-      const raw = ns.read(QUEUE);
-      queue = raw ? JSON.parse(raw) : [];
-    } catch (_) {
-      queue = [];
-    }
-
     let changed = false;
     for (const task of queue) {
       if (task.status === "pending") {
         const startMoney = money();
         task.startMoney = startMoney; // record up-front so writeResult can compute money_gained even on failed_to_start
 
-        // Committed scripts are long-running workers; each subagent
-        // keeps one at a time. When a new committed script for
-        // subagent X arrives, evict X's previous committed script so
-        // home RAM is freed for the new version. Without this, every
-        // DONE commit accumulates, home RAM runs out in 2-3 commits,
-        // and every subsequent script gets failed_to_start.
-        if (task.kind === "committed") {
-          for (const other of queue) {
-            if (other === task) continue;
-            if (other.status !== "running") continue;
-            if (other.kind !== "committed") continue;
-            if (other.subagent_id !== task.subagent_id) continue;
-            try { ns.kill(other.pid); } catch (_) { /* ignore */ }
-            other.status = "done";
-            other.exit_reason = "replaced";
-            other.stderr = "replaced by newer committed script from the same subagent";
-            other.completedAt = Date.now();
-            other.endMoney = money();
-            writeResult(ns, other);
-            changed = true;
-          }
+        // The orchestrator killed this task's subagent between the commit
+        // and this tick. Starting the script now produces the orphan
+        // `kill` exists to prevent — its owner is already gone from the
+        // pool, so nothing would be left that knows how to stop it.
+        if (task.kill_requested) {
+          task.status = "done";
+          task.exit_reason = "killed";
+          task.stderr = "not started: the orchestrator killed its subagent first";
+          task.completedAt = Date.now();
+          task.endMoney = startMoney;
+          changed = true;
+          writeResult(ns, task);
+          continue;
         }
 
         const pid = ns.run(task.path, 1);
@@ -89,6 +117,33 @@ export async function main(ns) {
           task.status = "running";
           task.startedAt = Date.now();
           changed = true;
+
+          // Evict the subagent's previous committed script ONLY now that
+          // the replacement is confirmed running, and only if the
+          // orchestrator asked for it. Committing used to evict
+          // unconditionally and BEFORE ns.run: one run restarted its own
+          // four-line earner 1,020 times, and a replacement that failed
+          // to start took the income with it.
+          //
+          // Mirror of harness/game/eviction.ts — this file is pushed into
+          // the game as plain Netscript and cannot import. Keep the two in
+          // step; test/game/dispatcher-runtime.test.ts asserts they agree.
+          if (task.kind === "committed" && task.replace === true) {
+            for (const other of queue) {
+              if (other === task) continue;
+              if (other.status !== "running") continue;
+              if (other.kind !== "committed") continue;
+              if (other.subagent_id !== task.subagent_id) continue;
+              try { ns.kill(other.pid); } catch (_) { /* already gone */ }
+              other.status = "done";
+              other.exit_reason = "replaced";
+              other.stderr = "replaced by a newer committed script from the same subagent";
+              other.completedAt = Date.now();
+              other.endMoney = money();
+              writeResult(ns, other);
+              changed = true;
+            }
+          }
         } else {
           task.status = "done";
           task.completedAt = Date.now();
@@ -99,6 +154,24 @@ export async function main(ns) {
           writeResult(ns, task);
         }
       } else if (task.status === "running") {
+        // The orchestrator killed this task's subagent. Without this the
+        // script outlived its owner: still consuming the shared RAM
+        // budget, still earning, and no longer tracked by anything.
+        // Checked before the liveness/timeout logic so an already-dead
+        // pid still closes the task out instead of being re-killed every
+        // 500 ms forever.
+        if (task.kill_requested) {
+          try { ns.kill(task.pid); } catch (_) { /* already gone */ }
+          task.status = "done";
+          task.exit_reason = "killed";
+          task.stderr = "stopped because the orchestrator killed its subagent";
+          task.completedAt = Date.now();
+          task.endMoney = money();
+          changed = true;
+          writeResult(ns, task);
+          continue;
+        }
+
         const stillRunning = ns.isRunning(task.pid || 0);
         // Probes (agentic-loop RUN turns) are bounded at 120s so one
         // broken probe can't stall the queue. Committed scripts

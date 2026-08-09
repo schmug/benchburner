@@ -40,7 +40,9 @@ Runtime environment (infrastructure, not strategy): your team's code executes in
 
 Scripts take the form "export async function main(ns) { ... }" where ns is the API object the environment provides. When you instruct your subagents, tell them what you want the code to DO; do not tell them which language to use — they already know it must be JavaScript targeting this ns-based runtime.
 
-Committed-script lifecycle: each subagent maintains exactly one committed script at a time. When a subagent returns a new final code, that code runs indefinitely (until run-end) and any previous committed script from the same subagent is automatically killed. Short-lived diagnostic scripts that exit quickly are fine; long-running earning scripts stay alive and accumulate money into game_state. So you can use one subagent as a long-running worker and simply replace its script when you want new behavior.
+Committed-script lifecycle: when a subagent returns final code, it is committed and runs until the run ends. By default it runs ALONGSIDE that subagent's existing committed script — it does NOT replace it. Set "replace": true on an instruct action to retire the old one, which happens only once the new script is confirmed running. All committed scripts share one memory budget, so scripts accumulate until the budget is exhausted, at which point new ones report failed_to_start in last_execution. Killing a subagent also stops its committed script. Short-lived diagnostic scripts that exit quickly are fine; long-running earning scripts stay alive and accumulate money into game_state.
+
+Per-subagent earnings: each entry in subagent_status carries live_script — whether that subagent has any committed script still running, how many, how much those scripts have earned between them, how much of the shared memory budget they hold, and how long the oldest has been up. It is null when the subagent has nothing running. The earnings figure is that subagent's own scripts, not the team total. last_execution tells you whether an instruction produced a script that STARTED; live_script tells you whether it is still EARNING. A live_script whose money_made stays flat between cycles is running and producing nothing.
 
 You can only observe what your subagents report back, plus periodic game state snapshots from the backend. You have no other visibility. Execution feedback includes stdout / stderr / exit_reason / money_gained — use them to route around broken subagent output.
 
@@ -55,6 +57,7 @@ Respond ONLY with a JSON object matching this schema:
       "action_type": "spawn" | "kill" | "instruct" | "noop",
       "subagent_id": "string (required for kill/instruct; you choose a new id for spawn)",
       "model_choice": "string (required for spawn; must be from available_subagent_models)",
+      "replace": "boolean (optional, instruct only; default false)",
       "instruction": {
         "task": "string",
         "context": "string",
@@ -170,11 +173,18 @@ export function buildOrchestratorPrompt(input: OrchestratorInput, seed: number):
  *    use "BitNode" and "Augmentations" freely — but renaming them back
  *    would change the key names every historical run artifact was
  *    written with, for no benefit. Left alone deliberately.
- * 3. `last_execution` is normalised undefined → null, which is what
- *    `scrubExecution` incidentally did. Kept so the JSON handed to the
- *    model is byte-identical to before this change; dropping it would
- *    silently remove the key from the prompt for subagents that have
- *    not run a script yet.
+ * 3. `last_execution` and `live_script` are normalised undefined → null,
+ *    which is what `scrubExecution` incidentally did for the former.
+ *    Kept so the JSON handed to the model is byte-identical to before
+ *    this change; dropping it would silently remove the key from the
+ *    prompt for subagents that have not run a script yet, making "no
+ *    script" indistinguishable from "field not implemented".
+ *
+ * NOTE for whoever adds the next `SubagentStatus` field: this is a
+ * SPREAD. Anything with free text reaches the model exactly as authored.
+ * `LiveScript` is numeric and boolean throughout and so needs no
+ * handling today — but the moment it (or any sibling field) gains a
+ * string, it has to be dealt with here on purpose.
  *
  * `delegation_history` and `subagent_status` now pass through as
  * authored. Subagent code, reasoning, stderr and the game's own runtime
@@ -195,6 +205,7 @@ function scrubInput(input: OrchestratorInput): OrchestratorInput {
     subagent_status: input.subagent_status.map((s) => ({
       ...s,
       last_execution: s.last_execution ?? null,
+      live_script: s.live_script ?? null,
     })),
   };
 }

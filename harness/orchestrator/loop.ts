@@ -67,6 +67,7 @@ const ORCHESTRATOR_OUTPUT_SCHEMA: Record<string, unknown> = {
           action_type: { type: "string", enum: ["spawn", "kill", "instruct", "noop"] },
           subagent_id: { type: "string" },
           model_choice: { type: "string" },
+          replace: { type: "boolean" },
           instruction: {
             type: "object",
             properties: {
@@ -165,6 +166,13 @@ export class OrchestratorLoop {
   private readonly cycleByInstruction = new Map<string, number>();
   /** instruction_id → script_id so executions update the right script row. */
   private readonly scriptByInstruction = new Map<string, string>();
+  /**
+   * instruction_id → whether the orchestrator asked to replace this
+   * subagent's running committed script. Recorded at instruct time
+   * because the flag lives on the action, while the commit happens later
+   * when the subagent's result lands.
+   */
+  private readonly replaceByInstruction = new Map<string, boolean>();
 
   /** Running total of tokens used in orchestrator inference calls.
    *  Read by the run entry point to enforce a per-run token budget. */
@@ -405,6 +413,10 @@ export class OrchestratorLoop {
           last_instruction_id: t?.last_instruction_id ?? null,
           last_result: t?.last_result ?? null,
           last_execution: t?.last_execution ?? null,
+          // Keyed by subagent_id in the dispatcher's state export. Null
+          // means "no committed script running" — which for a subagent
+          // that was just instructed is itself the answer.
+          live_script: this.latestState?.live_scripts?.[s.subagent_id] ?? null,
           status: !t ? "idle" : t.pending ? "pending" : "executed",
         } satisfies SubagentStatus;
       }),
@@ -455,6 +467,12 @@ export class OrchestratorLoop {
 
   private handleKill(a: OrchestratorAction): void {
     if (!a.subagent_id) return;
+    // Stop the script before dropping the track. Otherwise it outlives
+    // its owner: still burning the shared RAM budget, still earning, and
+    // now with the only record of it deleted.
+    void this.game.killScript(a.subagent_id).catch((e) => {
+      console.error(`[orchestrator] killScript(${a.subagent_id}) failed: ${(e as Error).message}`);
+    });
     this.pool.kill(a.subagent_id);
     this.subagentTracks.delete(a.subagent_id);
   }
@@ -490,6 +508,7 @@ export class OrchestratorLoop {
     });
     this.delegationsByInstruction.set(instruction.instruction_id, delegation_id);
     this.cycleByInstruction.set(instruction.instruction_id, this.cycle);
+    this.replaceByInstruction.set(instruction.instruction_id, a.replace === true);
 
     const track = this.subagentTracks.get(a.subagent_id) ?? { last_instruction_id: null, last_result: null, pending: false };
     track.last_instruction_id = instruction.instruction_id;
@@ -529,7 +548,10 @@ export class OrchestratorLoop {
       }
     }
 
-    // On success, submit the script to the game and record it.
+    // On success, submit the script to the game and record it. Whether
+    // this commit retires the subagent's previous one is the
+    // orchestrator's call, made back when it issued the instruction —
+    // this path used to evict unconditionally.
     if (r.status === "success" && r.code) {
       const script_id = randomUUID();
       this.scriptByInstruction.set(r.instruction_id, script_id);
@@ -542,11 +564,15 @@ export class OrchestratorLoop {
         tokens_used: r.tokens_used,
         timestamp: new Date().toISOString(),
       });
-      void this.executeScript(script_id, r);
+      void this.executeScript(
+        script_id,
+        r,
+        this.replaceByInstruction.get(r.instruction_id) === true,
+      );
     }
   }
 
-  private async executeScript(script_id: string, r: Result): Promise<void> {
+  private async executeScript(script_id: string, r: Result, replace: boolean): Promise<void> {
     if (!r.code) return;
     try {
       await this.game.submitScript({ script_id, code: r.code });
@@ -554,6 +580,7 @@ export class OrchestratorLoop {
         script_id,
         subagent_id: r.subagent_id,
         kind: "committed",
+        replace,
       });
       updateScriptExecution(this.db, script_id, exec);
       this.bus.publish("executions", exec);

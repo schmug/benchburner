@@ -79,6 +79,13 @@ export interface GameState {
    * permanently (PDS7 cycle 16 incident).
    */
   read_failed?: boolean;
+  /**
+   * Per-subagent committed-script stats, keyed by subagent_id, as
+   * reported by the in-game dispatcher. Reaches the orchestrator as
+   * `SubagentStatus.live_script`, not through the game_state channel —
+   * `scrubInput` projects game_state onto an explicit key list.
+   */
+  live_scripts?: Record<string, LiveScript>;
   // Extension point; distilled snapshots may carry more observables.
   [key: string]: unknown;
 }
@@ -141,12 +148,48 @@ export interface ExecutionSummary {
   timestamp: string;
 }
 
+/**
+ * Live state of a subagent's committed code, refreshed every time the
+ * harness reads game state.
+ *
+ * `last_execution` answers "did my instruction produce a script that
+ * started". This answers "is it still earning". Instruction quality is
+ * not observable without both — the 24h run had neither and re-instructed
+ * blindly for seventeen hours.
+ *
+ * Figures are totalled across every committed script the subagent has
+ * running, because `OrchestratorAction.replace` defaults to false and so
+ * a subagent owning several is the ordinary case. `money_made` sums those
+ * scripts' OWN earnings, read from
+ * `ns.getRunningScript().onlineMoneyMade`. That distinction is the whole
+ * point: `ExecutionResult.money_gained` is a global player delta and
+ * cannot be attributed once more than one script is running.
+ *
+ * Every field is numeric or boolean. `scrubInput` builds SubagentStatus
+ * with a spread, so if this ever gains a string field it must be scrubbed
+ * there explicitly — see the note at that spread.
+ */
+export interface LiveScript {
+  /** True if at least one of this subagent's committed scripts is alive. */
+  running: boolean;
+  /** Those scripts' own earnings, summed — not a global player delta. */
+  money_made: number;
+  /** Total home RAM this subagent holds of the shared budget. */
+  ram: number;
+  /** Uptime of the subagent's oldest surviving script. */
+  uptime_seconds: number;
+  /** How many committed scripts are running, so the totals are readable. */
+  scripts: number;
+}
+
 export interface SubagentStatus {
   subagent_id: string;
   last_instruction_id: string | null;
   last_result: Result | null;
   /** Outcome of this subagent's most recent committed script, if any. */
   last_execution?: ExecutionSummary | null;
+  /** This subagent's committed script, if it has one running. */
+  live_script?: LiveScript | null;
   status: "idle" | "pending" | "executed";
   model_choice?: string;
 }
@@ -169,6 +212,21 @@ export interface OrchestratorAction {
   action_type: OrchestratorActionType;
   subagent_id?: string;
   model_choice?: string;
+  /**
+   * Replace this subagent's currently running committed script with the
+   * one this instruction produces. `instruct` only.
+   *
+   * Defaults to false, and the asymmetry is the reason: an accumulating
+   * script eventually exhausts the shared RAM budget and surfaces as
+   * `failed_to_start` in `last_execution` — loud and attributable —
+   * whereas killing an earner produces no event at all. The silent
+   * failure is the one that ran for seventeen hours undetected.
+   *
+   * It lives on the action rather than on `Instruction` because script
+   * lifecycle is a directive to the harness, not something the subagent
+   * needs in order to write code (SPEC §2.1 is unchanged).
+   */
+  replace?: boolean;
   instruction?: Instruction;
 }
 
@@ -275,7 +333,21 @@ export interface GameController {
     script_id: string;
     subagent_id: string;
     kind?: "probe" | "committed";
+    /**
+     * Retire this subagent's previous committed script — but only once
+     * this one is confirmed running. Defaults to false; see
+     * `OrchestratorAction.replace`. Ignored for probes, which never
+     * occupy the committed slot.
+     */
+    replace?: boolean;
   }): Promise<ExecutionResult>;
+
+  /**
+   * Stop this subagent's committed script, if any. Called when the
+   * orchestrator kills a subagent — otherwise the script outlives its
+   * owner as an orphan that still consumes RAM and earns invisibly.
+   */
+  killScript(subagent_id: string): Promise<void>;
 
   /** Pull current distilled game state (for hourly snapshots). */
   readState(): Promise<GameState>;

@@ -216,7 +216,7 @@ Invoked every `polling_interval_seconds` (default 60).
            last_result.iteration_summaries, which covers the probe runs
            inside the subagent's own write-run-observe loop. */
         "status": "executed | failed",
-        "exit_reason": "running | failed_to_start | exited | errored | timed_out",
+        "exit_reason": "running | failed_to_start | exited | errored | timed_out | killed | replaced",
         "money_gained": 0,
         "time_elapsed_seconds": 0,
         "stdout": "truncated",
@@ -225,13 +225,14 @@ Invoked every `polling_interval_seconds` (default 60).
         "timestamp": "2026-04-22T14:13:32Z"
       },
       "live_script": {
-        /* This subagent's committed script while it runs. Null if none.
-           last_execution says whether the script STARTED; this says
-           whether it is still EARNING. */
+        /* This subagent's committed scripts while they run, totalled.
+           Null if none. last_execution says whether a script STARTED;
+           this says whether it is still EARNING. */
         "running": true,
         "money_made": 45000,
         "ram": 2.6,
-        "uptime_seconds": 180
+        "uptime_seconds": 180,
+        "scripts": 1
       },
       "status": "idle | pending | executed"
     }
@@ -253,13 +254,28 @@ actually committed to the game was discarded, so a script that never
 started was indistinguishable from one that was earning. Free-text
 fields are leak-scrubbed and truncated like every other channel.
 
+Two `exit_reason` values are produced by the lifecycle verbs rather than
+by the script itself: `killed` (the orchestrator killed the subagent, so
+the harness stopped its committed script) and `replaced` (an `instruct`
+with `replace: true` retired it once the successor was confirmed
+running). Both are visible to the orchestrator so a script that stopped
+on its instruction is distinguishable from one that crashed.
+
 `live_script` answers a different question than `last_execution`:
 `last_execution` says whether an instruction produced a script that
 *started*; `live_script` says whether it is still *earning* right now.
 It is `null` when the subagent has no committed script running, not a
-fake zero. `money_made` is that script's own earnings, not a global
+fake zero. `money_made` is those scripts' own earnings, not a global
 player-money delta, so it stays attributable when several subagents run
 scripts at once.
+
+Its figures are **totals across every committed script that subagent has
+running**, with `scripts` giving the count, because `replace` defaults to
+false and a subagent owning several running scripts is the ordinary case
+rather than an edge one. `ram` is therefore how much of the shared home
+budget that subagent holds, and `uptime_seconds` is its oldest surviving
+script. Reporting a single script per subagent would understate earnings
+in exactly the situation the default produces.
 
 Every game starts the player with a nonzero balance ($1,262 in BitNode
 1). `current_money` is that absolute balance and stays for backward
