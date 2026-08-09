@@ -1,0 +1,223 @@
+[
+  {
+    "snapshot_id": "17890533-3a9e-4282-84ba-2e64a1d422ee",
+    "hour": 0,
+    "game_state": {
+      "current_money": 1262,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1786295188578,
+      "timestamp": "2026-08-09T17:06:28.578Z",
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-08-09T17:06:29.076Z"
+  },
+  {
+    "snapshot_id": "d2acf5f6-99e9-4985-8ffc-ee8881e4ee85",
+    "hour": 1,
+    "game_state": {
+      "current_money": 1262,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1786295218670,
+      "timestamp": "2026-08-09T17:06:58.670Z",
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-08-09T17:06:59.078Z"
+  },
+  {
+    "snapshot_id": "fce78fe5-d756-4f78-bd75-c160b3d72141",
+    "hour": 2,
+    "game_state": {
+      "current_money": 1262,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1786295248759,
+      "timestamp": "2026-08-09T17:07:28.759Z",
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-08-09T17:07:29.077Z"
+  },
+  {
+    "snapshot_id": "ceacbcae-8de7-4f77-91f2-59b5e6682d54",
+    "hour": 3,
+    "game_state": {
+      "current_money": 1262,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1786295278845,
+      "timestamp": "2026-08-09T17:07:58.845Z",
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-08-09T17:07:59.077Z"
+  },
+  {
+    "snapshot_id": "b585d3bb-d632-475f-a799-871d5154b279",
+    "hour": 4,
+    "game_state": {
+      "current_money": 1262,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1786295308934,
+      "timestamp": "2026-08-09T17:08:28.934Z",
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-08-09T17:08:29.077Z"
+  },
+  {
+    "snapshot_id": "1e33deeb-3efd-4dd9-a89d-8ebdf9b17caf",
+    "hour": 5,
+    "game_state": {
+      "current_money": 1262,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1786295339022,
+      "timestamp": "2026-08-09T17:08:59.022Z",
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-08-09T17:08:59.079Z"
+  },
+  {
+    "snapshot_id": "24a5c30b-5201-4f39-9d98-c024498d3d8c",
+    "hour": 6,
+    "game_state": {
+      "current_money": 1262,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1786295368605,
+      "timestamp": "2026-08-09T17:09:28.605Z",
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-08-09T17:09:29.078Z"
+  },
+  {
+    "snapshot_id": "eb5be6ee-3f90-4532-af89-5cdc8be85543",
+    "hour": 7,
+    "game_state": {
+      "current_money": 1262,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1786295398708,
+      "timestamp": "2026-08-09T17:09:58.708Z",
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-08-09T17:09:59.078Z"
+  },
+  {
+    "snapshot_id": "ececd26e-007b-43a0-86d1-0674ad62c178",
+    "hour": 8,
+    "game_state": {
+      "current_money": 1262,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1786295428801,
+      "timestamp": "2026-08-09T17:10:28.801Z",
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-08-09T17:10:29.077Z"
+  },
+  {
+    "snapshot_id": "6918e794-bfa7-4014-8fd2-48f60c54c2ae",
+    "hour": 9,
+    "game_state": {
+      "current_money": 1262,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1786295458894,
+      "timestamp": "2026-08-09T17:10:58.894Z",
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-08-09T17:10:59.077Z"
+  },
+  {
+    "snapshot_id": "3c73f5c9-b0f9-4444-b37d-d6bb8dd4a99d",
+    "hour": 10,
+    "game_state": {
+      "current_money": 1262,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1786295488991,
+      "timestamp": "2026-08-09T17:11:28.991Z",
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-08-09T17:11:29.079Z"
+  },
+  {
+    "snapshot_id": "0163f7d4-f9af-48af-a40f-0e50b1711358",
+    "hour": 11,
+    "game_state": {
+      "current_money": 1262,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1786295518584,
+      "timestamp": "2026-08-09T17:11:58.584Z",
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-08-09T17:11:59.077Z"
+  },
+  {
+    "snapshot_id": "0200498d-d7d7-4f6b-95fb-7a3df82a6d63",
+    "hour": 12,
+    "game_state": {
+      "current_money": 1262,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1786295548673,
+      "timestamp": "2026-08-09T17:12:28.673Z",
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-08-09T17:12:29.078Z"
+  },
+  {
+    "snapshot_id": "a1eab836-fb5a-4d22-8ce7-f077177f5c3d",
+    "hour": 13,
+    "game_state": {
+      "current_money": 1262,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1786295578758,
+      "timestamp": "2026-08-09T17:12:58.758Z",
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-08-09T17:12:59.078Z"
+  },
+  {
+    "snapshot_id": "b54007cc-b90f-4d9c-8489-d10f87ec131f",
+    "hour": 14,
+    "game_state": {
+      "current_money": 1262,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1786295608849,
+      "timestamp": "2026-08-09T17:13:28.849Z",
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-08-09T17:13:29.078Z"
+  },
+  {
+    "snapshot_id": "c5d49bb5-1958-437e-8076-80011250fdf1",
+    "hour": 15,
+    "game_state": {
+      "current_money": 1262,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1786295638933,
+      "timestamp": "2026-08-09T17:13:58.933Z",
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-08-09T17:13:59.078Z"
+  },
+  {
+    "snapshot_id": "13e5eb9d-e221-4781-998f-cc22f89a2f48",
+    "hour": 16,
+    "game_state": {
+      "current_money": 1262,
+      "augments_installed": [],
+      "last_heartbeat_ms": 1786295669019,
+      "timestamp": "2026-08-09T17:14:29.019Z",
+      "bitnode_id": 1,
+      "bitnode_complete": false
+    },
+    "timestamp": "2026-08-09T17:14:29.079Z"
+  }
+]
