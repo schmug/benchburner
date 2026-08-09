@@ -2,9 +2,25 @@
  * Orchestrator prompt construction + leak policy.
  *
  * SPEC §3.3 fixes the system prompt across all benchmarked models.
- * This module enforces the leak policy: the seed, the game identity
- * "Bitburner", and scoring-rubric details beyond "maximize money"
- * must never reach the model. A post-run audit log confirms this.
+ *
+ * The leak policy used to have two halves: hide the RNG seed, and hide
+ * the game's identity. Only the seed half remains.
+ *
+ * The identity half was retired deliberately, not by neglect. This
+ * prompt vendors the game's own Basic Mechanics docs (see
+ * `basicsText()`), and those docs name the early-game target ladder and
+ * the port-opener programs outright. The scrub redacted the *title*
+ * while the same prompt handed over the target list — and naming those
+ * targets activates a model's memorised-strategy priors considerably
+ * harder than the word "Bitburner" ever did. Redacting the one word
+ * that carried no strategy, in text that carried plenty, was incoherent.
+ * So the token scrub went rather than being widened to swallow the
+ * manual it was supposed to deliver.
+ *
+ * The seed half is untouched and stays that way. A known seed lets a
+ * model overfit one scenario instead of orchestrating, so `detectLeaks`
+ * still matches String(seed) against the rendered prompt and
+ * `OrchestratorLoop` still fails the run closed on a hit.
  */
 
 import { BASIC_DOCS, loadDocs } from "../game/docs";
@@ -18,7 +34,7 @@ import type { OrchestratorInput } from "../types";
  */
 export function buildSystemPrompt(totalDurationSeconds: number): string {
   const horizon = formatDurationHours(totalDurationSeconds);
-  return `You are the orchestrator of a team of subagent coders. You cannot play the game yourself. You cannot edit the code your subagents write. Your job is to decide which subagents to spawn, which to kill, and what instructions to give them. Your team is playing a game. Your goal is to maximize the team's in-game money in the ${horizon}-hour window.
+  return `You are the orchestrator of a team of subagent coders. You cannot play the game yourself. You cannot edit the code your subagents write. Your job is to decide which subagents to spawn, which to kill, and what instructions to give them. Your team is playing Bitburner. Your goal is to maximize the team's in-game money in the ${horizon}-hour window.
 
 Runtime environment (infrastructure, not strategy): your team's code executes in a sandboxed JavaScript runtime on a host with ~8 GB of memory, of which the harness itself is using about 3.8 GB for its process bookkeeping — leaving approximately 4.2 GB for the scripts your subagents write. Every ns.* API call has a static RAM cost that counts against that 4.2 GB at compile time; if a script's declared calls exceed the budget, the runtime refuses to start it and you'll see "ns.run returned 0 — script missing or RAM budget exceeded" in the execution result. Cheap calls include ns.hack, ns.weaken, ns.grow (~0.1-0.2 GB each) and the individual ns.getServerX getters. Expensive calls like ns.getServer (2 GB) and ns.hackAnalyzeChance (1 GB) eat the budget fast. For scale: a script using ns.exec costs 2.9 GB in total, ns.scp plus ns.exec 3.5 GB, and ns.purchaseServer 3.85 GB — all of which now fit in the 4.2 GB budget, though each leaves little room for anything else in the same script. Instruct your team accordingly.
 
@@ -28,7 +44,7 @@ Committed-script lifecycle: each subagent maintains exactly one committed script
 
 You can only observe what your subagents report back, plus periodic game state snapshots from the backend. You have no other visibility. Execution feedback includes stdout / stderr / exit_reason / money_gained — use them to route around broken subagent output.
 
-Reference — the environment's own documentation. This is mechanics, not strategy; deciding what to do with it is your job.
+Reference — Bitburner's own Basic Mechanics documentation, verbatim. This is mechanics, not strategy; deciding what to do with it is your job.
 
 ${basicsText()}
 
@@ -53,30 +69,28 @@ No prose outside the JSON.`;
 }
 
 /**
- * Tokens that must never appear in the prompt sent to the orchestrator.
- * Case-insensitive substring check on the full rendered prompt.
+ * Empty: the game-identity scrub is retired (see the module header).
+ *
+ * The list survives as an empty export only because
+ * `harness/orchestrator/index.ts` re-exports the name. Deleting the
+ * export is the right end state and should follow as its own change —
+ * it is an API break, and this commit is scoped to the policy decision.
+ *
+ * Do NOT repopulate this to "just filter one more word". The seed is
+ * the only thing withheld from the orchestrator now, and it is withheld
+ * by `detectLeaks`' numeric check, not by this list.
  */
-/**
- * Tokens that must never appear in the orchestrator's rendered prompt.
- * Scope is narrow by design — SPEC §3.3:
- *   "Intent is not to hide it in code, just not to name it in the prompt."
- * So we drop "netscript" (it will legitimately appear in subagent-written
- * code, which the orchestrator should see as a tech lead would). We keep
- * the game-name tokens so the orchestrator can't use Bitburner-specific
- * wiki knowledge from its model priors.
- */
-export const FORBIDDEN_TOKENS: readonly string[] = Object.freeze([
-  "bitburner",
-  "bitnode",
-  "hacknet",
-  "augment",
-  "seed",
-]);
+export const FORBIDDEN_TOKENS: readonly string[] = Object.freeze([]);
 
 let basicsTextCache: string | null = null;
 
 /**
- * The game's Basic Mechanics text, scrubbed of forbidden tokens.
+ * The game's Basic Mechanics text, verbatim.
+ *
+ * No longer scrubbed. The scrub used to punch `[redacted]` holes
+ * through the game's own prose ("In [redacted], RAM determines...")
+ * while leaving the target ladder and port-opener names it lists fully
+ * intact — degrading the manual without concealing its subject.
  *
  * Read lazily on first use and memoized — deliberately NOT at module
  * evaluation time. Importing this module has to stay free of disk I/O.
@@ -96,7 +110,7 @@ let basicsTextCache: string | null = null;
  */
 function basicsText(): string {
   if (basicsTextCache === null) {
-    basicsTextCache = scrubText(loadDocs(BASIC_DOCS));
+    basicsTextCache = loadDocs(BASIC_DOCS);
   }
   return basicsTextCache;
 }
@@ -129,87 +143,47 @@ export function buildOrchestratorPrompt(input: OrchestratorInput, seed: number):
 }
 
 /**
- * Produce a safe-to-log view of the input. Renames game-identity
- * fields (SPEC §3.1 uses "bitnode"/"augments" names which leak) to
- * neutral terms the orchestrator can reason over without learning
- * the title of the game.
+ * Produce the view of the input that the orchestrator is allowed to see.
  *
- * Mapping:
- *   bitnode_id         → level_id
- *   bitnode_complete   → level_complete
- *   augments_installed → upgrades_installed
+ * `scrubText` / `scrubResult` / `scrubExecution` were deleted rather
+ * than left as no-ops. With an empty token list they were pure identity
+ * functions that deep-copied `delegation_history` and `subagent_status`
+ * every cycle to change nothing — but the real cost was not the copy.
+ * A retained function named `scrubText`, called from the one place that
+ * still enforces a genuine guarantee, reads as if it enforces one too;
+ * the next person to touch this file would trust a filter that filters
+ * nothing. A dead hook is recoverable with one `git show`; a false
+ * guarantee sitting next to the seed check is not worth keeping around
+ * for that convenience.
  *
- * Inside `delegation_history`, the subagent-produced code is
- * passed through as-is (it'll contain Netscript identifiers; the
- * orchestrator seeing those is unavoidable if it's to reason over
- * its team's work, and the spec explicitly notes total leak-proofing
- * of Netscript is "likely impossible").
+ * What DOES survive here, and is not part of the identity decision:
+ *
+ * 1. `game_state` is projected onto an explicit key list rather than
+ *    spread. This is load-bearing for reasons beyond leak policy — it
+ *    is the contract for what the snapshot channel exposes — so a field
+ *    added to GameState stays invisible until someone adds it here on
+ *    purpose. Do not replace it with a spread.
+ * 2. The field renames (bitnode_id → level_id, bitnode_complete →
+ *    level_complete, augments_installed → upgrades_installed). These are
+ *    now just the projection's output names. They no longer conceal
+ *    anything — the system prompt names the game and the vendored docs
+ *    use "BitNode" and "Augmentations" freely — but renaming them back
+ *    would change the key names every historical run artifact was
+ *    written with, for no benefit. Left alone deliberately.
+ * 3. `last_execution` is normalised undefined → null, which is what
+ *    `scrubExecution` incidentally did. Kept so the JSON handed to the
+ *    model is byte-identical to before this change; dropping it would
+ *    silently remove the key from the prompt for subagents that have
+ *    not run a script yet.
+ *
+ * `delegation_history` and `subagent_status` now pass through as
+ * authored. Subagent code, reasoning, stderr and the game's own runtime
+ * errors reach the orchestrator verbatim — which is what a tech lead
+ * reading their team's output would see, and was already the intent for
+ * `result.code` before the rest of the scrub went.
  */
-function scrubResult<T extends { code?: string; reasoning?: string; error_message?: string; iteration_summaries?: Array<{ stderr?: string; notes?: string; [k: string]: unknown }> }>(r: T | null | undefined): T | null {
-  if (!r) return null as T | null;
-  return {
-    ...r,
-    code: r.code ? scrubText(r.code) : r.code,
-    reasoning: r.reasoning ? scrubText(r.reasoning) : r.reasoning,
-    error_message: r.error_message ? scrubText(r.error_message) : r.error_message,
-    iteration_summaries: r.iteration_summaries?.map((s) => ({
-      ...s,
-      stderr: s.stderr ? scrubText(s.stderr) : s.stderr,
-      // Subagent-authored reasoning for that turn; free text like any
-      // other, and it names game APIs routinely.
-      notes: s.notes ? scrubText(s.notes) : s.notes,
-    })),
-  };
-}
-
-/**
- * Scrubs the free-text fields of a committed script's outcome. This is
- * game-authored output — runtime errors and stack traces name game APIs
- * as a matter of course — so it goes through the same filter as
- * subagent output before the orchestrator sees it.
- */
-function scrubExecution<T extends { error?: string; stdout?: string; stderr?: string }>(
-  e: T | null | undefined,
-): T | null {
-  if (!e) return null as T | null;
-  return {
-    ...e,
-    error: e.error ? scrubText(e.error) : e.error,
-    stdout: e.stdout ? scrubText(e.stdout) : e.stdout,
-    stderr: e.stderr ? scrubText(e.stderr) : e.stderr,
-  };
-}
-
 function scrubInput(input: OrchestratorInput): OrchestratorInput {
   const gs = input.game_state;
-  const cleanedSubagentStatus = input.subagent_status.map((s) => ({
-    ...s,
-    // Same scrub as delegation_history so we don't echo unscrubbed
-    // code/reasoning/stderr through this second window into the past.
-    last_result: scrubResult(s.last_result) as typeof s.last_result,
-    // NOTE: this object is built with a spread, so any field added to
-    // SubagentStatus reaches the model unscrubbed unless handled here.
-    // Execution output is game-authored text — stack traces and runtime
-    // errors routinely name game APIs — and a forbidden token in the
-    // prompt fails the run closed.
-    last_execution: scrubExecution(s.last_execution),
-  }));
-  const cleanedHistory = input.delegation_history.map((pair) => ({
-    instruction: {
-      ...pair.instruction,
-      task: scrubText(pair.instruction.task),
-      context: scrubText(pair.instruction.context),
-    },
-    // Keep result.code so the orchestrator can read its team's output
-    // the way a real tech lead would. Per SPEC §3.3 the intent is not
-    // to hide game-adjacent language in code; only to avoid *naming*
-    // the game in the prompt. Scrub forbidden *name* tokens (including
-    // from subagent-authored comments / string literals) while keeping
-    // the code's structure and API calls intact — redacting "Bitburner"
-    // in a JSDoc line is much less information loss than hiding the
-    // whole function.
-    result: scrubResult(pair.result),
-  }));
   return {
     ...input,
     game_state: {
@@ -218,47 +192,34 @@ function scrubInput(input: OrchestratorInput): OrchestratorInput {
       level_complete: gs.bitnode_complete,
       upgrades_installed: gs.augments_installed ?? [],
     } as unknown as OrchestratorInput["game_state"],
-    subagent_status: cleanedSubagentStatus,
-    delegation_history: cleanedHistory,
+    subagent_status: input.subagent_status.map((s) => ({
+      ...s,
+      last_execution: s.last_execution ?? null,
+    })),
   };
 }
 
 /**
- * Strip forbidden tokens from free-form strings that the orchestrator
- * itself produced in earlier cycles, before echoing them back. Keeps
- * the orchestrator's vocabulary from gradually drifting onto
- * game-identity terms.
+ * The run's leak audit. One check remains: the RNG seed.
+ *
+ * CLAUDE.md constraint 6 keeps the seed opaque to the orchestrator so a
+ * model develops orchestration strategy instead of overfitting a single
+ * scenario. `OrchestratorLoop` fails the run closed on any hit, so both
+ * guards below matter as much as the check itself — a false positive
+ * kills an honest run.
  */
-function scrubText(text: string): string {
-  let out = text;
-  for (const tok of FORBIDDEN_TOKENS) {
-    const re = new RegExp(`\\b${tok}\\b`, "gi");
-    out = out.replace(re, "[redacted]");
-  }
-  return out;
-}
-
 export function detectLeaks(text: string, seed: number): string[] {
   const hits: string[] = [];
-  // Match what scrubText does: word-boundary, case-insensitive. That
-  // way "getAugmentations" (a legitimate NS API name the spec permits
-  // in code) doesn't trip the detector on the substring "augment",
-  // while a bare "augment" in prose still does. Without this symmetry
-  // the scrubber would leave code untouched but the detector would
-  // fire on the same content, failing runs where the subagent
-  // legitimately probes the ns namespace surface.
-  for (const tok of FORBIDDEN_TOKENS) {
-    const re = new RegExp(`\\b${tok}\\b`, "i");
-    if (re.test(text)) hits.push(tok);
-  }
   const seedStr = String(seed);
+  // Guard 1 — seeds under 3 digits are exempt. A 1–2 digit seed
+  // collides with ordinary numbers in the input JSON (money, cycle
+  // counts, thread counts) far too often to be checkable this way.
   if (seedStr.length >= 3) {
-    // Word-boundary match mirrors the forbidden-token loop above:
-    // a seed embedded as a digit-substring of an unrelated number
-    // (e.g. 8640 inside total_duration_seconds=86400) is not a real
-    // leak. Without this, the new total_duration_seconds field would
-    // false-trigger the detector for entire classes of seed values
-    // and fail runs at SPEC §3.3 leak audit.
+    // Guard 2 — word boundary. A seed embedded as a digit-substring of
+    // an unrelated number (e.g. 8640 inside
+    // total_duration_seconds=86400) is not a real leak. Without this,
+    // total_duration_seconds false-triggers the detector for entire
+    // classes of seed values and fails honest runs at the §3.3 audit.
     const re = new RegExp(`\\b${seedStr}\\b`);
     if (re.test(text)) hits.push(`seed:${seedStr}`);
   }
