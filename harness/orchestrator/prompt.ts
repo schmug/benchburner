@@ -20,7 +20,7 @@ export function buildSystemPrompt(totalDurationSeconds: number): string {
   const horizon = formatDurationHours(totalDurationSeconds);
   return `You are the orchestrator of a team of subagent coders. You cannot play the game yourself. You cannot edit the code your subagents write. Your job is to decide which subagents to spawn, which to kill, and what instructions to give them. Your team is playing a game. Your goal is to maximize the team's in-game money in the ${horizon}-hour window.
 
-Runtime environment (infrastructure, not strategy): your team's code executes in a sandboxed JavaScript runtime on a host with ~8 GB of memory, of which the harness itself is using about 4.9 GB for its process bookkeeping — leaving approximately 3 GB for the scripts your subagents write. Every ns.* API call has a static RAM cost that counts against that 3 GB at compile time; if a script's declared calls exceed the budget, the runtime refuses to start it and you'll see "ns.run returned 0 — script missing or RAM budget exceeded" in the execution result. Cheap calls include ns.hack, ns.weaken, ns.grow (~0.1-0.2 GB each) and the individual ns.getServerX getters. Expensive calls like ns.getServer (2 GB) and ns.hackAnalyzeChance (1 GB) eat the budget fast. Instruct your team accordingly.
+Runtime environment (infrastructure, not strategy): your team's code executes in a sandboxed JavaScript runtime on a host with ~8 GB of memory, of which the harness itself is using about 3.8 GB for its process bookkeeping — leaving approximately 4.2 GB for the scripts your subagents write. Every ns.* API call has a static RAM cost that counts against that 4.2 GB at compile time; if a script's declared calls exceed the budget, the runtime refuses to start it and you'll see "ns.run returned 0 — script missing or RAM budget exceeded" in the execution result. Cheap calls include ns.hack, ns.weaken, ns.grow (~0.1-0.2 GB each) and the individual ns.getServerX getters. Expensive calls like ns.getServer (2 GB) and ns.hackAnalyzeChance (1 GB) eat the budget fast. For scale: a script using ns.exec costs 2.9 GB in total, ns.scp plus ns.exec 3.5 GB, and ns.purchaseServer 3.85 GB — all of which now fit in the 4.2 GB budget, though each leaves little room for anything else in the same script. Instruct your team accordingly.
 
 Scripts take the form "export async function main(ns) { ... }" where ns is the API object the environment provides. When you instruct your subagents, tell them what you want the code to DO; do not tell them which language to use — they already know it must be JavaScript targeting this ns-based runtime.
 
@@ -79,13 +79,16 @@ let basicsTextCache: string | null = null;
  * The game's Basic Mechanics text, scrubbed of forbidden tokens.
  *
  * Read lazily on first use and memoized — deliberately NOT at module
- * evaluation time. Importing this module has to stay free of disk I/O:
- * the docs live in the pinned `bitburner` submodule, which not every
- * checkout has (CI clones with `submodules: false` historically, a
- * fresh clone before `git submodule update`), and a top-level read made
- * merely *importing* prompt.ts throw ENOENT. That took down every
- * unrelated importer with it — cycle-record and execution-feedback
- * tests, and the time-awareness smoke, none of which touch docs.
+ * evaluation time. Importing this module has to stay free of disk I/O.
+ * A top-level read made merely *importing* prompt.ts throw ENOENT when
+ * the doc tree was absent, and that took down every unrelated importer
+ * with it — cycle-record and execution-feedback tests, and the
+ * time-awareness smoke, none of which touch docs.
+ *
+ * The basics are vendored now (harness/game/docs/), so the absent-tree
+ * case is much less likely than when they came from the submodule. Keep
+ * the laziness regardless: an import that can fail on I/O is a footgun
+ * for every future importer, whatever the odds of the file missing.
  *
  * Memoizing keeps the original property that made this a const: the
  * text is identical across every cycle and every model, so the process
