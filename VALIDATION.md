@@ -44,9 +44,116 @@ Consequences to hold onto:
    script beating LLM teams reflected that everyone was confined to the
    same single strategy.
 
-Runs after this line have a ~4.2 GB subagent budget, explicit script
-replacement, per-subagent earnings, and the game's Basic Mechanics docs
-in the orchestrator prompt.
+Runs after this line have a ~4.2 GB subagent budget and the game's Basic
+Mechanics docs in the orchestrator prompt. Explicit script replacement
+and per-subagent earnings were specified in the same plan (Tasks 3-5);
+they had **not** shipped when the N7 run below executed — see its
+evidence — and landed afterwards in #47.
+
+### Evidence — N7, first run under the reopened decision space
+
+**Run `f2c1b48e-196d-467e-bd6d-1d634a6f95d0`** — 2026-08-09, `main` @
+`a2282bc`, Opus 5 orchestrator + Sonnet 5 subagents via the local
+`claude` CLI, `duration_minutes: 8` (**not** the canonical 20; this is
+the config the plan's Task 9 specifies for end-to-end verification, so
+the number below is not leaderboard-comparable). Artifacts:
+`results/f2c1b48e-196d-467e-bd6d-1d634a6f95d0/` on
+`orchestrator/opus-5-cli` (includes `cycles.json` and
+`orchestrator-prompts.log`, the artifact types added by #35 that the
+grep counts below run against).
+
+**Gate passed first.** `ram-budget-smoke.ts` on this checkout:
+`home=8GB dispatcher=3.8GB free=4.2GB`, with `OK` on `ns.exec` (2.9GB),
+`ns.scp`+`ns.exec` (3.5GB) and `ns.purchaseServer` (3.85GB). The reclaim
+is live and both prompts state 4.2 GB — `grep "4.2 GB"
+orchestrator-prompts.log` = 30 hits, `~3 GB` = 0. So the change is not
+inert.
+
+**Result: `final_money` = $1,262 — the starting-money floor, $0 earned.
+`status: completed`. 6 orchestrator cycles, 5 delegations, and
+`scripts.json` is `[]` — zero scripts were committed in the entire run.**
+
+**Primary question — split verdict.**
+
+- *Did any script use a formerly-impossible API?* **Unanswerable, not
+  negative.** `grep -c "ns\.exec\|ns\.scp\|ns\.purchaseServer"
+  scripts.json` = 0 because there are no scripts at all, not because
+  scripts avoided those calls.
+- *Did the orchestrator consider them?* **Yes — emphatically, and it is
+  the clearest positive signal in this run.** The formerly-impossible
+  APIs appear in the orchestrator's own instructions:
+  `ns.exec` ×4, `ns.scp` ×4, `ns.purchaseServer` ×3 in
+  `delegations.json`. Cycle 1 reasoning, verbatim:
+
+  > "I deliberately split scp/exec (expensive, 3.5GB) into its own
+  > script and kept the hack/grow/weaken loop (cheap, ~2GB) separate so
+  > neither blows the 4.2GB per-script ceiling."
+
+  and, on purchased servers: "consider a fourth agent for purchased
+  servers if money crosses the threshold". It spawned a dedicated
+  `botnet` subagent to nuke the network and fan out workers onto other
+  servers' RAM. **The orchestrator priced strategies against the new
+  4.2 GB ceiling and allocated to it.** Under the old 2.8 GB budget
+  every one of those instructions was unstartable. #37 demonstrably
+  reopened the strategy space at the level it controls.
+- *Did any script hit the RAM wall?* **Zero real hits.** The 9 textual
+  occurrences of `RAM budget exceeded` across artifacts are all the
+  orchestrator's own warning text quoted into its instructions, not
+  runtime failures.
+
+**Why nothing landed: the bottleneck moved from RAM to loop latency.**
+Of 5 delegations, 1 returned `status: error` and 4 returned `result:
+null` — never completed before the run ended. All 6 orchestrator cycles
+were `status: ok` (latencies 12.5s-73.9s), so the orchestrator was
+healthy throughout; the subagent layer produced nothing. The single
+error was `iteration 2: claude-cli: Command failed` with empty stderr,
+consistent with the call being killed rather than rejected — the exact
+CLI invocation (all flags, `--model claude-sonnet-5`) reproduces
+successfully by hand on this machine, so the flags are not the cause.
+The orchestrator diagnosed this itself in cycle 6:
+
+> "Issuing any new instruction would kill a subagent's committed script
+> and restart its inference loop, which cannot possibly complete and
+> start earning before the run ends... cold-start inference alone
+> exceeds the remaining time."
+
+Note `subagent_limits.timeout_seconds: 600` exceeds the entire 480s run
+window, so a subagent that iterates cannot be timed out *by its own
+limit* before the run kills it.
+
+**Secondary predictions — all three confirmed not-yet-applicable**, and
+verified statically in `harness/` *before* the run rather than inferred
+from it: `money_earned`, `live_script`, and an `OrchestratorAction`
+`replace` field are absent from the codebase (N4/N5 unbuilt).
+
+1. `money_earned` starting at 0 — `grep -c money_earned
+   orchestrator-prompts.log` = 0. The orchestrator still sees absolute
+   `current_money: 1262`. **N/A, needs N5.**
+2. Absence of the 1,020-restart pattern — 0 scripts / 0 distinct `code`
+   values across 5 delegations. Vacuously absent; the `replace` flag
+   does not exist. **N/A, needs N4.**
+3. `live_script` with non-null earnings — `grep -c live_script` = 0.
+   **N/A, needs N4.**
+
+**Cost:** 399,554 tokens (orchestrator 275,063; subagents 124,491) for
+one 8-minute run. (The config's comments predict a ~39K-token preamble
+and a $2-4 cost, not a token band; the 200-700K figure circulated during
+planning was a derived estimate, retracted here as a citation.) Seed
+opacity held: `grep -c 8675309 orchestrator-prompts.log` = 0.
+
+**What this run does and does not establish.** It establishes that the
+RAM reclaim is real, that both prompts carry the corrected budget, and
+that an orchestrator handed 4.2 GB writes distributed-botnet and
+server-purchase instructions instead of a single-host hack loop — the
+thing #37 set out to make possible. It does **not** establish that a
+team *executes* that strategy, because no script survived to run. The
+next suspects are exactly the two #37 declared out of scope: loop
+latency (a full instruct→code→commit→observe cycle needs ~300s; this
+8-minute run closed **zero** such loops, not the ~4 a 20-minute run
+would) and the run duration itself. Those now sit at the top of the
+list. A rerun at `duration_minutes: 20` is the minimum needed to answer
+the execution half of the question, and until subagents can close one
+loop, no duration will produce a score above the floor.
 
 ---
 
