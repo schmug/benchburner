@@ -33,6 +33,12 @@ export interface Result {
   reasoning?: string;
   tokens_used: number;
   error_message?: string;
+  /**
+   * Set by the orchestrator, never by subagents: the result arrived
+   * after its subagent was killed, so nothing was committed. The payload
+   * is kept — the delegation log is the only place this outcome survives.
+   */
+  dropped_reason?: "subagent_killed";
   /** Number of write-run-observe iterations the subagent used (agentic loop). */
   iterations?: number;
   /**
