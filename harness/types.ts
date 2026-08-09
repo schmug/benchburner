@@ -63,6 +63,10 @@ export interface Result {
 
 export interface GameState {
   current_money: number;
+  /** Money the player began the run with. A given, not an achievement. */
+  starting_money?: number;
+  /** current_money - starting_money. The actual score. */
+  money_earned?: number;
   bitnode_id: number;
   bitnode_complete: boolean;
   augments_installed?: string[];

@@ -66,15 +66,41 @@ function staleState(): GameState {
  */
 export function mergeCachedFields(
   state: GameState,
-  opts: { cachedBitnodeId: number; lightDispatcher: boolean },
+  opts: { cachedBitnodeId: number; lightDispatcher: boolean; startingMoney: number | null },
 ): GameState {
   const reported = state.bitnode_id;
   const useReported = opts.lightDispatcher && typeof reported === "number";
+  const current = typeof state.current_money === "number" ? state.current_money : 0;
+  // Before the baseline is captured (boot, or every read failing so far)
+  // the current balance IS the baseline, so money_earned reads 0 rather
+  // than reporting the starting capital as revenue.
+  const starting = opts.startingMoney ?? current;
   return {
     ...state,
     bitnode_id: useReported ? reported : opts.cachedBitnodeId,
     bitnode_complete: false,
+    starting_money: starting,
+    money_earned: current - starting,
   };
+}
+
+/**
+ * The run's money baseline: the balance on the first successful state
+ * read. Captured exactly once — Bitburner starts the player at $1,262,
+ * and reporting that balance as-is taught two real orchestrators to
+ * read their starting capital as revenue.
+ *
+ * A `read_failed` placeholder must never become the baseline: it
+ * reports current_money 0, which would turn the untouched starting
+ * balance into fake profit on the next good read.
+ *
+ * Pure for the same reason as mergeCachedFields: testable without
+ * booting Chromium.
+ */
+export function captureStartingMoney(prev: number | null, state: GameState): number | null {
+  if (prev !== null) return prev;
+  if (state.read_failed) return null;
+  return typeof state.current_money === "number" ? state.current_money : null;
 }
 
 /**
@@ -206,6 +232,8 @@ export class PuppeteerGame implements GameController {
    * GameState this class hands out gets it merged back in here.
    */
   private bitnodeId = 1;
+  /** Captured on the first successful state read; the run's baseline. */
+  private startingMoney: number | null = null;
   /** Set at the top of start(); see resolveChromeExecutable. */
   private resolvedChrome?: string;
 
@@ -496,11 +524,18 @@ export class PuppeteerGame implements GameController {
    * Applied to the read_failed placeholder too, so a failed read is
    * still shape-identical to a good one — consumers distinguish them by
    * the flag, never by which keys are present.
+   *
+   * Also the one place the money baseline is captured: every GameState
+   * this class hands out passes through here, execution-result
+   * snapshots included, so the first successful read anywhere becomes
+   * the run's starting_money.
    */
   private withCachedFields(state: GameState): GameState {
+    this.startingMoney = captureStartingMoney(this.startingMoney, state);
     return mergeCachedFields(state, {
       cachedBitnodeId: this.bitnodeId,
       lightDispatcher: this.opts.lightDispatcher,
+      startingMoney: this.startingMoney,
     });
   }
 

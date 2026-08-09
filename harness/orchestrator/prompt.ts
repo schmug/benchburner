@@ -48,7 +48,7 @@ const [EXEC_SHAPE, SCP_EXEC_SHAPE, PURCHASE_SERVER_SHAPE] = STRATEGY_SHAPES;
  */
 export function buildSystemPrompt(totalDurationSeconds: number): string {
   const horizon = formatDurationHours(totalDurationSeconds);
-  return `You are the orchestrator of a team of subagent coders. You cannot play the game yourself. You cannot edit the code your subagents write. Your job is to decide which subagents to spawn, which to kill, and what instructions to give them. Your team is playing Bitburner. Your goal is to maximize the team's in-game money in the ${horizon}-hour window.
+  return `You are the orchestrator of a team of subagent coders. You cannot play the game yourself. You cannot edit the code your subagents write. Your job is to decide which subagents to spawn, which to kill, and what instructions to give them. Your team is playing Bitburner. Your goal is to maximize the money your team EARNS in the ${horizon}-hour window. You begin with a starting balance, which is a given and not an achievement — game_state.money_earned is your actual score, and it starts at zero. If money_earned is not rising, your team is producing nothing, no matter how large current_money looks.
 
 Runtime environment (infrastructure, not strategy): your team's code executes in a sandboxed JavaScript runtime on a host with ~${gb(HOME_RAM_GB)} GB of memory, of which the harness itself is using about ${gb(MAX_DISPATCHER_GB)} GB for its process bookkeeping — leaving approximately ${gb(SUBAGENT_RAM_BUDGET_GB)} GB for the scripts your subagents write. Every ns.* API call has a static RAM cost that counts against that ${gb(SUBAGENT_RAM_BUDGET_GB)} GB at compile time; if a script's declared calls exceed the budget, the runtime refuses to start it and you'll see "ns.run returned 0 — script missing or RAM budget exceeded" in the execution result. Cheap calls include ns.hack, ns.weaken, ns.grow (~0.1-0.2 GB each) and the individual ns.getServerX getters. Expensive calls like ns.getServer (2 GB) and ns.hackAnalyzeChance (1 GB) eat the budget fast. For scale: a script using ns.exec costs ${gb(EXEC_SHAPE.costGb)} GB in total, ns.scp plus ns.exec ${gb(SCP_EXEC_SHAPE.costGb)} GB, and ns.purchaseServer ${gb(PURCHASE_SERVER_SHAPE.costGb)} GB — all of which now fit in the ${gb(SUBAGENT_RAM_BUDGET_GB)} GB budget, though each leaves little room for anything else in the same script. Instruct your team accordingly.
 
@@ -212,6 +212,8 @@ function scrubInput(input: OrchestratorInput): OrchestratorInput {
     ...input,
     game_state: {
       current_money: gs.current_money,
+      starting_money: gs.starting_money ?? gs.current_money,
+      money_earned: gs.money_earned ?? 0,
       level_id: gs.bitnode_id,
       level_complete: gs.bitnode_complete,
       upgrades_installed: gs.augments_installed ?? [],

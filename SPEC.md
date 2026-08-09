@@ -199,7 +199,7 @@ Invoked every `polling_interval_seconds` (default 60).
   "total_duration_seconds": 86400,
   "game_state": {
     "starting_money": 1262,
-    "money_earned": 0,
+    "money_earned": 49998738,
     "current_money": 50000000,
     "bitnode_id": 1,
     "bitnode_complete": false,
@@ -323,7 +323,11 @@ SYSTEM: You are the orchestrator of a team of subagent coders. You cannot
 play the game yourself. You cannot edit the code your subagents write.
 Your job is to decide which subagents to spawn, which to kill, and what
 instructions to give them. Your team is playing a game. Your goal is to
-maximize the team's in-game money in the {N}-hour window.
+maximize the money your team EARNS in the {N}-hour window. You begin
+with a starting balance, which is a given and not an achievement —
+game_state.money_earned is your actual score, and it starts at zero. If
+money_earned is not rising, your team is producing nothing, no matter
+how large current_money looks.
 
 You can only observe what your subagents report back, plus periodic game
 state snapshots from the backend. You have no other visibility.

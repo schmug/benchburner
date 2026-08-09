@@ -23,7 +23,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test, { describe } from "node:test";
 
-import { mergeCachedFields } from "../../harness/game/puppeteer";
+import { captureStartingMoney, mergeCachedFields } from "../../harness/game/puppeteer";
 import type { GameState } from "../../harness/types";
 
 const PUPPETEER_SRC = path.join(
@@ -46,6 +46,7 @@ describe("mergeCachedFields", () => {
     const merged = mergeCachedFields(state({ bitnode_id: undefined as unknown as number }), {
       cachedBitnodeId: 4,
       lightDispatcher: false,
+      startingMoney: null,
     });
     assert.equal(merged.bitnode_id, 4);
     assert.equal(merged.bitnode_complete, false);
@@ -59,6 +60,7 @@ describe("mergeCachedFields", () => {
     const merged = mergeCachedFields(state({ bitnode_id: 4 }), {
       cachedBitnodeId: 1,
       lightDispatcher: true,
+      startingMoney: null,
     });
     assert.equal(
       merged.bitnode_id,
@@ -72,6 +74,7 @@ describe("mergeCachedFields", () => {
       const merged = mergeCachedFields(state({ bitnode_id: absent as unknown as number }), {
         cachedBitnodeId: 1,
         lightDispatcher: true,
+        startingMoney: null,
       });
       assert.equal(merged.bitnode_id, 1, `non-numeric ${JSON.stringify(absent)} is not a reading`);
     }
@@ -81,8 +84,66 @@ describe("mergeCachedFields", () => {
     const merged = mergeCachedFields(state({ read_failed: true }), {
       cachedBitnodeId: 1,
       lightDispatcher: false,
+      startingMoney: null,
     });
     assert.equal(merged.read_failed, true);
+  });
+});
+
+describe("mergeCachedFields — money is a delta", () => {
+  // Bitburner starts the player at $1,262. Two real runs read that
+  // balance as revenue ("only $1,262 earned" — actual earnings $0), so
+  // the merge now reports the delta against a boot-captured baseline.
+  test("computes money_earned against the captured baseline", () => {
+    const merged = mergeCachedFields(state({ current_money: 51262 }), {
+      cachedBitnodeId: 1,
+      lightDispatcher: false,
+      startingMoney: 1262,
+    });
+    assert.equal(merged.starting_money, 1262);
+    assert.equal(merged.money_earned, 50000);
+  });
+
+  test("a run that has earned nothing reads 0, not the starting balance", () => {
+    const merged = mergeCachedFields(state({ current_money: 1262 }), {
+      cachedBitnodeId: 1,
+      lightDispatcher: false,
+      startingMoney: 1262,
+    });
+    assert.equal(merged.money_earned, 0);
+  });
+
+  test("with no baseline captured yet, the current balance is the baseline", () => {
+    const merged = mergeCachedFields(state({ current_money: 1262 }), {
+      cachedBitnodeId: 1,
+      lightDispatcher: false,
+      startingMoney: null,
+    });
+    assert.equal(merged.starting_money, 1262);
+    assert.equal(merged.money_earned, 0);
+  });
+});
+
+describe("captureStartingMoney", () => {
+  test("captures the first successful read as the baseline", () => {
+    assert.equal(captureStartingMoney(null, state({ current_money: 1262 })), 1262);
+  });
+
+  test("keeps the existing baseline once captured", () => {
+    assert.equal(captureStartingMoney(1262, state({ current_money: 99999 })), 1262);
+  });
+
+  test("refuses a read_failed placeholder as the baseline", () => {
+    // staleState() reports current_money: 0. Capturing that would make
+    // every later good read look like pure profit.
+    assert.equal(captureStartingMoney(null, state({ current_money: 0, read_failed: true })), null);
+  });
+
+  test("refuses a non-numeric current_money", () => {
+    assert.equal(
+      captureStartingMoney(null, state({ current_money: "1262" as unknown as number })),
+      null,
+    );
   });
 });
 
