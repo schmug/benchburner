@@ -216,7 +216,7 @@ Invoked every `polling_interval_seconds` (default 60).
            last_result.iteration_summaries, which covers the probe runs
            inside the subagent's own write-run-observe loop. */
         "status": "executed | failed",
-        "exit_reason": "running | failed_to_start | exited | errored | timed_out",
+        "exit_reason": "running | failed_to_start | exited | errored | timed_out | killed | replaced",
         "money_gained": 0,
         "time_elapsed_seconds": 0,
         "stdout": "truncated",
@@ -252,6 +252,13 @@ only for the subagent's *probe* iterations; the outcome of the script
 actually committed to the game was discarded, so a script that never
 started was indistinguishable from one that was earning. Free-text
 fields are leak-scrubbed and truncated like every other channel.
+
+Two `exit_reason` values are produced by the lifecycle verbs rather than
+by the script itself: `killed` (the orchestrator killed the subagent, so
+the harness stopped its committed script) and `replaced` (an `instruct`
+with `replace: true` retired it once the successor was confirmed
+running). Both are visible to the orchestrator so a script that stopped
+on its instruction is distinguishable from one that crashed.
 
 `live_script` answers a different question than `last_execution`:
 `last_execution` says whether an instruction produced a script that
