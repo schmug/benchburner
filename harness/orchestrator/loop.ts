@@ -525,9 +525,16 @@ export class OrchestratorLoop {
   }
 
   private onResult(r: Result): void {
+    // A kill can land while this result's inference is still in flight
+    // (window = subagent timeout). killScript already ran and only
+    // flagged queue entries that existed then, so committing now would
+    // start a script nothing can stop, under an id subagent_status no
+    // longer enumerates. Drop the commit but keep the record — the
+    // delegation log is the only place this outcome survives.
+    const alive = this.pool.has(r.subagent_id);
     const delegation_id = this.delegationsByInstruction.get(r.instruction_id);
     if (delegation_id) {
-      updateDelegationResult(this.db, delegation_id, r);
+      updateDelegationResult(this.db, delegation_id, alive ? r : { ...r, dropped_reason: "subagent_killed" });
     }
     const track = this.subagentTracks.get(r.subagent_id);
     if (track) {
@@ -552,7 +559,7 @@ export class OrchestratorLoop {
     // this commit retires the subagent's previous one is the
     // orchestrator's call, made back when it issued the instruction —
     // this path used to evict unconditionally.
-    if (r.status === "success" && r.code) {
+    if (alive && r.status === "success" && r.code) {
       const script_id = randomUUID();
       this.scriptByInstruction.set(r.instruction_id, script_id);
       insertScript(this.db, {
@@ -576,6 +583,26 @@ export class OrchestratorLoop {
     if (!r.code) return;
     try {
       await this.game.submitScript({ script_id, code: r.code });
+      // A kill landing inside this await gap escapes both guards: the
+      // onResult check passed, and killScript only flags queue entries
+      // that exist at kill time — this script is not enqueued until
+      // runScript below. Record the drop on the script row; no
+      // executions publish, or onExecution would resurrect the dead
+      // subagent's track.
+      if (!this.pool.has(r.subagent_id)) {
+        updateScriptExecution(this.db, script_id, {
+          script_id,
+          subagent_id: r.subagent_id,
+          status: "failed",
+          money_gained: 0,
+          time_elapsed_seconds: 0,
+          error: "subagent killed before its committed script started",
+          exit_reason: "killed",
+          game_state_snapshot: this.latestState ?? { current_money: 0, bitnode_id: 1, bitnode_complete: false },
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
       const exec = await this.game.runScript({
         script_id,
         subagent_id: r.subagent_id,
