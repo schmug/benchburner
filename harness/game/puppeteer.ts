@@ -155,6 +155,12 @@ export class PuppeteerGame implements GameController {
   private stopping = false;
   private httpPortActual = 0;
   private rfaPortActual = 0;
+  /**
+   * Read once at boot. Constant for a run, and 1.0 GB/tick to poll from
+   * inside the game, so the dispatcher no longer reports it — every
+   * GameState this class hands out gets it merged back in here.
+   */
+  private bitnodeId = 1;
   /** Set at the top of start(); see resolveChromeExecutable. */
   private resolvedChrome?: string;
 
@@ -189,6 +195,41 @@ export class PuppeteerGame implements GameController {
     await this.runDispatcher();
     await this.waitForDispatcherAlive();
     this.started = true;
+    await this.probeBitnodeId();
+  }
+
+  /**
+   * Reads bitnode_id once, via a throwaway in-game script, so that
+   * ns.getResetInfo (1.0 GB) stays out of the dispatcher's permanent
+   * per-tick budget. Must run after `started` is set — submitScript and
+   * runScript both go through requireReady().
+   *
+   * A failure here is not fatal: bitnode 1 is the pinned scenario, and
+   * losing the benchmark to a boot probe would be a worse trade than
+   * reporting a default.
+   */
+  private async probeBitnodeId(): Promise<void> {
+    try {
+      const probeId = "__bootprobe";
+      await this.submitScript({
+        script_id: probeId,
+        // ns.print, not ns.tprint: only the script's own log buffer is
+        // captured into ExecutionResult.stdout.
+        code:
+          "/** @param {NS} ns */\nexport async function main(ns) {" +
+          " ns.print('BITNODE=' + ns.getResetInfo().currentNode); }",
+      });
+      const res = await this.runScript({
+        script_id: probeId,
+        subagent_id: "boot",
+        kind: "probe",
+      });
+      const m = /BITNODE=(\d+)/.exec(res.stdout ?? "");
+      if (m) this.bitnodeId = Number(m[1]);
+      else console.warn(`[game] bitnode probe returned no value, assuming ${this.bitnodeId}`);
+    } catch (e) {
+      console.warn(`[game] bitnode probe failed, assuming 1: ${(e as Error).message}`);
+    }
   }
 
   async stop(): Promise<void> {
@@ -252,7 +293,7 @@ export class PuppeteerGame implements GameController {
           try {
             const parsed = JSON.parse(resultContent) as ExecutionResult;
             await this.rfa!.deleteFile(resultPath, "home");
-            return parsed; // likely a failed_to_start
+            return this.withCachedSnapshot(parsed); // likely a failed_to_start
           } catch {
             /* mid-write, retry */
           }
@@ -276,7 +317,7 @@ export class PuppeteerGame implements GameController {
         money_gained: 0,
         time_elapsed_seconds: 0,
         exit_reason: "running",
-        game_state_snapshot: await this.readState().catch(() => staleState()),
+        game_state_snapshot: await this.readState().catch(() => this.withCachedFields(staleState())),
         timestamp: new Date().toISOString(),
       };
     }
@@ -291,7 +332,7 @@ export class PuppeteerGame implements GameController {
         try {
           const parsed = JSON.parse(content) as ExecutionResult;
           await this.rfa!.deleteFile(resultPath, "home");
-          return parsed;
+          return this.withCachedSnapshot(parsed);
         } catch {
           // dispatcher mid-write; retry
         }
@@ -352,15 +393,40 @@ export class PuppeteerGame implements GameController {
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as GameState;
-        if (typeof parsed.current_money === "number") return parsed;
+        if (typeof parsed.current_money === "number") return this.withCachedFields(parsed);
       } catch {
         /* fall through */
       }
     }
-    return staleState();
+    return this.withCachedFields(staleState());
   }
 
   // ── internals ──────────────────────────────────────────────────
+
+  /**
+   * Restores the fields the dispatcher stopped reporting to save RAM.
+   * Applied to the read_failed placeholder too, so a failed read is
+   * still shape-identical to a good one — consumers distinguish them by
+   * the flag, never by which keys are present.
+   */
+  private withCachedFields(state: GameState): GameState {
+    return {
+      ...state,
+      bitnode_id: this.bitnodeId,
+      bitnode_complete: false,
+    };
+  }
+
+  /**
+   * Same restoration for the snapshot the dispatcher embeds in a result
+   * file. OrchestratorLoop feeds that snapshot straight into
+   * acceptIncomingState, so without this a single script result would
+   * strip bitnode_id back out of the cached game state.
+   */
+  private withCachedSnapshot(result: ExecutionResult): ExecutionResult {
+    if (!result.game_state_snapshot) return result;
+    return { ...result, game_state_snapshot: this.withCachedFields(result.game_state_snapshot) };
+  }
 
   private requireReady(): void {
     if (!this.started) throw new Error("PuppeteerGame.start() has not completed");
