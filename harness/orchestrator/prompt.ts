@@ -24,7 +24,21 @@
  */
 
 import { BASIC_DOCS, loadDocs } from "../game/docs";
+import {
+  HOME_RAM_GB,
+  MAX_DISPATCHER_GB,
+  STRATEGY_SHAPES,
+  SUBAGENT_RAM_BUDGET_GB,
+  gb,
+} from "../game/ram-budget";
 import type { OrchestratorInput } from "../types";
+
+/**
+ * Rendered into the runtime-environment paragraph below. Destructured in
+ * the order harness/game/ram-budget.ts declares them, which is the order
+ * the prompt states them — test/game/ram-budget.test.ts pins both.
+ */
+const [EXEC_SHAPE, SCP_EXEC_SHAPE, PURCHASE_SERVER_SHAPE] = STRATEGY_SHAPES;
 
 /**
  * Builds the §3.3 system prompt. The only run-dependent substitution
@@ -36,7 +50,7 @@ export function buildSystemPrompt(totalDurationSeconds: number): string {
   const horizon = formatDurationHours(totalDurationSeconds);
   return `You are the orchestrator of a team of subagent coders. You cannot play the game yourself. You cannot edit the code your subagents write. Your job is to decide which subagents to spawn, which to kill, and what instructions to give them. Your team is playing Bitburner. Your goal is to maximize the team's in-game money in the ${horizon}-hour window.
 
-Runtime environment (infrastructure, not strategy): your team's code executes in a sandboxed JavaScript runtime on a host with ~8 GB of memory, of which the harness itself is using about 3.8 GB for its process bookkeeping — leaving approximately 4.2 GB for the scripts your subagents write. Every ns.* API call has a static RAM cost that counts against that 4.2 GB at compile time; if a script's declared calls exceed the budget, the runtime refuses to start it and you'll see "ns.run returned 0 — script missing or RAM budget exceeded" in the execution result. Cheap calls include ns.hack, ns.weaken, ns.grow (~0.1-0.2 GB each) and the individual ns.getServerX getters. Expensive calls like ns.getServer (2 GB) and ns.hackAnalyzeChance (1 GB) eat the budget fast. For scale: a script using ns.exec costs 2.9 GB in total, ns.scp plus ns.exec 3.5 GB, and ns.purchaseServer 3.85 GB — all of which now fit in the 4.2 GB budget, though each leaves little room for anything else in the same script. Instruct your team accordingly.
+Runtime environment (infrastructure, not strategy): your team's code executes in a sandboxed JavaScript runtime on a host with ~${gb(HOME_RAM_GB)} GB of memory, of which the harness itself is using about ${gb(MAX_DISPATCHER_GB)} GB for its process bookkeeping — leaving approximately ${gb(SUBAGENT_RAM_BUDGET_GB)} GB for the scripts your subagents write. Every ns.* API call has a static RAM cost that counts against that ${gb(SUBAGENT_RAM_BUDGET_GB)} GB at compile time; if a script's declared calls exceed the budget, the runtime refuses to start it and you'll see "ns.run returned 0 — script missing or RAM budget exceeded" in the execution result. Cheap calls include ns.hack, ns.weaken, ns.grow (~0.1-0.2 GB each) and the individual ns.getServerX getters. Expensive calls like ns.getServer (2 GB) and ns.hackAnalyzeChance (1 GB) eat the budget fast. For scale: a script using ns.exec costs ${gb(EXEC_SHAPE.costGb)} GB in total, ns.scp plus ns.exec ${gb(SCP_EXEC_SHAPE.costGb)} GB, and ns.purchaseServer ${gb(PURCHASE_SERVER_SHAPE.costGb)} GB — all of which now fit in the ${gb(SUBAGENT_RAM_BUDGET_GB)} GB budget, though each leaves little room for anything else in the same script. Instruct your team accordingly.
 
 Scripts take the form "export async function main(ns) { ... }" where ns is the API object the environment provides. When you instruct your subagents, tell them what you want the code to DO; do not tell them which language to use — they already know it must be JavaScript targeting this ns-based runtime.
 
