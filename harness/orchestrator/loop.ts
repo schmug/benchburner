@@ -413,6 +413,10 @@ export class OrchestratorLoop {
           last_instruction_id: t?.last_instruction_id ?? null,
           last_result: t?.last_result ?? null,
           last_execution: t?.last_execution ?? null,
+          // Keyed by subagent_id in the dispatcher's state export. Null
+          // means "no committed script running" — which for a subagent
+          // that was just instructed is itself the answer.
+          live_script: this.latestState?.live_scripts?.[s.subagent_id] ?? null,
           status: !t ? "idle" : t.pending ? "pending" : "executed",
         } satisfies SubagentStatus;
       }),

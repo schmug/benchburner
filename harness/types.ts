@@ -79,6 +79,13 @@ export interface GameState {
    * permanently (PDS7 cycle 16 incident).
    */
   read_failed?: boolean;
+  /**
+   * Per-subagent committed-script stats, keyed by subagent_id, as
+   * reported by the in-game dispatcher. Reaches the orchestrator as
+   * `SubagentStatus.live_script`, not through the game_state channel —
+   * `scrubInput` projects game_state onto an explicit key list.
+   */
+  live_scripts?: Record<string, LiveScript>;
   // Extension point; distilled snapshots may carry more observables.
   [key: string]: unknown;
 }
@@ -141,12 +148,40 @@ export interface ExecutionSummary {
   timestamp: string;
 }
 
+/**
+ * Live state of a subagent's committed script, refreshed every time the
+ * harness reads game state.
+ *
+ * `last_execution` answers "did my instruction produce a script that
+ * started". This answers "is it still earning". Instruction quality is
+ * not observable without both — the 24h run had neither and re-instructed
+ * blindly for seventeen hours.
+ *
+ * `money_made` is the script's OWN earnings, read from
+ * `ns.getRunningScript().onlineMoneyMade`. That distinction is the whole
+ * point: `ExecutionResult.money_gained` is a global player delta and
+ * cannot be attributed once more than one script is running.
+ *
+ * Every field is numeric or boolean. `scrubInput` builds SubagentStatus
+ * with a spread, so if this ever gains a string field it must be scrubbed
+ * there explicitly — see the note at that spread.
+ */
+export interface LiveScript {
+  running: boolean;
+  /** This script's own earnings — not a global player delta. */
+  money_made: number;
+  ram: number;
+  uptime_seconds: number;
+}
+
 export interface SubagentStatus {
   subagent_id: string;
   last_instruction_id: string | null;
   last_result: Result | null;
   /** Outcome of this subagent's most recent committed script, if any. */
   last_execution?: ExecutionSummary | null;
+  /** This subagent's committed script, if it has one running. */
+  live_script?: LiveScript | null;
   status: "idle" | "pending" | "executed";
   model_choice?: string;
 }

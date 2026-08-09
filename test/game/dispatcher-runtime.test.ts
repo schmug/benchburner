@@ -302,6 +302,61 @@ describe("dispatcher — committed-script replacement", () => {
   });
 });
 
+describe("dispatcher — per-subagent live script stats", () => {
+  test("the state export attributes earnings to the subagent that owns the script", async () => {
+    const h = await runDispatcher({
+      queue: [earner("a", 101, "mine"), earner("b", 102, "theirs")],
+      alive: [
+        script(101, { onlineMoneyMade: 45000, onlineRunningTime: 180, ramUsage: 2.6 }),
+        script(102, { onlineMoneyMade: 7, onlineRunningTime: 12, ramUsage: 1.7 }),
+      ],
+    });
+
+    const live = h.state()?.live_scripts as Record<string, Record<string, unknown>>;
+    assert.ok(live, "/__state.json must carry live_scripts");
+    assert.deepEqual(live.a, { running: true, money_made: 45000, ram: 2.6, uptime_seconds: 180 });
+    assert.equal(live.b.money_made, 7, "each script's own earnings, not a shared player delta");
+  });
+
+  test("a committed script whose process is gone reports running: false", async () => {
+    // The task still says "running" in the queue but ns.getRunningScript
+    // has nothing — an earner that died is exactly the case the
+    // orchestrator was blind to.
+    const h = await runDispatcher({ queue: [earner("a", 101, "dead")], alive: [] });
+
+    const live = h.state()?.live_scripts as Record<string, Record<string, unknown>>;
+    assert.equal(live.a.running, false);
+    assert.equal(live.a.money_made, 0);
+  });
+
+  test("probes and pending tasks are not reported as live committed scripts", async () => {
+    const probe: DispatchTask = {
+      script_id: "probe",
+      subagent_id: "p",
+      pid: 103,
+      status: "running",
+      kind: "probe",
+      path: "/__scripts/probe.js",
+      startedAt: Date.now(),
+    };
+    const h = await runDispatcher({
+      queue: [probe, pending("q", "queued")],
+      alive: [script(103, { onlineMoneyMade: 5 })],
+    });
+
+    const live = h.state()?.live_scripts as Record<string, unknown>;
+    assert.deepEqual(Object.keys(live), [], "only running committed scripts belong here");
+  });
+
+  test("the state export still carries the fields the harness polls", async () => {
+    const h = await runDispatcher({ queue: [], money: 4242 });
+    const s = h.state();
+    assert.equal(s?.current_money, 4242);
+    assert.equal(typeof s?.last_heartbeat_ms, "number");
+    assert.equal(typeof s?.timestamp, "string");
+  });
+});
+
 describe("dispatcher — kill requests", () => {
   test("kill_requested stops the script and leaves no orphan", async () => {
     const target = earner("a", 101, "doomed");
