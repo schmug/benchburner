@@ -12,7 +12,9 @@
 #   BENCHBURNER_CONFIG=config/run.opus-subagent-local.yaml npm run harness:dev
 #   npm run viewer     # second terminal
 #
-# Requires: ollama serving qwen2.5-coder:7b, and `claude` on PATH.
+# Requires: Google Chrome installed (found automatically), ollama serving
+# qwen2.5-coder:7b, and `claude` on PATH. No API key, and no Puppeteer
+# env vars — set PUPPETEER_EXECUTABLE_PATH only to pin a specific binary.
 
 run_id: auto
 

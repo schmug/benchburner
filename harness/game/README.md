@@ -41,19 +41,34 @@ actually needs Node 24 at runtime, document here and upgrade.
 
 ## Chromium binary
 
-Puppeteer's bundled Chromium is blocked from downloading in this
-environment (the host sandbox prevents egress to storage.googleapis.com).
-We install with `PUPPETEER_SKIP_DOWNLOAD=true` and point Puppeteer at
-the system Chrome via `PUPPETEER_EXECUTABLE_PATH`:
+Puppeteer's bundled Chromium is not downloaded (`PUPPETEER_SKIP_DOWNLOAD=true`
+at install time; the host sandbox also blocks egress to
+storage.googleapis.com). The harness drives the **system Chrome** instead.
 
-```sh
-export PUPPETEER_SKIP_DOWNLOAD=true
-export PUPPETEER_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+`resolveChromeExecutable` in `puppeteer.ts` picks the binary, in order:
+
+1. `PuppeteerGameOptions.chromeExecutable`
+2. `PUPPETEER_EXECUTABLE_PATH`
+3. a system install from `SYSTEM_CHROME_CANDIDATES` (standard macOS and
+   Linux locations)
+
+**So neither env var is required on a machine with Chrome installed.**
+Set `PUPPETEER_EXECUTABLE_PATH` only to pin a specific binary — a
+non-standard location, or a particular channel.
+
+If nothing is found, boot fails immediately with a message naming the
+env var and the paths searched. It used to reach Puppeteer with
+`executablePath: undefined`, which sent it hunting for the bundle we
+never download and produced:
+
+```
+game boot failed: Could not find Chrome (ver. 131.0.6778.204) ...
+your cache path is incorrectly configured (which is: ~/.cache/puppeteer)
 ```
 
-On a self-hosted Linux runner this would typically be
-`/usr/bin/google-chrome-stable` or an equivalent installed via
-`apt install google-chrome-stable`.
+— an error naming a cache directory rather than the remedy, raised two
+servers into the boot sequence. Resolution now happens before anything
+is bound.
 
 ## Chromium flags (for M1 and beyond)
 

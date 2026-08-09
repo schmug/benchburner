@@ -11,7 +11,10 @@
 # 10-minute run. Verify against your own OpenRouter usage; do not treat
 # this as a quote.
 #
-# Requires OPENROUTER_API_KEY in the environment.
+# Requires OPENROUTER_API_KEY in the environment, plus Google Chrome
+# installed (the harness finds it without any Puppeteer env var). For a
+# no-API-key alternative that routes through the local `claude` CLI, see
+# run.opus-subagent-local.yaml.
 #
 #   export OPENROUTER_API_KEY=...
 #   BENCHBURNER_CONFIG=config/run.opus-subagent-watch.yaml npm run harness:dev

@@ -20,7 +20,7 @@
 
 import { createServer, type Server as HttpServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -74,6 +74,67 @@ export interface PuppeteerGameOptions {
   lightDispatcher?: boolean;
 }
 
+/**
+ * Where a system Chrome normally lives, most-preferred first. Puppeteer's
+ * own bundled Chromium is deliberately not installed (setup uses
+ * PUPPETEER_SKIP_DOWNLOAD=true), so without one of these the launch fails
+ * pointing at an empty cache directory instead of at the real problem.
+ */
+const SYSTEM_CHROME_CANDIDATES: readonly string[] = [
+  // macOS
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/Applications/Chromium.app/Contents/MacOS/Chromium",
+  // Linux
+  "/usr/bin/google-chrome-stable",
+  "/usr/bin/google-chrome",
+  "/usr/bin/chromium-browser",
+  "/usr/bin/chromium",
+  "/snap/bin/chromium",
+];
+
+/**
+ * Resolves the browser binary to drive, in order: an explicitly
+ * configured path, `PUPPETEER_EXECUTABLE_PATH`, then a system install.
+ *
+ * Throws rather than returning undefined when nothing is found. Handing
+ * `undefined` to Puppeteer makes it hunt for a bundled Chromium this
+ * project never downloads, and the resulting error names a cache
+ * directory rather than the remedy — which is how a run failed with
+ * "Could not find Chrome (ver. 131.0.6778.204)" long after boot began.
+ *
+ * A configured-but-missing path also throws: falling back silently would
+ * hide the typo and quietly run a different browser than intended.
+ */
+export function resolveChromeExecutable(opts: {
+  explicit?: string;
+  env?: string;
+  /** Overridable for tests; defaults to the platform candidate list. */
+  candidates?: readonly string[];
+}): string {
+  const configured = opts.explicit ?? opts.env;
+  if (configured) {
+    if (!existsSync(configured)) {
+      const source = opts.explicit ? "chromeExecutable" : "PUPPETEER_EXECUTABLE_PATH";
+      throw new Error(
+        `Chrome not found at the configured path (${source}): ${configured}`,
+      );
+    }
+    return configured;
+  }
+
+  const candidates = opts.candidates ?? SYSTEM_CHROME_CANDIDATES;
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+
+  throw new Error(
+    "Chrome not found. The harness drives the system Chrome and does not " +
+      "download Puppeteer's bundled Chromium. Install Google Chrome, or set " +
+      "PUPPETEER_EXECUTABLE_PATH to an existing browser binary. Looked in: " +
+      candidates.join(", "),
+  );
+}
+
 export class PuppeteerGame implements GameController {
   private readonly opts: Required<
     Omit<
@@ -94,6 +155,8 @@ export class PuppeteerGame implements GameController {
   private stopping = false;
   private httpPortActual = 0;
   private rfaPortActual = 0;
+  /** Set at the top of start(); see resolveChromeExecutable. */
+  private resolvedChrome?: string;
 
   constructor(opts: PuppeteerGameOptions) {
     this.opts = {
@@ -111,6 +174,13 @@ export class PuppeteerGame implements GameController {
 
   async start(): Promise<void> {
     if (this.started) return;
+    // Resolve the browser before anything is bound or spawned. This used
+    // to happen inside launchBrowser(), two servers later, so a missing
+    // Chrome surfaced as a mid-boot failure instead of an immediate one.
+    this.resolvedChrome = resolveChromeExecutable({
+      explicit: this.opts.chromeExecutable,
+      env: process.env.PUPPETEER_EXECUTABLE_PATH,
+    });
     await this.startHttpServer();
     await this.startRfaServer();
     await this.launchBrowser();
@@ -333,7 +403,7 @@ export class PuppeteerGame implements GameController {
   }
 
   private async launchBrowser(): Promise<void> {
-    const execPath = this.opts.chromeExecutable ?? process.env.PUPPETEER_EXECUTABLE_PATH;
+    const execPath = this.resolvedChrome;
     this.browser = await puppeteer.launch({
       headless: this.opts.headless,
       executablePath: execPath,
