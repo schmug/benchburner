@@ -1,0 +1,44 @@
+# Watch a Claude Opus 5 subagent play, live, with NO API key.
+#
+# Inference goes through the `claude` CLI already authenticated on this
+# machine (adapter: claude-cli). The orchestrator is a local Ollama model
+# so every Claude call belongs to the subagent — the thing being watched.
+#
+# Cost: each CLI call carries a ~39K-token preamble that no flag removes
+# (~$0.21/call at Opus rates as reported by the CLI). Whether that is
+# billed or covered by a subscription depends on your CLI auth. A run
+# this size makes roughly 5-15 subagent calls.
+#
+#   BENCHBURNER_CONFIG=config/run.opus-subagent-local.yaml npm run harness:dev
+#   npm run viewer     # second terminal
+#
+# Requires: Google Chrome installed (found automatically), ollama serving
+# qwen2.5-coder:7b, and `claude` on PATH. No API key, and no Puppeteer
+# env vars — set PUPPETEER_EXECUTABLE_PATH only to pin a specific binary.
+
+run_id: auto
+
+orchestrator:
+  model: qwen2.5-coder:7b
+  # Slow polling on purpose: a tighter loop makes the orchestrator kill
+  # and respawn subagents mid-iteration, which wastes Opus calls.
+  polling_interval_seconds: 90
+  history_window: 10
+  hang_timeout_seconds: 600
+  per_cycle_timeout_seconds: 300
+
+subagent_roster:
+  - claude-opus-5-cli
+
+subagent_limits:
+  # One at a time: concurrent CLI processes each pay the full preamble.
+  max_concurrent: 1
+  token_budget_per_instruction: 2000
+  timeout_seconds: 600
+
+game:
+  bitburner_commit: a4b0f22a2e5bcf19826c0bb671373c755fc162ad
+  seed: 8675309
+
+duration_minutes: 8
+attribution_mode: public

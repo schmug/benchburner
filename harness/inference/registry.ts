@@ -15,6 +15,7 @@ import { OllamaAdapter } from "./ollama";
 import { HTTPAdapter } from "./http";
 import { TestHangAdapter } from "./test-hang";
 import { TestScriptedAdapter } from "./test-scripted";
+import { ClaudeCliAdapter } from "./claude-cli";
 import { NullOrchestratorAdapter } from "./null-orchestrator";
 
 /**
@@ -50,10 +51,11 @@ export function loadModelsYaml(path: string): ModelConfig[] {
       adapter !== "http" &&
       adapter !== "test-hang" &&
       adapter !== "test-scripted" &&
-      adapter !== "null-orchestrator"
+      adapter !== "null-orchestrator" &&
+      adapter !== "claude-cli"
     ) {
       throw new Error(
-        `models.yaml entry "${id}" has invalid adapter "${String(adapter)}" (expected "ollama", "http", "test-hang", "test-scripted", or "null-orchestrator")`,
+        `models.yaml entry "${id}" has invalid adapter "${String(adapter)}" (expected "ollama", "http", "claude-cli", "test-hang", "test-scripted", or "null-orchestrator")`,
       );
     }
     if (typeof endpoint !== "string" || endpoint.length === 0) {
@@ -146,6 +148,11 @@ export class InferenceRegistry {
         adapter = new TestScriptedAdapter();
       } else if (config.adapter === "null-orchestrator") {
         adapter = new NullOrchestratorAdapter();
+      } else if (config.adapter === "claude-cli") {
+        // `endpoint` is repurposed as the CLI path; "claude" means PATH.
+        adapter = new ClaudeCliAdapter({
+          binary: config.endpoint === "claude" ? undefined : config.endpoint,
+        });
       } else {
         adapter = new HTTPAdapter({ endpoint: config.endpoint, apiKey });
       }

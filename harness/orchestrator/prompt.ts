@@ -112,7 +112,7 @@ export function buildOrchestratorPrompt(input: OrchestratorInput, seed: number):
  * its team's work, and the spec explicitly notes total leak-proofing
  * of Netscript is "likely impossible").
  */
-function scrubResult<T extends { code?: string; reasoning?: string; error_message?: string; iteration_summaries?: Array<{ stderr?: string; [k: string]: unknown }> }>(r: T | null | undefined): T | null {
+function scrubResult<T extends { code?: string; reasoning?: string; error_message?: string; iteration_summaries?: Array<{ stderr?: string; notes?: string; [k: string]: unknown }> }>(r: T | null | undefined): T | null {
   if (!r) return null as T | null;
   return {
     ...r,
@@ -122,7 +122,28 @@ function scrubResult<T extends { code?: string; reasoning?: string; error_messag
     iteration_summaries: r.iteration_summaries?.map((s) => ({
       ...s,
       stderr: s.stderr ? scrubText(s.stderr) : s.stderr,
+      // Subagent-authored reasoning for that turn; free text like any
+      // other, and it names game APIs routinely.
+      notes: s.notes ? scrubText(s.notes) : s.notes,
     })),
+  };
+}
+
+/**
+ * Scrubs the free-text fields of a committed script's outcome. This is
+ * game-authored output — runtime errors and stack traces name game APIs
+ * as a matter of course — so it goes through the same filter as
+ * subagent output before the orchestrator sees it.
+ */
+function scrubExecution<T extends { error?: string; stdout?: string; stderr?: string }>(
+  e: T | null | undefined,
+): T | null {
+  if (!e) return null as T | null;
+  return {
+    ...e,
+    error: e.error ? scrubText(e.error) : e.error,
+    stdout: e.stdout ? scrubText(e.stdout) : e.stdout,
+    stderr: e.stderr ? scrubText(e.stderr) : e.stderr,
   };
 }
 
@@ -133,6 +154,12 @@ function scrubInput(input: OrchestratorInput): OrchestratorInput {
     // Same scrub as delegation_history so we don't echo unscrubbed
     // code/reasoning/stderr through this second window into the past.
     last_result: scrubResult(s.last_result) as typeof s.last_result,
+    // NOTE: this object is built with a spread, so any field added to
+    // SubagentStatus reaches the model unscrubbed unless handled here.
+    // Execution output is game-authored text — stack traces and runtime
+    // errors routinely name game APIs — and a forbidden token in the
+    // prompt fails the run closed.
+    last_execution: scrubExecution(s.last_execution),
   }));
   const cleanedHistory = input.delegation_history.map((pair) => ({
     instruction: {

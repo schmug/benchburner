@@ -1,0 +1,46 @@
+# Opus 5 orchestrating Sonnet 5 subagents, both through the local
+# `claude` CLI — no API key.
+#
+# Replaces the local-qwen orchestrator, which spent most of its cycles
+# killing and respawning subagents rather than letting them finish an
+# iteration (see the kill/spawn thrash in earlier runs).
+#
+# Cost: every CLI call carries a ~39K-token preamble no flag removes.
+# Measured cold-call cost was ~$0.39 (Opus) and ~$0.27 (Sonnet); steady
+# state is lower once the prefix caches. Budget roughly $2-4 for this
+# 8-minute run. Whether that is billed or covered by a subscription
+# depends on your CLI auth.
+#
+#   BENCHBURNER_CONFIG=config/run.opus-orch-sonnet-sub.yaml npm run harness:dev
+#   npm run viewer     # second terminal
+#
+# Requires: Google Chrome installed (found automatically) and `claude` on
+# PATH. No ollama, no API key.
+
+run_id: auto
+
+orchestrator:
+  model: claude-opus-5-cli
+  # 90s: slow enough that a subagent can finish an iteration before the
+  # orchestrator reconsiders, which is what stopped the thrash.
+  polling_interval_seconds: 90
+  history_window: 10
+  hang_timeout_seconds: 900
+  per_cycle_timeout_seconds: 300
+
+subagent_roster:
+  - claude-sonnet-5-cli
+
+subagent_limits:
+  # Two so there is real allocation to watch; each concurrent CLI process
+  # pays its own preamble, so this is also the main cost dial.
+  max_concurrent: 2
+  token_budget_per_instruction: 2000
+  timeout_seconds: 600
+
+game:
+  bitburner_commit: a4b0f22a2e5bcf19826c0bb671373c755fc162ad
+  seed: 8675309
+
+duration_minutes: 8
+attribution_mode: public

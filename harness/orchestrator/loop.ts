@@ -25,6 +25,7 @@ import path from "node:path";
 import type { Bus } from "../bus/bus";
 import type { Db } from "../storage/db";
 import {
+  insertCycle,
   insertDelegation,
   insertScript,
   updateDelegationResult,
@@ -32,7 +33,9 @@ import {
 } from "../storage/writers";
 import type { InferenceRegistry } from "../inference/registry";
 import type {
+  CycleStatus,
   ExecutionResult,
+  ExecutionSummary,
   GameController,
   GameState,
   Instruction,
@@ -108,7 +111,38 @@ export interface LoopOptions {
 interface SubagentTrack {
   last_instruction_id: string | null;
   last_result: Result | null;
+  /** Outcome of this subagent's most recent committed script. */
+  last_execution?: ExecutionSummary | null;
   pending: boolean;
+}
+
+/**
+ * Characters of stdout/stderr kept per execution. Enough to carry a
+ * stack trace or a "RAM budget exceeded" line, short enough that a
+ * script printing in a loop cannot crowd out delegation history.
+ */
+const EXECUTION_OUTPUT_CHARS = 600;
+
+function clipOutput(s: string | undefined): string | undefined {
+  if (s === undefined) return undefined;
+  return s.length <= EXECUTION_OUTPUT_CHARS
+    ? s
+    : `${s.slice(0, EXECUTION_OUTPUT_CHARS)}… [${s.length - EXECUTION_OUTPUT_CHARS} more chars]`;
+}
+
+/** Compacts an ExecutionResult for the orchestrator's view. */
+function summarizeExecution(e: ExecutionResult): ExecutionSummary {
+  return {
+    status: e.status,
+    exit_reason: e.exit_reason,
+    money_gained: e.money_gained,
+    time_elapsed_seconds: e.time_elapsed_seconds,
+    error: clipOutput(e.error),
+    stdout: clipOutput(e.stdout),
+    stderr: clipOutput(e.stderr),
+    script_stats: e.script_stats,
+    timestamp: e.timestamp,
+  };
 }
 
 export class OrchestratorLoop {
@@ -292,13 +326,69 @@ export class OrchestratorLoop {
 
       this.lastCycleCompletedAt = Date.now();
       const ms = this.lastCycleCompletedAt - cycleStart;
+
+      // Record the tick itself, not just the delegations it produced.
+      // A noop, a spawn-only cycle, or malformed model output creates no
+      // delegation row, so without this the orchestrator's own account of
+      // its decisions — and the fact that a decision happened at all —
+      // leaves no trace in the artifacts.
+      this.recordCycle({
+        status: parsed ? "ok" : "malformed",
+        reasoning: parsed?.reasoning ?? null,
+        actions: parsed?.actions ?? [],
+        tokens_used: raw.tokens_used,
+        latency_ms: ms,
+        error: parsed ? null : "malformed JSON from model; treated as noop",
+      });
       console.log(
         `[orchestrator] cycle ${this.cycle} done in ${ms}ms — actions=${parsed?.actions.length ?? 0}, pool=${this.pool.size()}, money=${this.latestState?.current_money ?? "?"}`,
       );
     } catch (e) {
-      console.error(`[orchestrator] cycle ${this.cycle} failed:`, (e as Error).message);
+      const message = (e as Error).message;
+      console.error(`[orchestrator] cycle ${this.cycle} failed:`, message);
+      // A run whose every cycle aborts on an inference timeout used to
+      // produce artifacts indistinguishable from one that deliberately
+      // did nothing. Record the failure so the difference is visible.
+      this.recordCycle({
+        status: "failed",
+        reasoning: null,
+        actions: [],
+        tokens_used: 0,
+        latency_ms: Date.now() - cycleStart,
+        error: message,
+      });
     } finally {
       this.cycleInFlight = false;
+    }
+  }
+
+  /**
+   * Persists one orchestrator tick. Never throws: a storage problem must
+   * not take down a run that is otherwise progressing, and this row is
+   * observability, not control flow.
+   */
+  private recordCycle(row: {
+    status: CycleStatus;
+    reasoning: string | null;
+    actions: OrchestratorAction[];
+    tokens_used: number;
+    latency_ms: number;
+    error: string | null;
+  }): void {
+    try {
+      insertCycle(this.db, {
+        run_id: this.run_id,
+        cycle_number: this.cycle,
+        status: row.status,
+        reasoning: row.reasoning,
+        actions: row.actions,
+        tokens_used: row.tokens_used,
+        latency_ms: row.latency_ms,
+        error: row.error,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.error(`[orchestrator] failed to record cycle ${this.cycle}:`, (e as Error).message);
     }
   }
 
@@ -314,6 +404,7 @@ export class OrchestratorLoop {
           model_choice: s.model,
           last_instruction_id: t?.last_instruction_id ?? null,
           last_result: t?.last_result ?? null,
+          last_execution: t?.last_execution ?? null,
           status: !t ? "idle" : t.pending ? "pending" : "executed",
         } satisfies SubagentStatus;
       }),
@@ -483,8 +574,24 @@ export class OrchestratorLoop {
     }
   }
 
+  /**
+   * The `executions` channel carries committed scripts only — the
+   * subagent's own probe runs call the game directly and never publish
+   * — so every message here is "the script this subagent committed
+   * did X".
+   *
+   * This used to keep only the game-state snapshot and discard the rest,
+   * which meant the orchestrator was never told whether a script it
+   * accepted actually started. See ExecutionSummary.
+   */
   private onExecution(e: ExecutionResult): void {
     this.acceptIncomingState(e.game_state_snapshot);
+
+    const track =
+      this.subagentTracks.get(e.subagent_id) ??
+      { last_instruction_id: null, last_result: null, pending: false };
+    track.last_execution = summarizeExecution(e);
+    this.subagentTracks.set(e.subagent_id, track);
   }
 
   /**

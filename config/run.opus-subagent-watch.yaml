@@ -1,0 +1,49 @@
+# Watch a Claude Opus 5 subagent play, live, via `npm run viewer`.
+#
+# Not a benchmark config — a short observation run. The orchestrator is
+# deliberately Haiku rather than Opus so the spend sits on the thing
+# you're watching (the subagent's write-run-observe loop) instead of on
+# the management layer.
+#
+# Cost, extrapolated from VALIDATION.md PDS2's measured 20-minute
+# figures (haiku/haiku ≈ $0.05–0.10; subagent side 24K–41K tokens) with
+# the subagent repriced at Opus rates: roughly $0.50–$1.50 for this
+# 10-minute run. Verify against your own OpenRouter usage; do not treat
+# this as a quote.
+#
+# Requires OPENROUTER_API_KEY in the environment, plus Google Chrome
+# installed (the harness finds it without any Puppeteer env var). For a
+# no-API-key alternative that routes through the local `claude` CLI, see
+# run.opus-subagent-local.yaml.
+#
+#   export OPENROUTER_API_KEY=...
+#   BENCHBURNER_CONFIG=config/run.opus-subagent-watch.yaml npm run harness:dev
+#   npm run viewer     # in a second terminal
+
+run_id: auto
+
+orchestrator:
+  model: claude-haiku-4.5
+  # 60s rather than something tighter: a fast polling loop encourages the
+  # orchestrator to kill and respawn subagents before they finish an
+  # iteration, which burns Opus tokens and gives you less to watch.
+  polling_interval_seconds: 60
+  history_window: 10
+  hang_timeout_seconds: 600
+  per_cycle_timeout_seconds: 180
+
+subagent_roster:
+  - claude-opus-5
+
+subagent_limits:
+  max_concurrent: 2
+  token_budget_per_instruction: 2000
+  timeout_seconds: 300
+
+game:
+  bitburner_commit: a4b0f22a2e5bcf19826c0bb671373c755fc162ad
+  seed: 8675309
+
+# Short on purpose. Scale up once you've seen it work and know the cost.
+duration_minutes: 10
+attribution_mode: public

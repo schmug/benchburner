@@ -44,6 +44,13 @@ export interface Result {
     exit_reason?: string;
     money_gained?: number;
     stderr?: string;
+    /**
+     * The subagent's own reasoning on that turn — what it was trying and
+     * why. Only the final turn's notes become `reasoning` above, so
+     * without this the intermediate thinking behind a multi-iteration
+     * instruction is lost.
+     */
+    notes?: string;
   }>;
   timestamp: string;
 }
@@ -106,10 +113,40 @@ export interface Snapshot {
 // Orchestrator I/O (SPEC §3.1, §3.2)
 // ────────────────────────────────────────────────────────────────────
 
+/**
+ * What became of the script a subagent committed to the game — the
+ * compact form the orchestrator sees.
+ *
+ * Distinct from `Result.iteration_summaries`, which covers the probe
+ * runs inside the subagent's own write-run-observe loop. This is the
+ * committed script: whether it actually started, and what it earned.
+ * Without it the orchestrator cannot tell a script that is earning from
+ * one that never ran, which is the difference the system prompt (SPEC
+ * §3.3) already promises it can see.
+ *
+ * Deliberately omits `game_state_snapshot` — game state has its own
+ * top-level channel, and repeating it per subagent inflates the prompt
+ * without adding information.
+ */
+export interface ExecutionSummary {
+  status: ExecutionResult["status"];
+  exit_reason?: string;
+  money_gained: number;
+  time_elapsed_seconds: number;
+  error?: string;
+  /** Truncated; a chatty script must not dominate the prompt budget. */
+  stdout?: string;
+  stderr?: string;
+  script_stats?: Record<string, number | string>;
+  timestamp: string;
+}
+
 export interface SubagentStatus {
   subagent_id: string;
   last_instruction_id: string | null;
   last_result: Result | null;
+  /** Outcome of this subagent's most recent committed script, if any. */
+  last_execution?: ExecutionSummary | null;
   status: "idle" | "pending" | "executed";
   model_choice?: string;
 }
@@ -174,7 +211,7 @@ export interface InferenceAdapter {
 
 export interface ModelConfig {
   id: string;
-  adapter: "ollama" | "http" | "test-hang" | "test-scripted" | "null-orchestrator";
+  adapter: "ollama" | "http" | "claude-cli" | "test-hang" | "test-scripted" | "null-orchestrator";
   endpoint: string;
   context_window: number;
   model_name?: string;
@@ -357,6 +394,27 @@ export interface ScriptRow {
   executed_in_game: number; // 0 | 1 (SQLite bool)
   execution_result: string | null; // JSON
   tokens_used: number;
+  timestamp: string;
+}
+
+/** How a single orchestrator tick ended. */
+export type CycleStatus = "ok" | "malformed" | "failed";
+
+export interface CycleRow {
+  run_id: string;
+  cycle_number: number;
+  status: CycleStatus;
+  /**
+   * The orchestrator's free-form explanation of its own decisions.
+   * SPEC §3.2 logs it but does not score it; until this row existed it
+   * was parsed and then discarded, so no artifact ever carried the
+   * reasoning behind a run's delegation pattern.
+   */
+  reasoning: string | null;
+  actions: string; // JSON array of OrchestratorAction
+  tokens_used: number;
+  latency_ms: number;
+  error: string | null;
   timestamp: string;
 }
 

@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>benchburner — live run</title>
+<style>
+  :root {
+    --bg:#0e1215; --panel:#151b1f; --panel-2:#1b2328; --rule:#263137;
+    --ink:#e2e8ea; --ink-2:#93a1a9; --ink-3:#6a7880;
+    --accent:#5eb0e0; --money:#5fc98a;
+    --ok:#5fc98a; --pend:#d9a441; --err:#e2706a; --idle:#6a7880;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--sans); font-size:14px; line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:1500px; margin:0 auto; padding:18px 20px 60px; }
+
+  /* ── header ─────────────────────────────────── */
+  header {
+    display:flex; flex-wrap:wrap; align-items:baseline; gap:10px 20px;
+    padding-bottom:14px; border-bottom:1px solid var(--rule); margin-bottom:18px;
+  }
+  h1 { font-size:15px; font-weight:650; margin:0; letter-spacing:-0.01em; }
+  .runid { font-family:var(--mono); font-size:12px; color:var(--ink-3); }
+  .pill {
+    font-family:var(--mono); font-size:10.5px; font-weight:650; letter-spacing:0.07em;
+    text-transform:uppercase; padding:3px 9px; border-radius:3px; white-space:nowrap;
+  }
+  .p-run  { color:var(--pend); background:color-mix(in srgb,var(--pend) 16%,transparent); }
+  .p-done { color:var(--ok);   background:color-mix(in srgb,var(--ok) 16%,transparent); }
+  .p-fail { color:var(--err);  background:color-mix(in srgb,var(--err) 16%,transparent); }
+  .spacer { flex:1; }
+  .conn { font-family:var(--mono); font-size:11px; color:var(--ink-3); }
+  .conn.stale { color:var(--err); }
+
+  /* ── tiles ──────────────────────────────────── */
+  .tiles { display:grid; gap:10px; grid-template-columns:repeat(auto-fit,minmax(132px,1fr)); margin-bottom:16px; }
+  .tile { background:var(--panel); border:1px solid var(--rule); border-radius:5px; padding:11px 13px; }
+  .tile .k { font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:0.09em; color:var(--ink-3); }
+  .tile .v { font-family:var(--mono); font-size:21px; font-variant-numeric:tabular-nums; margin-top:3px; letter-spacing:-0.02em; }
+  .tile .sub { font-family:var(--mono); font-size:10.5px; color:var(--ink-3); margin-top:1px; }
+  .v-money { color:var(--money); }
+  .v-err   { color:var(--err); }
+  .v-pend  { color:var(--pend); }
+
+  /* ── panels ─────────────────────────────────── */
+  .panel { background:var(--panel); border:1px solid var(--rule); border-radius:5px; margin-bottom:16px; }
+  .panel > h2 {
+    font-family:var(--mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.1em;
+    color:var(--ink-3); font-weight:600; margin:0; padding:11px 14px; border-bottom:1px solid var(--rule);
+  }
+  .panel .body { padding:14px; }
+  .cols { display:grid; gap:16px; grid-template-columns:minmax(280px,1fr) minmax(420px,1.9fr); align-items:start; }
+  @media (max-width:1000px) { .cols { grid-template-columns:1fr; } }
+
+  /* ── subagents ──────────────────────────────── */
+  .sub-row {
+    display:grid; grid-template-columns:9px 1fr auto; gap:0 10px; align-items:start;
+    padding:11px 14px; border-bottom:1px solid var(--rule);
+  }
+  .sub-row:last-child { border-bottom:none; }
+  .dot { width:9px; height:9px; border-radius:50%; margin-top:5px; }
+  .d-success{background:var(--ok);} .d-pending{background:var(--pend);}
+  .d-error,.d-timeout{background:var(--err);} .d-idle{background:var(--idle);}
+  .sub-name { font-family:var(--mono); font-size:12.5px; }
+  .sub-task { color:var(--ink-2); font-size:12px; margin-top:3px; overflow-wrap:anywhere; }
+  .sub-nums { font-family:var(--mono); font-size:11px; color:var(--ink-3); text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .sub-nums b { color:var(--money); font-weight:600; }
+
+  /* ── feeds ──────────────────────────────────── */
+  .feed { max-height:560px; overflow-y:auto; }
+  .item { padding:11px 14px; border-bottom:1px solid var(--rule); }
+  .item:last-child { border-bottom:none; }
+  .item-head { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+  .cyc { font-family:var(--mono); font-size:10.5px; color:var(--ink-3); }
+  .who { font-family:var(--mono); font-size:11.5px; color:var(--accent); }
+  .tag { font-family:var(--mono); font-size:9.5px; font-weight:650; letter-spacing:0.06em; text-transform:uppercase; padding:2px 6px; border-radius:2px; }
+  .t-success{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent);}
+  .t-pending{color:var(--pend);background:color-mix(in srgb,var(--pend) 14%,transparent);}
+  .t-error,.t-timeout{color:var(--err);background:color-mix(in srgb,var(--err) 14%,transparent);}
+  .task { margin-top:6px; font-size:13px; overflow-wrap:anywhere; }
+  .meta { margin-top:5px; font-family:var(--mono); font-size:10.5px; color:var(--ink-3); }
+  .errline { margin-top:5px; font-family:var(--mono); font-size:11px; color:var(--err); overflow-wrap:anywhere; }
+  .iters { margin-top:6px; display:flex; flex-wrap:wrap; gap:5px; }
+  .iter { font-family:var(--mono); font-size:10px; padding:2px 6px; border-radius:2px; border:1px solid var(--rule); color:var(--ink-2); }
+  .iter.bad { color:var(--err); border-color:color-mix(in srgb,var(--err) 40%,transparent); }
+  /* one write-run-observe turn, with the subagent's thinking for that turn */
+  .turns { margin-top:8px; display:flex; flex-direction:column; gap:7px; }
+  .turn { border-left:2px solid var(--rule); padding-left:10px; }
+  .turn-head { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .turn-n { font-family:var(--mono); font-size:10.5px; color:var(--ink-3); }
+  .turn-notes { margin-top:4px; font-size:12.5px; color:var(--ink-2); overflow-wrap:anywhere; }
+  details.code { margin-top:8px; }
+  details.code > summary { padding:5px 0; font-family:var(--mono); font-size:10.5px; color:var(--ink-3); font-weight:500; cursor:pointer; }
+  details.code[open] > summary { border-bottom:none; }
+  details.code pre {
+    margin:4px 0 0; background:var(--panel-2); border:1px solid var(--rule); border-radius:3px;
+    padding:9px 11px; font-family:var(--mono); font-size:11px; line-height:1.55;
+    color:var(--ink); max-height:280px; overflow:auto; white-space:pre;
+  }
+  .out {
+    margin-top:6px; font-family:var(--mono); font-size:11px; color:var(--ink-2);
+    background:var(--panel-2); border:1px solid var(--rule); border-radius:3px;
+    padding:7px 9px; max-height:120px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere;
+  }
+  /* an instruction nested under the cycle that dispatched it */
+  .nested { margin-top:9px; margin-left:11px; padding-left:12px; border-left:2px solid var(--rule); }
+  .empty { padding:26px 14px; text-align:center; color:var(--ink-3); font-family:var(--mono); font-size:12px; }
+  svg { display:block; width:100%; height:auto; }
+  .banner { background:color-mix(in srgb,var(--err) 12%,var(--panel)); border:1px solid color-mix(in srgb,var(--err) 40%,transparent); color:var(--err); border-radius:5px; padding:11px 14px; margin-bottom:16px; font-family:var(--mono); font-size:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="model">—</h1>
+    <span class="runid" id="runid"></span>
+    <span class="pill p-run" id="status">…</span>
+    <span class="spacer"></span>
+    <span class="conn" id="conn">connecting…</span>
+  </header>
+
+  <div id="banner"></div>
+  <div class="tiles" id="tiles"></div>
+
+  <div class="panel">
+    <h2>money · snapshot channel</h2>
+    <div class="body" id="chart"></div>
+  </div>
+
+  <div class="cols">
+    <div class="panel">
+      <h2>subagents</h2>
+      <div id="subagents"></div>
+    </div>
+    <div class="panel">
+      <h2>orchestrator decisions · newest first</h2>
+      <div class="feed" id="cycles"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>game executions</h2>
+    <div class="feed" id="executions"></div>
+  </div>
+</div>
+
+<script>
+// Every value rendered below is written by a model (task text, reasoning,
+// stdout, stderr) or by the game. It is all set via textContent — never
+// innerHTML — so a subagent cannot inject markup into this page.
+const $ = (id) => document.getElementById(id);
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined && text !== null) n.textContent = String(text);
+  return n;
+}
+function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+const money = (n) => "$" + Math.round(Number(n) || 0).toLocaleString("en-US");
+const int = (n) => (Number(n) || 0).toLocaleString("en-US");
+function dur(s) {
+  s = Math.max(0, Math.round(Number(s) || 0));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+  return h > 0 ? `${h}h ${String(m).padStart(2,"0")}m` : `${m}m ${String(ss).padStart(2,"0")}s`;
+}
+
+function tile(k, v, cls, sub) {
+  const t = el("div", "tile");
+  t.append(el("div", "k", k), el("div", "v" + (cls ? " " + cls : ""), v));
+  if (sub) t.append(el("div", "sub", sub));
+  return t;
+}
+
+function chart(series) {
+  const box = $("chart");
+  clear(box);
+  const pts = (series || []).filter((p) => !p.read_failed);
+  if (pts.length < 2) {
+    box.append(el("div", "empty", pts.length ? "one snapshot so far — the line needs two" : "no snapshots yet"));
+    return;
+  }
+  const W = 1100, H = 190, pad = { l: 68, r: 14, t: 12, b: 22 };
+  const w = W - pad.l - pad.r, h = H - pad.t - pad.b;
+  const max = Math.max(...pts.map((p) => p.money), 1);
+  const x = (i) => pad.l + (i / (pts.length - 1)) * w;
+  const y = (m) => pad.t + h - (m / max) * h;
+
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", `Money over ${pts.length} snapshots, peaking at ${money(max)}`);
+
+  for (const f of [0, 0.5, 1]) {
+    const gy = pad.t + h - f * h;
+    const line = document.createElementNS(NS, "line");
+    line.setAttribute("x1", pad.l); line.setAttribute("x2", W - pad.r);
+    line.setAttribute("y1", gy); line.setAttribute("y2", gy);
+    line.setAttribute("stroke", "currentColor"); line.setAttribute("stroke-opacity", "0.12");
+    svg.append(line);
+    const lbl = document.createElementNS(NS, "text");
+    lbl.setAttribute("x", pad.l - 8); lbl.setAttribute("y", gy + 3.5);
+    lbl.setAttribute("text-anchor", "end"); lbl.setAttribute("font-size", "10");
+    lbl.setAttribute("font-family", "ui-monospace,monospace");
+    lbl.setAttribute("fill", "currentColor"); lbl.setAttribute("fill-opacity", "0.45");
+    lbl.textContent = money(max * f);
+    svg.append(lbl);
+  }
+
+  const d = pts.map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(p.money).toFixed(1)}`).join(" ");
+  const area = document.createElementNS(NS, "path");
+  area.setAttribute("d", `${d} L${x(pts.length - 1).toFixed(1)},${pad.t + h} L${pad.l},${pad.t + h} Z`);
+  area.setAttribute("fill", "var(--money)"); area.setAttribute("fill-opacity", "0.13");
+  svg.append(area);
+
+  const path = document.createElementNS(NS, "path");
+  path.setAttribute("d", d); path.setAttribute("fill", "none");
+  path.setAttribute("stroke", "var(--money)"); path.setAttribute("stroke-width", "2");
+  path.setAttribute("stroke-linejoin", "round");
+  svg.append(path);
+
+  const last = document.createElementNS(NS, "circle");
+  last.setAttribute("cx", x(pts.length - 1)); last.setAttribute("cy", y(pts.at(-1).money));
+  last.setAttribute("r", "3.5"); last.setAttribute("fill", "var(--money)");
+  svg.append(last);
+
+  box.append(svg);
+}
+
+function renderSubagents(subs) {
+  const box = $("subagents");
+  clear(box);
+  if (!subs || subs.length === 0) {
+    box.append(el("div", "empty", "no subagents spawned yet"));
+    return;
+  }
+  for (const s of subs) {
+    const row = el("div", "sub-row");
+    row.append(el("div", "dot d-" + (s.last_state || "idle")));
+    const mid = el("div");
+    mid.append(el("div", "sub-name", s.subagent_id));
+    if (s.last_task) mid.append(el("div", "sub-task", s.last_task));
+    row.append(mid);
+    const nums = el("div", "sub-nums");
+    const b = el("b", null, money(s.money_earned));
+    nums.append(b, el("div", null, `${int(s.delegations)} tasks · ${int(s.errors)} err`));
+    nums.append(el("div", null, `${int(s.tokens_used)} tok`));
+    row.append(nums);
+    box.append(row);
+  }
+}
+
+// Each orchestrator tick, with its own reasoning, followed by whatever
+// instructions that tick dispatched. A tick that only spawned, killed,
+// noop'd or failed shows up here too — those are the decisions that
+// leave no delegation behind.
+function renderCycles(cycles, ds) {
+  const box = $("cycles");
+  clear(box);
+  if (!cycles || cycles.length === 0) {
+    box.append(el("div", "empty",
+      (ds && ds.length) ? "this run predates cycle recording — no reasoning stored"
+                        : "no orchestrator cycles yet"));
+    if (ds && ds.length) renderDelegationsInto(box, ds);
+    return;
+  }
+  const byCycle = new Map();
+  for (const d of (ds || [])) {
+    if (!byCycle.has(d.cycle_number)) byCycle.set(d.cycle_number, []);
+    byCycle.get(d.cycle_number).push(d);
+  }
+
+  for (const c of cycles.slice(0, 40)) {
+    const item = el("div", "item");
+    const head = el("div", "item-head");
+    const statusTag = { ok: "t-success", malformed: "t-error", failed: "t-error" }[c.status] || "t-pending";
+    head.append(el("span", "cyc", "cycle " + int(c.cycle_number)));
+    const verbs = (c.actions || []).map((a) => a.action_type);
+    head.append(el("span", "tag " + statusTag, c.status === "ok" ? (verbs.join(" · ") || "noop") : c.status));
+    item.append(head);
+
+    if (c.reasoning) item.append(el("div", "task", c.reasoning));
+    else if (c.status === "ok") item.append(el("div", "meta", "(model returned no reasoning)"));
+
+    const bits = [];
+    if (c.tokens_used) bits.push(int(c.tokens_used) + " tok");
+    if (c.latency_ms) bits.push((c.latency_ms / 1000).toFixed(1) + "s");
+    if (bits.length) item.append(el("div", "meta", bits.join(" · ")));
+    if (c.error) item.append(el("div", "errline", c.error));
+
+    for (const d of (byCycle.get(c.cycle_number) || [])) {
+      item.append(delegationNode(d, true));
+    }
+    box.append(item);
+  }
+}
+
+function renderDelegationsInto(box, ds) {
+  for (const d of ds.slice(0, 60)) box.append(delegationNode(d, false));
+}
+
+function delegationNode(d, nested) {
+  const item = el("div", nested ? "nested" : "item");
+  const head = el("div", "item-head");
+  head.append(
+    el("span", "who", d.subagent_id),
+    el("span", "tag t-" + d.state, d.state),
+  );
+  if (!nested) head.append(el("span", "cyc", "cycle " + int(d.cycle_number)));
+  if (d.action_type && d.action_type !== "instruct") {
+    head.append(el("span", "cyc", d.action_type));
+  }
+  item.append(head);
+  if (d.task) item.append(el("div", "task", d.task));
+
+  const bits = [];
+  if (d.tokens_used) bits.push(int(d.tokens_used) + " tok");
+  if (d.iterations) bits.push(d.iterations + " iter");
+  if (bits.length) item.append(el("div", "meta", bits.join(" · ")));
+
+  // Each write-run-observe turn: what it tried, what the game said, and
+  // what it was thinking at the time.
+  if (d.iteration_summaries && d.iteration_summaries.length) {
+    const wrap = el("div", "turns");
+    for (const it of d.iteration_summaries) {
+      const bad = it.exit_reason && it.exit_reason !== "exited" && it.exit_reason !== "running";
+      const turn = el("div", "turn");
+      const head = el("div", "turn-head");
+      head.append(
+        el("span", "turn-n", "#" + it.iteration),
+        el("span", "iter" + (bad ? " bad" : ""), it.exit_reason || "ran"),
+      );
+      if (it.money_gained) head.append(el("span", "cyc", "+" + money(it.money_gained)));
+      turn.append(head);
+      if (it.notes) turn.append(el("div", "turn-notes", it.notes));
+      if (it.stderr) turn.append(el("div", "out", it.stderr));
+      wrap.append(turn);
+    }
+    item.append(wrap);
+  }
+  if (d.error) item.append(el("div", "errline", d.error));
+  if (d.reasoning) item.append(el("div", "out", d.reasoning));
+
+  if (d.code) {
+    const det = el("details", "code");
+    det.append(el("summary", null, `committed script · ${int(d.code_lines)} lines`));
+    det.append(el("pre", null, d.code));
+    item.append(det);
+  }
+  return item;
+}
+
+function renderExecutions(es) {
+  const box = $("executions");
+  clear(box);
+  if (!es || es.length === 0) {
+    box.append(el("div", "empty", "no scripts have run in the game yet"));
+    return;
+  }
+  for (const e of es.slice(0, 40)) {
+    const item = el("div", "item");
+    // A committed script reports "running" while it is still earning —
+    // that is the healthy steady state, not a failure.
+    const healthy = new Set(["exited", "running"]);
+    const failed = e.status !== "executed" || (e.exit_reason && !healthy.has(e.exit_reason));
+    const head = el("div", "item-head");
+    head.append(
+      el("span", "who", e.subagent_id),
+      el("span", "tag " + (failed ? "t-error" : "t-success"), e.exit_reason || e.status),
+    );
+    if (e.money_gained) head.append(el("span", "cyc", "+" + money(e.money_gained)));
+    item.append(head);
+
+    const bits = [`${(Number(e.time_elapsed_seconds) || 0).toFixed(1)}s`];
+    if (e.script_stats && e.script_stats.ram_usage) bits.push(e.script_stats.ram_usage + " GB");
+    if (e.script_stats && e.script_stats.threads) bits.push(e.script_stats.threads + "t");
+    item.append(el("div", "meta", bits.join(" · ")));
+
+    if (e.error) item.append(el("div", "errline", e.error));
+    if (e.stderr) item.append(el("div", "out", e.stderr));
+    else if (e.stdout) item.append(el("div", "out", e.stdout));
+    box.append(item);
+  }
+}
+
+let lastOk = 0;
+
+function render(v) {
+  const statusClass = { in_progress: "p-run", completed: "p-done", failed: "p-fail" }[v.run.status] || "p-run";
+  $("model").textContent = v.run.orchestrator_model;
+  $("runid").textContent = v.run.run_id.slice(0, 8);
+  const st = $("status");
+  st.className = "pill " + statusClass;
+  st.textContent = v.run.status.replace("_", " ");
+
+  const banner = $("banner");
+  clear(banner);
+  if (v.run.failure_reason) banner.append(el("div", "banner", "run failed: " + v.run.failure_reason));
+
+  const t = $("tiles");
+  clear(t);
+  t.append(
+    tile("money", money(v.money.current), "v-money", "+" + money(v.money.gained) + " this run"),
+    tile("elapsed", dur(v.run.elapsed_seconds), null, v.money.series.length + " snapshots"),
+    tile("cycles", int(v.totals.cycles || v.totals.latest_delegated_cycle),
+      null, int(v.totals.delegations) + " instructions"),
+    tile("in flight", int(v.totals.pending), v.totals.pending ? "v-pend" : null, "awaiting subagent"),
+    tile("errors", int(v.totals.errors), v.totals.errors ? "v-err" : null, "failed instructions"),
+    tile("scripts run", int(v.totals.scripts_run), null, "in game"),
+    tile("tokens", int(v.tokens.total), null,
+      `${int(v.tokens.orchestrator)} orch · ${int(v.tokens.subagent)} sub`),
+  );
+
+  chart(v.money.series);
+  renderSubagents(v.subagents);
+  renderCycles(v.cycles, v.delegations);
+  renderExecutions(v.executions);
+}
+
+async function tick() {
+  const conn = $("conn");
+  try {
+    const r = await fetch("/api/live", { cache: "no-store" });
+    const v = await r.json();
+    if (v.error) {
+      conn.className = "conn stale";
+      conn.textContent = v.error;
+      return;
+    }
+    render(v);
+    lastOk = Date.now();
+    conn.className = "conn";
+    conn.textContent = "live · updated " + new Date().toLocaleTimeString();
+  } catch (e) {
+    conn.className = "conn stale";
+    conn.textContent = "viewer unreachable" + (lastOk ? ` · last update ${Math.round((Date.now() - lastOk) / 1000)}s ago` : "");
+  }
+}
+
+tick();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>
