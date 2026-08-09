@@ -314,8 +314,48 @@ describe("dispatcher — per-subagent live script stats", () => {
 
     const live = h.state()?.live_scripts as Record<string, Record<string, unknown>>;
     assert.ok(live, "/__state.json must carry live_scripts");
-    assert.deepEqual(live.a, { running: true, money_made: 45000, ram: 2.6, uptime_seconds: 180 });
+    assert.deepEqual(live.a, {
+      running: true,
+      money_made: 45000,
+      ram: 2.6,
+      uptime_seconds: 180,
+      scripts: 1,
+    });
     assert.equal(live.b.money_made, 7, "each script's own earnings, not a shared player delta");
+  });
+
+  test("a subagent running several committed scripts reports their combined earnings", async () => {
+    // This is now the DEFAULT shape, not an edge case: replace defaults
+    // to false, so every re-instruction leaves the predecessor running.
+    // Keying the map by subagent_id and assigning in a loop would report
+    // whichever script happened to be last in the queue, understating
+    // earnings precisely when the orchestrator uses the new default.
+    const h = await runDispatcher({
+      queue: [earner("a", 101, "first"), earner("a", 102, "second")],
+      alive: [
+        script(101, { onlineMoneyMade: 100, onlineRunningTime: 300, ramUsage: 2.0 }),
+        script(102, { onlineMoneyMade: 900, onlineRunningTime: 60, ramUsage: 1.5 }),
+      ],
+    });
+
+    const live = h.state()?.live_scripts as Record<string, Record<string, unknown>>;
+    assert.equal(live.a.money_made, 1000, "both scripts' earnings belong to this subagent");
+    assert.equal(live.a.scripts, 2, "and the orchestrator is told how many produced it");
+    assert.equal(live.a.ram, 3.5, "ram is the total this subagent holds of the shared budget");
+    assert.equal(live.a.uptime_seconds, 300, "uptime is the oldest script still running");
+    assert.equal(live.a.running, true);
+  });
+
+  test("running is false only when none of the subagent's scripts are alive", async () => {
+    const h = await runDispatcher({
+      queue: [earner("a", 101, "dead"), earner("a", 102, "alive")],
+      alive: [script(102, { onlineMoneyMade: 5 })],
+    });
+
+    const live = h.state()?.live_scripts as Record<string, Record<string, unknown>>;
+    assert.equal(live.a.running, true, "one live script is enough");
+    assert.equal(live.a.scripts, 1, "the dead one is not counted as running");
+    assert.equal(live.a.money_made, 5);
   });
 
   test("a committed script whose process is gone reports running: false", async () => {

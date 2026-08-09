@@ -43,6 +43,7 @@ const live: LiveScript = {
   money_made: 45000,
   ram: 2.6,
   uptime_seconds: 180,
+  scripts: 1,
 };
 
 function syntheticInput(ls: LiveScript | null): OrchestratorInput {
@@ -222,7 +223,7 @@ describe("orchestrator loop — live script reaches the built prompt", () => {
 
   test("a script attributed to another subagent does not leak into this one", async () => {
     const s = await statusAfterSnapshot({
-      "someone-else": { running: true, money_made: 999, ram: 1.7, uptime_seconds: 5 },
+      "someone-else": { running: true, money_made: 999, ram: 1.7, uptime_seconds: 5, scripts: 1 },
       [SUB]: live,
     });
     assert.equal(s.live_script?.money_made, 45000);

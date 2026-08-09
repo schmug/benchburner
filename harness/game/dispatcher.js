@@ -43,17 +43,34 @@ export async function main(ns) {
       // at once; onlineMoneyMade is the script's own. getRunningScript
       // is already in this file's static RAM cost (the exit path below
       // uses it), so this reporting is free.
+      //
+      // Totalled across the subagent's committed scripts, not assigned
+      // per script: `replace` defaults to false, so a subagent owning
+      // several running scripts is the normal case now, and a map keyed
+      // by subagent_id would otherwise report whichever came last.
       const liveScripts = {};
       for (const t of queue) {
         if (t.status !== "running" || t.kind !== "committed" || !t.subagent_id) continue;
         let st = null;
         try { st = ns.getRunningScript(t.pid); } catch (_) { st = null; }
-        liveScripts[t.subagent_id] = {
-          running: !!st,
-          money_made: st ? (st.onlineMoneyMade ?? 0) : 0,
-          ram: st ? (st.ramUsage ?? 0) : 0,
-          uptime_seconds: st ? (st.onlineRunningTime ?? 0) : 0,
+        const acc = liveScripts[t.subagent_id] || {
+          running: false,
+          money_made: 0,
+          ram: 0,
+          uptime_seconds: 0,
+          scripts: 0,
         };
+        if (st) {
+          acc.running = true;
+          acc.scripts += 1;
+          acc.money_made += st.onlineMoneyMade ?? 0;
+          acc.ram += st.ramUsage ?? 0;
+          // The oldest surviving script: how long this subagent has had
+          // anything running at all.
+          const up = st.onlineRunningTime ?? 0;
+          if (up > acc.uptime_seconds) acc.uptime_seconds = up;
+        }
+        liveScripts[t.subagent_id] = acc;
       }
       ns.write(
         STATE,

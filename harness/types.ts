@@ -149,7 +149,7 @@ export interface ExecutionSummary {
 }
 
 /**
- * Live state of a subagent's committed script, refreshed every time the
+ * Live state of a subagent's committed code, refreshed every time the
  * harness reads game state.
  *
  * `last_execution` answers "did my instruction produce a script that
@@ -157,7 +157,10 @@ export interface ExecutionSummary {
  * not observable without both — the 24h run had neither and re-instructed
  * blindly for seventeen hours.
  *
- * `money_made` is the script's OWN earnings, read from
+ * Figures are totalled across every committed script the subagent has
+ * running, because `OrchestratorAction.replace` defaults to false and so
+ * a subagent owning several is the ordinary case. `money_made` sums those
+ * scripts' OWN earnings, read from
  * `ns.getRunningScript().onlineMoneyMade`. That distinction is the whole
  * point: `ExecutionResult.money_gained` is a global player delta and
  * cannot be attributed once more than one script is running.
@@ -167,11 +170,16 @@ export interface ExecutionSummary {
  * there explicitly — see the note at that spread.
  */
 export interface LiveScript {
+  /** True if at least one of this subagent's committed scripts is alive. */
   running: boolean;
-  /** This script's own earnings — not a global player delta. */
+  /** Those scripts' own earnings, summed — not a global player delta. */
   money_made: number;
+  /** Total home RAM this subagent holds of the shared budget. */
   ram: number;
+  /** Uptime of the subagent's oldest surviving script. */
   uptime_seconds: number;
+  /** How many committed scripts are running, so the totals are readable. */
+  scripts: number;
 }
 
 export interface SubagentStatus {
