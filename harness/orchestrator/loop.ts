@@ -35,6 +35,7 @@ import type { InferenceRegistry } from "../inference/registry";
 import type {
   CycleStatus,
   ExecutionResult,
+  ExecutionSummary,
   GameController,
   GameState,
   Instruction,
@@ -110,7 +111,38 @@ export interface LoopOptions {
 interface SubagentTrack {
   last_instruction_id: string | null;
   last_result: Result | null;
+  /** Outcome of this subagent's most recent committed script. */
+  last_execution?: ExecutionSummary | null;
   pending: boolean;
+}
+
+/**
+ * Characters of stdout/stderr kept per execution. Enough to carry a
+ * stack trace or a "RAM budget exceeded" line, short enough that a
+ * script printing in a loop cannot crowd out delegation history.
+ */
+const EXECUTION_OUTPUT_CHARS = 600;
+
+function clipOutput(s: string | undefined): string | undefined {
+  if (s === undefined) return undefined;
+  return s.length <= EXECUTION_OUTPUT_CHARS
+    ? s
+    : `${s.slice(0, EXECUTION_OUTPUT_CHARS)}… [${s.length - EXECUTION_OUTPUT_CHARS} more chars]`;
+}
+
+/** Compacts an ExecutionResult for the orchestrator's view. */
+function summarizeExecution(e: ExecutionResult): ExecutionSummary {
+  return {
+    status: e.status,
+    exit_reason: e.exit_reason,
+    money_gained: e.money_gained,
+    time_elapsed_seconds: e.time_elapsed_seconds,
+    error: clipOutput(e.error),
+    stdout: clipOutput(e.stdout),
+    stderr: clipOutput(e.stderr),
+    script_stats: e.script_stats,
+    timestamp: e.timestamp,
+  };
 }
 
 export class OrchestratorLoop {
@@ -372,6 +404,7 @@ export class OrchestratorLoop {
           model_choice: s.model,
           last_instruction_id: t?.last_instruction_id ?? null,
           last_result: t?.last_result ?? null,
+          last_execution: t?.last_execution ?? null,
           status: !t ? "idle" : t.pending ? "pending" : "executed",
         } satisfies SubagentStatus;
       }),
@@ -541,8 +574,24 @@ export class OrchestratorLoop {
     }
   }
 
+  /**
+   * The `executions` channel carries committed scripts only — the
+   * subagent's own probe runs call the game directly and never publish
+   * — so every message here is "the script this subagent committed
+   * did X".
+   *
+   * This used to keep only the game-state snapshot and discard the rest,
+   * which meant the orchestrator was never told whether a script it
+   * accepted actually started. See ExecutionSummary.
+   */
   private onExecution(e: ExecutionResult): void {
     this.acceptIncomingState(e.game_state_snapshot);
+
+    const track =
+      this.subagentTracks.get(e.subagent_id) ??
+      { last_instruction_id: null, last_result: null, pending: false };
+    track.last_execution = summarizeExecution(e);
+    this.subagentTracks.set(e.subagent_id, track);
   }
 
   /**

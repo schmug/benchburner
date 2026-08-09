@@ -113,10 +113,40 @@ export interface Snapshot {
 // Orchestrator I/O (SPEC §3.1, §3.2)
 // ────────────────────────────────────────────────────────────────────
 
+/**
+ * What became of the script a subagent committed to the game — the
+ * compact form the orchestrator sees.
+ *
+ * Distinct from `Result.iteration_summaries`, which covers the probe
+ * runs inside the subagent's own write-run-observe loop. This is the
+ * committed script: whether it actually started, and what it earned.
+ * Without it the orchestrator cannot tell a script that is earning from
+ * one that never ran, which is the difference the system prompt (SPEC
+ * §3.3) already promises it can see.
+ *
+ * Deliberately omits `game_state_snapshot` — game state has its own
+ * top-level channel, and repeating it per subagent inflates the prompt
+ * without adding information.
+ */
+export interface ExecutionSummary {
+  status: ExecutionResult["status"];
+  exit_reason?: string;
+  money_gained: number;
+  time_elapsed_seconds: number;
+  error?: string;
+  /** Truncated; a chatty script must not dominate the prompt budget. */
+  stdout?: string;
+  stderr?: string;
+  script_stats?: Record<string, number | string>;
+  timestamp: string;
+}
+
 export interface SubagentStatus {
   subagent_id: string;
   last_instruction_id: string | null;
   last_result: Result | null;
+  /** Outcome of this subagent's most recent committed script, if any. */
+  last_execution?: ExecutionSummary | null;
   status: "idle" | "pending" | "executed";
   model_choice?: string;
 }

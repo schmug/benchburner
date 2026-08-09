@@ -208,6 +208,20 @@ Invoked every `polling_interval_seconds` (default 60).
       "subagent_id": "mistral-7b-instance-1",
       "last_instruction_id": "uuid",
       "last_result": { /* Result object, or null if pending */ },
+      "last_execution": {
+        /* Outcome of this subagent's most recent COMMITTED script.
+           Null until one has run. Distinct from
+           last_result.iteration_summaries, which covers the probe runs
+           inside the subagent's own write-run-observe loop. */
+        "status": "executed | failed",
+        "exit_reason": "running | failed_to_start | exited | errored | timed_out",
+        "money_gained": 0,
+        "time_elapsed_seconds": 0,
+        "stdout": "truncated",
+        "stderr": "truncated",
+        "script_stats": { "ram_usage": 2.6 },
+        "timestamp": "2026-04-22T14:13:32Z"
+      },
       "status": "idle | pending | executed"
     }
   ],
@@ -219,6 +233,14 @@ Invoked every `polling_interval_seconds` (default 60).
 ```
 
 `available_subagent_models` is the per-run curated roster. The orchestrator can only spawn from this list.
+
+`last_execution` closes a gap between this schema and §3.3's system
+prompt, which has always told the orchestrator that "execution feedback
+includes stdout / stderr / exit_reason / money_gained". It received that
+only for the subagent's *probe* iterations; the outcome of the script
+actually committed to the game was discarded, so a script that never
+started was indistinguishable from one that was earning. Free-text
+fields are leak-scrubbed and truncated like every other channel.
 
 ### 3.2 Output from Orchestrator Model
 
