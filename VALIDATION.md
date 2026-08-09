@@ -46,8 +46,9 @@ Consequences to hold onto:
 
 Runs after this line have a ~4.2 GB subagent budget and the game's Basic
 Mechanics docs in the orchestrator prompt. Explicit script replacement
-and per-subagent earnings were specified in the same plan (Tasks 3-5)
-but have **not** shipped — see N7 evidence below.
+and per-subagent earnings were specified in the same plan (Tasks 3-5);
+they had **not** shipped when the N7 run below executed — see its
+evidence — and landed afterwards in #47.
 
 ### Evidence — N7, first run under the reopened decision space
 
@@ -55,7 +56,11 @@ but have **not** shipped — see N7 evidence below.
 `a2282bc`, Opus 5 orchestrator + Sonnet 5 subagents via the local
 `claude` CLI, `duration_minutes: 8` (**not** the canonical 20; this is
 the config the plan's Task 9 specifies for end-to-end verification, so
-the number below is not leaderboard-comparable).
+the number below is not leaderboard-comparable). Artifacts:
+`results/f2c1b48e-196d-467e-bd6d-1d634a6f95d0/` on
+`orchestrator/opus-5-cli` (includes `cycles.json` and
+`orchestrator-prompts.log`, the artifact types added by #35 that the
+grep counts below run against).
 
 **Gate passed first.** `ram-budget-smoke.ts` on this checkout:
 `home=8GB dispatcher=3.8GB free=4.2GB`, with `OK` on `ns.exec` (2.9GB),
@@ -131,9 +136,10 @@ from it: `money_earned`, `live_script`, and an `OrchestratorAction`
    **N/A, needs N4.**
 
 **Cost:** 399,554 tokens (orchestrator 275,063; subagents 124,491) for
-one 8-minute run, inside the 200-700K band the config's comment
-predicts. Seed opacity held: `grep -c 8675309 orchestrator-prompts.log`
-= 0.
+one 8-minute run. (The config's comments predict a ~39K-token preamble
+and a $2-4 cost, not a token band; the 200-700K figure circulated during
+planning was a derived estimate, retracted here as a citation.) Seed
+opacity held: `grep -c 8675309 orchestrator-prompts.log` = 0.
 
 **What this run does and does not establish.** It establishes that the
 RAM reclaim is real, that both prompts carry the corrected budget, and
