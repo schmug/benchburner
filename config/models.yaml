@@ -196,3 +196,9 @@
   endpoint: claude
   context_window: 200000
   model_name: claude-haiku-4-5-20251001
+
+- id: claude-sonnet-5-cli
+  adapter: claude-cli
+  endpoint: claude
+  context_window: 200000
+  model_name: claude-sonnet-5
