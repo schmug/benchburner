@@ -633,6 +633,15 @@ export class OrchestratorLoop {
    * a placeholder so the loop can keep going; otherwise we keep the
    * last known-good state and log the skip so it's visible to the
    * operator.
+   *
+   * Accepted states merge field-wise rather than replace. Not every
+   * producer reports every field: the snapshot a dispatcher-written
+   * result file embeds carries no live_scripts key, so replacement
+   * blanked live_script team-wide on any failed_to_start commit —
+   * fabricating the "nothing running" signal for up to a full cycle
+   * (issue #51). An absent key means "no new information"; only a
+   * present key overwrites. The dispatcher reports live_scripts: {}
+   * when nothing runs, so "genuinely idle" still comes through.
    */
   private acceptIncomingState(incoming: GameState): void {
     if (incoming.read_failed === true) {
@@ -653,7 +662,20 @@ export class OrchestratorLoop {
         this.staleReadLogged = false;
       }
     }
-    this.latestState = incoming;
+    const prior = this.latestState;
+    if (!prior) {
+      this.latestState = incoming;
+      return;
+    }
+    const merged: GameState = { ...prior };
+    for (const [key, value] of Object.entries(incoming)) {
+      if (value !== undefined) merged[key] = value;
+    }
+    // read_failed describes the read that produced `incoming`, not the
+    // game — a good read must clear an accepted placeholder sentinel's
+    // flag, not inherit it and look failed forever.
+    if (incoming.read_failed !== true) delete merged.read_failed;
+    this.latestState = merged;
   }
 
   private appendPromptLog(entry: { cycle: number; system: string; user: string; leak_check_violations: string[] }): void {
