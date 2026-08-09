@@ -79,6 +79,21 @@ export async function main(ns) {
         const startMoney = money();
         task.startMoney = startMoney; // record up-front so writeResult can compute money_gained even on failed_to_start
 
+        // The orchestrator killed this task's subagent between the commit
+        // and this tick. Starting the script now produces the orphan
+        // `kill` exists to prevent — its owner is already gone from the
+        // pool, so nothing would be left that knows how to stop it.
+        if (task.kill_requested) {
+          task.status = "done";
+          task.exit_reason = "killed";
+          task.stderr = "not started: the orchestrator killed its subagent first";
+          task.completedAt = Date.now();
+          task.endMoney = startMoney;
+          changed = true;
+          writeResult(ns, task);
+          continue;
+        }
+
         const pid = ns.run(task.path, 1);
         if (pid > 0) {
           task.pid = pid;

@@ -28,6 +28,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import puppeteer, { type Browser, type Page } from "puppeteer";
 
 import type { ExecutionResult, GameController, GameState } from "../types";
+import { killTargets, type QueueTask } from "./eviction";
 import { RFAServer } from "./rfa";
 
 /**
@@ -431,14 +432,10 @@ export class PuppeteerGame implements GameController {
     const raw = await this.safeGetFile("/__queue.json");
     if (!raw) return;
     const queue = safeJsonParseArray(raw);
-    let touched = false;
-    for (const t of queue) {
-      if (t.subagent_id === subagent_id && t.kind === "committed" && t.status === "running") {
-        t.kill_requested = true;
-        touched = true;
-      }
-    }
-    if (touched) await this.rfa!.pushFile("/__queue.json", JSON.stringify(queue), "home");
+    const targets = killTargets(queue as QueueTask[], subagent_id);
+    if (targets.length === 0) return;
+    for (const t of targets) t.kill_requested = true;
+    await this.rfa!.pushFile("/__queue.json", JSON.stringify(queue), "home");
   }
 
   /**

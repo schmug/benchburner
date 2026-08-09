@@ -389,6 +389,23 @@ describe("dispatcher — kill requests", () => {
     assert.ok(h.alive.has(102));
   });
 
+  test("a script killed before it started is never started", async () => {
+    // The queue entry is ~500 ms from ns.run when the kill lands.
+    // Starting it anyway produces exactly the orphan `kill` exists to
+    // prevent — one with no track, no owner, and nothing left to stop it.
+    const doomed = pending("a", "unborn");
+    doomed.kill_requested = true;
+    const h = await runDispatcher({ queue: [doomed] });
+
+    assert.deepEqual(
+      h.events.filter((e) => e.op === "run"),
+      [],
+      "a script whose subagent is already dead must not be launched",
+    );
+    assert.equal(h.result("unborn")?.exit_reason, "killed");
+    assert.equal(h.queue().length, 0, "and the task is closed out, not left pending forever");
+  });
+
   test("a kill request on an already-dead script still resolves the task", async () => {
     // ns.kill throws on an unknown pid in-game; the task must still be
     // closed out rather than being retried every 500 ms forever.

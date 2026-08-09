@@ -25,6 +25,13 @@ export interface QueueTask {
   status?: string;
   kind?: string;
   replace?: boolean;
+  /**
+   * Set by `PuppeteerGame.killScript` and consumed by the dispatcher on
+   * its next tick. Kill requests ride /__queue.json rather than a second
+   * control file — the dispatcher already reads that file every tick and
+   * already holds the pid.
+   */
+  kill_requested?: boolean;
 }
 
 export function evictionTargets<T extends QueueTask>(queue: T[], incoming: T): T[] {
@@ -35,5 +42,33 @@ export function evictionTargets<T extends QueueTask>(queue: T[], incoming: T): T
       other.status === "running" &&
       other.kind === "committed" &&
       other.subagent_id === incoming.subagent_id,
+  );
+}
+
+/**
+ * Which queue entries a `kill` of `subagent_id` has to stop.
+ *
+ * Differs from `evictionTargets` in one deliberate way: it claims
+ * **pending** entries as well as running ones. A committed script sitting
+ * in the queue is at most one dispatcher tick (~500 ms) from `ns.run`, and
+ * a kill that skips it lets the script start moments after its owner was
+ * deleted from the pool — an orphan with no track, still holding RAM,
+ * still earning, and with nothing left that knows how to stop it. That is
+ * precisely the failure `kill` exists to prevent, so the narrow window
+ * gets closed rather than documented.
+ *
+ * Probes are untouched: they belong to the subagent's own
+ * write-run-observe loop and the dispatcher bounds them at 120 s anyway.
+ *
+ * Ids are compared exactly. They are model-prefixed uuids assigned by the
+ * harness, so a case or prefix variant is a different subagent, not a
+ * sloppy spelling of this one.
+ */
+export function killTargets<T extends QueueTask>(queue: T[], subagent_id: string): T[] {
+  return queue.filter(
+    (t) =>
+      t.subagent_id === subagent_id &&
+      t.kind === "committed" &&
+      (t.status === "running" || t.status === "pending"),
   );
 }
