@@ -40,6 +40,17 @@ jobs:
         run: npm install
         env:
           PUPPETEER_SKIP_DOWNLOAD: "true"
+      # Guards the home-RAM budget that keeps more than one strategy
+      # legal (dispatcher under 4.0 GB, so ns.scp+ns.exec and
+      # ns.purchaseServer scripts can still start). Runs before the
+      # harness, not after: a regression here makes the run measure a
+      # single forced strategy, and finding that out 24 hours later
+      # costs a whole run slot. Boots the game, so it can only live on
+      # this workflow — ci.yml checks out with `submodules: false` and
+      # has no Bitburner build to boot.
+      - name: RAM budget guard
+        run: npm run smoke:ram-budget
+
       - name: Run harness
         env:
           # Passed via env to avoid command injection from workflow inputs.

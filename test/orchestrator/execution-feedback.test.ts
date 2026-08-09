@@ -194,16 +194,24 @@ describe("orchestrator input — committed-script execution feedback", () => {
     assert.ok((s.last_execution?.stdout ?? "").length < 1_000);
   });
 
-  test("execution text passes through the leak scrubber", async () => {
-    // scrubInput spreads `...s` over SubagentStatus, so a newly added
-    // field reaches the model unscrubbed unless explicitly handled —
-    // and a forbidden token in the prompt fails the run closed.
-    const s = await statusAfterExecution(
-      failedExecution({ stderr: "crash inside Bitburner runtime: hacknet failure" }),
-    );
-    const text = JSON.stringify(s.last_execution);
-    assert.doesNotMatch(text, /bitburner/i, "forbidden token reached the prompt");
-    assert.doesNotMatch(text, /hacknet/i);
+  test("execution text reaches the orchestrator verbatim", async () => {
+    // Was: "execution text passes through the leak scrubber", asserting
+    // that "Bitburner" and "hacknet" were redacted out of stderr.
+    //
+    // The game-identity scrub is retired (harness/orchestrator/prompt.ts
+    // module header): the same prompt vendors the game's own manual,
+    // which names the early-game targets and port openers outright, so
+    // redacting the title out of a stack trace concealed nothing and
+    // only made runtime errors harder to read. A truncated crash
+    // message is exactly the input the orchestrator needs intact to
+    // route around a broken subagent.
+    //
+    // The surviving guarantee is the seed, and it is enforced by
+    // detectLeaks, not here — see test/orchestrator/docs-prompt.test.ts.
+    const stderr = "crash inside Bitburner runtime: hacknet failure";
+    const s = await statusAfterExecution(failedExecution({ stderr }));
+    assert.equal(s.last_execution?.stderr, stderr);
+    assert.doesNotMatch(JSON.stringify(s.last_execution), /\[redacted\]/);
   });
 
   test("does not carry the raw game_state_snapshot into per-subagent status", async () => {

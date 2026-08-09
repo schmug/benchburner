@@ -11,6 +11,12 @@ export async function main(ns) {
   const QUEUE = "/__queue.json";
   const STATE = "/__state.json";
 
+  // ns.getPlayer costs 0.5 GB; this returns the same Player.money for
+  // 0.1 GB (NetscriptFunctions.ts:996). Home RAM the dispatcher holds is
+  // RAM subagent scripts cannot have — see harness/game/ram-budget-smoke.ts
+  // for the budget this protects.
+  const money = () => ns.getServerMoneyAvailable("home");
+
   while (true) {
     // ── Publish state ────────────────────────────────────────────
     // last_heartbeat_ms is the wall-clock the harness uses to tell
@@ -19,15 +25,14 @@ export async function main(ns) {
     // advance — if writes fail silently they look like a dead loop,
     // so any error inside the try block is surfaced to the in-game
     // log via ns.tprint instead of being swallowed.
+    // bitnode_id/bitnode_complete are deliberately absent: ns.getResetInfo
+    // costs 1.0 GB per tick to report a value that cannot change during a
+    // run. PuppeteerGame reads it once at boot and merges it back in.
     try {
-      const p = ns.getPlayer();
-      const ri = ns.getResetInfo();
       ns.write(
         STATE,
         JSON.stringify({
-          current_money: Math.floor(p.money),
-          bitnode_id: ri.currentNode,
-          bitnode_complete: false,
+          current_money: Math.floor(money()),
           augments_installed: [],
           last_heartbeat_ms: Date.now(),
           timestamp: new Date().toISOString(),
@@ -52,7 +57,7 @@ export async function main(ns) {
     let changed = false;
     for (const task of queue) {
       if (task.status === "pending") {
-        const startMoney = ns.getPlayer().money;
+        const startMoney = money();
         task.startMoney = startMoney; // record up-front so writeResult can compute money_gained even on failed_to_start
 
         // Committed scripts are long-running workers; each subagent
@@ -72,7 +77,7 @@ export async function main(ns) {
             other.exit_reason = "replaced";
             other.stderr = "replaced by newer committed script from the same subagent";
             other.completedAt = Date.now();
-            other.endMoney = ns.getPlayer().money;
+            other.endMoney = money();
             writeResult(ns, other);
             changed = true;
           }
@@ -142,7 +147,7 @@ export async function main(ns) {
             task.exit_reason = stats ? "exited" : "errored";
           }
           task.completedAt = Date.now();
-          task.endMoney = ns.getPlayer().money;
+          task.endMoney = money();
 
           // Log fields: Bitburner stores runtime errors in the script's
           // log buffer too, so a runtime crash with ns.print("...") or
@@ -198,8 +203,10 @@ export async function main(ns) {
   }
 }
 
+// RAM cost is computed statically over the whole file, so a single
+// surviving ns.getPlayer / ns.getResetInfo reference here would re-charge
+// the dispatcher the full 1.5 GB main() just gave up. Keep both out.
 function writeResult(ns, task) {
-  const ri = ns.getResetInfo();
   const elapsedSec =
     task.completedAt && task.startedAt ? (task.completedAt - task.startedAt) / 1000 : 0;
   const failed = task.exit_reason && task.exit_reason !== "exited";
@@ -215,9 +222,7 @@ function writeResult(ns, task) {
     exit_reason: task.exit_reason,
     script_stats: task.script_stats,
     game_state_snapshot: {
-      current_money: Math.floor(ns.getPlayer().money),
-      bitnode_id: ri.currentNode,
-      bitnode_complete: false,
+      current_money: Math.floor(ns.getServerMoneyAvailable("home")),
       augments_installed: [],
     },
     timestamp: new Date().toISOString(),

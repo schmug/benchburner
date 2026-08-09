@@ -15,6 +15,41 @@ Conventions:
 
 ---
 
+## ⚠️ Decision-space break — 2026-08-09
+
+**Every result recorded below this line was produced under conditions
+where the benchmark had one legal strategy, and is not comparable to
+runs made after this date.**
+
+Measured in-game on the pinned build: home is 8.00 GB and the dispatcher
+consumed ~5.2 GB, leaving subagent scripts ~2.8 GB. After each script's
+1.6 GB base cost that is ~1.2 GB of API budget — less than `ns.exec`
+alone (1.3). So `exec`, `scp`+`exec` and `purchaseServer` were all
+unstartable, and the only viable script shape was a single-host
+hack/grow/weaken loop.
+
+Consequences to hold onto:
+
+1. **The 24h `09521fa2` result ($2,022,061) is not an orchestration
+   result.** One subagent, an instruction every 60s, 16 distinct scripts
+   across 1,430 delegations, and the identical four-line
+   `while(true) ns.hack('foodnstuff')` committed 1,020 times. Because
+   committing evicted the running script, the orchestrator restarted its
+   own earner about once a minute for seventeen hours. The money came
+   from a four-line script and a long clock.
+2. **The $1,262 "floor" is starting capital, not score.** Runs that
+   earned nothing published as $1,262. `RunSummary.final_money` is still
+   absolute; a `money_earned` column is the honest follow-up.
+3. **The golden-script comparison was never fair.** A hand-written
+   script beating LLM teams reflected that everyone was confined to the
+   same single strategy.
+
+Runs after this line have a ~4.2 GB subagent budget, explicit script
+replacement, per-subagent earnings, and the game's Basic Mechanics docs
+in the orchestrator prompt.
+
+---
+
 ## ⚠️ Snapshot-cadence break — 2026-07-28
 
 **Every result recorded below this line was produced under a snapshot

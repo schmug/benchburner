@@ -71,9 +71,16 @@ const TURN_OUTPUT_SCHEMA: Record<string, unknown> = {
   required: ["decision", "code"],
 };
 
-const SUBAGENT_SYSTEM_PROMPT = `You are a coding subagent on a software team. Your manager has given you a single task. You produce code, you may test it, and you return a final committed version.
+/**
+ * Exported so the stated RAM budget can be pinned by test. The figure
+ * here is the constraint the model actually plans against: while it read
+ * "~3 GB", the 1.4 GB reclaimed from the dispatcher was unreachable —
+ * no subagent would emit the scp+exec (3.5 GB) or purchaseServer
+ * (3.85 GB) shapes it was reclaimed for.
+ */
+export const SUBAGENT_SYSTEM_PROMPT = `You are a coding subagent on a software team. Your manager has given you a single task. You produce code, you may test it, and you return a final committed version.
 
-Runtime environment (fixed, not negotiable): your code runs in a sandboxed async JavaScript runtime with ~3 GB of RAM available after harness overhead. Every script MUST take the form:
+Runtime environment (fixed, not negotiable): your code runs in a sandboxed async JavaScript runtime with ~4.2 GB of RAM available after harness overhead. Every script MUST take the form:
 
   /** @param {NS} ns */
   export async function main(ns) {
@@ -82,7 +89,7 @@ Runtime environment (fixed, not negotiable): your code runs in a sandboxed async
 
 The "ns" object is the environment API — your manager's instructions will tell you what to do with it. Do NOT write Python, shell, pseudocode, or any other language. Only this shape compiles and runs.
 
-RAM discipline is critical. Every ns.* function you reference (even once, even inside an unreachable branch) adds its static cost to your script's total; exceed ~3 GB and the runtime rejects the script with "ns.run returned 0". Cheap: ns.hack / ns.weaken / ns.grow (~0.1 GB), the individual ns.getServerX getters (0.1-0.25 GB), ns.nuke / ns.hasRootAccess (0.05 GB). Expensive and usually avoidable: ns.getServer (2 GB — use individual getters), ns.hackAnalyzeChance (1 GB), ns.getResetInfo (1 GB). Prefer small, targeted scripts over kitchen-sink ones.
+RAM discipline is critical. Every ns.* function you reference (even once, even inside an unreachable branch) adds its static cost to your script's total; exceed ~4.2 GB and the runtime rejects the script with "ns.run returned 0". Cheap: ns.hack / ns.weaken / ns.grow (~0.1 GB), the individual ns.getServerX getters (0.1-0.25 GB), ns.nuke / ns.hasRootAccess (0.05 GB). Expensive and usually avoidable: ns.getServer (2 GB — use individual getters), ns.hackAnalyzeChance (1 GB), ns.getResetInfo (1 GB). Prefer small, targeted scripts over kitchen-sink ones.
 
 On each turn you respond with EXACTLY a JSON object:
 {

@@ -95,7 +95,32 @@ form the orchestrator sees.
 
 1. `getSaveFile()` (RFA built-in) → full serialized game state for
    hourly snapshots.
-2. Harness pushes `__state-exporter.ns` onto `home` and runs it; it
-   writes `/__state.json` containing `ns.getPlayer().money`,
-   bitnode id, augment list, etc. Readable via `getFile("/__state.json")`
-   as often as the harness wants.
+2. Harness pushes `dispatcher.js` onto `home` as `/__dispatcher.js` and
+   runs it from the terminal; each tick it rewrites `/__state.json`,
+   readable via `getFile("/__state.json")` as often as the harness wants.
+
+`/__state.json` from the full dispatcher contains exactly:
+
+| field              | source                                              |
+|--------------------|-----------------------------------------------------|
+| `current_money`    | `ns.getServerMoneyAvailable("home")` (0.1 GB), floored |
+| `augments_installed` | always `[]` — a shape placeholder, not read from the game |
+| `last_heartbeat_ms`| `Date.now()`; how `waitForDispatcherAlive` tells a live loop from one that wrote once and died |
+| `timestamp`        | ISO string of the same tick                          |
+
+`bitnode_id` and `bitnode_complete` are **deliberately absent**. Reading
+them needs `ns.getResetInfo` (1.0 GB) charged against the dispatcher's
+permanent per-tick budget for a value that is constant across a run, and
+that GB is part of the 1.4 GB reclaimed so subagent scripts can afford
+`ns.scp`+`ns.exec` / `ns.purchaseServer`. Instead `puppeteer.ts` reads
+bitnode once at boot from a throwaway probe script and merges it into
+every `GameState` it hands out (`withCachedFields`) — including the
+`read_failed` placeholder and the snapshot embedded in dispatcher result
+files, so a consumer never sees the field appear and disappear.
+
+`dispatcher-light.js` (golden / validation mode) does not process the
+queue, so it has the headroom to report `bitnode_id` from
+`ns.getResetInfo()` itself. The boot probe is skipped in that mode — it
+is dispatched through `/__queue.json`, which the light dispatcher never
+reads, so it could only ever time out — and the value the light
+dispatcher reports is preferred over the cached default.
