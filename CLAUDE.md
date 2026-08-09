@@ -34,10 +34,16 @@ These shape every design decision. If a choice conflicts with these, the choice 
 
 1. **The orchestrator cannot play the game directly.** It only spawns, kills, and instructs subagents.
 2. **The orchestrator cannot edit subagent output.** It accepts or rejects whole results.
-3. **The orchestrator sees only what subagents report + periodic game state snapshots.** No direct Bitburner access, no wiki, no strategy guides. Snapshot cadence is proportional to run length (24 per run), not fixed at one hour — a fixed hourly cadence silently deleted this entire channel on sub-hour runs.
+3. **The orchestrator sees only what subagents report + periodic game state snapshots.** No direct Bitburner access, no wiki, no external strategy guides. Snapshot cadence is proportional to run length (24 per run), not fixed at one hour — a fixed hourly cadence silently deleted this entire channel on sub-hour runs.
+
+   **The orchestrator knows what game it is playing** (revised 2026-08-09). It is given Bitburner's own Basic Mechanics documentation verbatim in its system prompt — the same text a player has, identical for every model. It is *not* given the tutorial or the optimal-batching guide; those live in-world, where a subagent must be sent to read them and report back, so research costs a delegation that could have been spent earning.
+
+   This replaces an earlier rule that scrubbed the game's name from the prompt. That rule was retired rather than widened because it had become incoherent: with the manual vendored in, the scrub redacted the *title* while handing over the canonical early-game target ladder by name (`n00dles`, `foodnstuff`, `sigma-cosmetics`, `harakiri-sushi`, `silver-helix`, `nova-med`) and the port-opener programs — 28 game-identifying markers past a five-word denylist. Naming `n00dles` activates memorised-strategy priors far harder than the word "Bitburner" does, so the rule was buying pretence, not protection.
+
+   **What this costs, stated plainly:** score differences between orchestrators now partly reflect how much Bitburner each model absorbed in training, not only orchestration skill. Giving every model the same manual explicitly narrows that gap but does not close it. Runs before this date are not comparable to runs after.
 4. **Subagents have no long-term memory across runs.** Each run starts fresh.
 5. **Batch architecture.** Runs happen offline, results commit to Git, a static leaderboard builds once daily. No live API.
-6. **Deterministic game state.** Bitburner is pinned to a specific fork commit and a pinned RNG seed — but the seed is **opaque to the orchestrator** (exposing it lets models overfit to one scenario instead of developing general orchestration strategy).
+6. **Deterministic game state.** Bitburner is pinned to a specific fork commit and a pinned RNG seed — and the seed remains **opaque to the orchestrator** (exposing it lets models overfit to one scenario instead of developing general orchestration strategy). Seed opacity is unaffected by the constraint-3 revision above: `detectLeaks` still fails a run closed if the seed reaches the prompt. Note also that PDS1 found LLM sampling nondeterminism dominates within-seed variance ($11,161 range) over across-seed variance ($0), so "deterministic" describes the world, not the trajectory.
 7. **Subagent roster is curated per run.** All orchestrators in a given cycle choose from the same pool. Fairness matters.
 
 ## Design Philosophy
