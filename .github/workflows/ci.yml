@@ -19,9 +19,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # `recursive`, not `false`: test/orchestrator/docs-prompt.test.ts
+      # calls loadDocs directly to prove the orchestrator really is handed
+      # the game's own Basic Mechanics text. Without the submodule that
+      # test cannot run, and the alternative — skipping it when the doc
+      # tree is absent — would leave that claim enforced by nothing.
       - uses: actions/checkout@v4
         with:
-          submodules: false
+          submodules: recursive
 
       - name: Setup Node
         uses: actions/setup-node@v4

@@ -46,11 +46,30 @@ export const LIBRARY_DOCS: readonly string[] = [
   "basic/world.md",
 ] as const;
 
-/** Concatenates docs with a heading per file. Throws if one is missing. */
+/**
+ * Concatenates docs with a heading per file. Throws if one is missing.
+ *
+ * The throw is deliberately chatty: these files live in the pinned
+ * `bitburner` submodule, so the overwhelmingly likely cause of a miss is
+ * an un-initialized submodule — a fresh clone, or a CI checkout that
+ * skipped it. A bare ENOENT on a path six levels deep tells the reader
+ * nothing about that, so name the doc and the one command that fixes it.
+ */
 export function loadDocs(names: readonly string[]): string {
   return names
     .map((name) => {
-      const body = readFileSync(path.join(DOC_ROOT, name), "utf8").trim();
+      const file = path.join(DOC_ROOT, name);
+      let body: string;
+      try {
+        body = readFileSync(file, "utf8").trim();
+      } catch (cause) {
+        throw new Error(
+          `Could not read the game doc "${name}" (looked in ${file}). ` +
+            `These docs ship in the pinned bitburner submodule — run ` +
+            `\`git submodule update --init --recursive\` to fetch it.`,
+          { cause },
+        );
+      }
       return `--- ${name} ---\n${body}`;
     })
     .join("\n\n");

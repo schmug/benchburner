@@ -30,7 +30,7 @@ You can only observe what your subagents report back, plus periodic game state s
 
 Reference — the environment's own documentation. This is mechanics, not strategy; deciding what to do with it is your job.
 
-${BASICS_TEXT}
+${basicsText()}
 
 Respond ONLY with a JSON object matching this schema:
 {
@@ -73,17 +73,30 @@ export const FORBIDDEN_TOKENS: readonly string[] = Object.freeze([
   "seed",
 ]);
 
+let basicsTextCache: string | null = null;
+
 /**
- * The game's Basic Mechanics text, scrubbed of forbidden tokens and
- * read once per process rather than per prompt build — it's identical
- * across every cycle and every model, so re-reading it from disk on
- * each call would just be wasted I/O on a string that never changes.
+ * The game's Basic Mechanics text, scrubbed of forbidden tokens.
  *
- * Declared after FORBIDDEN_TOKENS and scrubText (hoisted, but the
- * const it closes over is not) so this line doesn't run into the
- * temporal dead zone at module-evaluation time.
+ * Read lazily on first use and memoized — deliberately NOT at module
+ * evaluation time. Importing this module has to stay free of disk I/O:
+ * the docs live in the pinned `bitburner` submodule, which not every
+ * checkout has (CI clones with `submodules: false` historically, a
+ * fresh clone before `git submodule update`), and a top-level read made
+ * merely *importing* prompt.ts throw ENOENT. That took down every
+ * unrelated importer with it — cycle-record and execution-feedback
+ * tests, and the time-awareness smoke, none of which touch docs.
+ *
+ * Memoizing keeps the original property that made this a const: the
+ * text is identical across every cycle and every model, so the process
+ * still reads it from disk exactly once.
  */
-const BASICS_TEXT = scrubText(loadDocs(BASIC_DOCS));
+function basicsText(): string {
+  if (basicsTextCache === null) {
+    basicsTextCache = scrubText(loadDocs(BASIC_DOCS));
+  }
+  return basicsTextCache;
+}
 
 export interface BuildPromptResult {
   system: string;

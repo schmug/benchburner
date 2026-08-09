@@ -46,6 +46,37 @@ describe("orchestrator docs", () => {
     assert.ok(LIBRARY_DOCS.includes("programming/hackingalgorithms.md"));
   });
 
+  test("the basics are mechanics-only, and the two sets are disjoint", () => {
+    // The check above is a two-name denylist, so it would stay green if
+    // some *other* strategy doc (`advanced/*.md`, `programming/learn.md`)
+    // were added to BASIC_DOCS tomorrow. Assert the shape of the whole
+    // set instead: a free doc must come from `basic/` (mechanics), and
+    // nothing a subagent has to be sent to fetch may also be free.
+    for (const name of BASIC_DOCS) {
+      assert.ok(name.startsWith("basic/"), `${name} is not a basic/ mechanics doc`);
+    }
+    for (const name of BASIC_DOCS) {
+      assert.equal(
+        LIBRARY_DOCS.includes(name),
+        false,
+        `${name} is in both BASIC_DOCS and LIBRARY_DOCS`,
+      );
+    }
+  });
+
+  test("a missing doc names the file and how to fix it", () => {
+    // This is the first error a fresh cloner hits; a bare ENOENT on a
+    // path deep inside the submodule doesn't tell them what to do.
+    assert.throws(
+      () => loadDocs(["basic/not-a-real-doc.md"]),
+      (err: Error) => {
+        assert.match(err.message, /basic\/not-a-real-doc\.md/);
+        assert.match(err.message, /git submodule update --init --recursive/);
+        return true;
+      },
+    );
+  });
+
   test("the prompt does not leak the game's name", () => {
     const { leak_check_violations } = buildOrchestratorPrompt(input, 8675309);
     assert.deepEqual(leak_check_violations, []);
