@@ -159,8 +159,12 @@ export class MockGame implements GameController {
   // ── internals ──────────────────────────────────────────────────────
 
   private snapshotState(): GameState {
+    // Unlike PuppeteerGame there is no baseline to capture: the mock
+    // knows its starting balance at construction.
     return {
       current_money: this.money,
+      starting_money: STARTING_MONEY,
+      money_earned: this.money - STARTING_MONEY,
       bitnode_id: 1,
       bitnode_complete: false,
       augments_installed: [],
