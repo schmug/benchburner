@@ -7,6 +7,7 @@
  * must never reach the model. A post-run audit log confirms this.
  */
 
+import { BASIC_DOCS, loadDocs } from "../game/docs";
 import type { OrchestratorInput } from "../types";
 
 /**
@@ -26,6 +27,10 @@ Scripts take the form "export async function main(ns) { ... }" where ns is the A
 Committed-script lifecycle: each subagent maintains exactly one committed script at a time. When a subagent returns a new final code, that code runs indefinitely (until run-end) and any previous committed script from the same subagent is automatically killed. Short-lived diagnostic scripts that exit quickly are fine; long-running earning scripts stay alive and accumulate money into game_state. So you can use one subagent as a long-running worker and simply replace its script when you want new behavior.
 
 You can only observe what your subagents report back, plus periodic game state snapshots from the backend. You have no other visibility. Execution feedback includes stdout / stderr / exit_reason / money_gained — use them to route around broken subagent output.
+
+Reference — the environment's own documentation. This is mechanics, not strategy; deciding what to do with it is your job.
+
+${BASICS_TEXT}
 
 Respond ONLY with a JSON object matching this schema:
 {
@@ -67,6 +72,18 @@ export const FORBIDDEN_TOKENS: readonly string[] = Object.freeze([
   "augment",
   "seed",
 ]);
+
+/**
+ * The game's Basic Mechanics text, scrubbed of forbidden tokens and
+ * read once per process rather than per prompt build — it's identical
+ * across every cycle and every model, so re-reading it from disk on
+ * each call would just be wasted I/O on a string that never changes.
+ *
+ * Declared after FORBIDDEN_TOKENS and scrubText (hoisted, but the
+ * const it closes over is not) so this line doesn't run into the
+ * temporal dead zone at module-evaluation time.
+ */
+const BASICS_TEXT = scrubText(loadDocs(BASIC_DOCS));
 
 export interface BuildPromptResult {
   system: string;
