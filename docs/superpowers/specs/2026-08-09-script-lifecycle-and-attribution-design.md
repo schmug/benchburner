@@ -1,7 +1,7 @@
 # Restoring the Orchestrator's Decision Space — Design
 
 **Date:** 2026-08-09
-**Status:** Design agreed; one item flagged for confirmation (§4)
+**Status:** Approved — ready for implementation plan
 
 ## What this benchmark measures
 
@@ -182,7 +182,7 @@ export interface LiveScript {
 script that started*. `LiveScript` answers *is it still earning*.
 Instruction quality is not observable without both.
 
-### 4. Reclaim the dispatcher's 1.4 GB — **flagged for confirmation**
+### 4. Reclaim the dispatcher's 1.4 GB
 
 - Drop `ns.getResetInfo()` (1.0 GB). `bitnode_id` is constant for a run;
   read it once at boot from a throwaway script, or take it from config.
@@ -202,7 +202,7 @@ handing it nothing — it would be a manual that lies, and the orchestrator
 would burn its scarce cycles on instructions that cannot start. Ship §4
 with §5, or ship neither.
 
-This is the largest comparability break in the design; hence flagged.
+This is the largest comparability break in the design. Approved 2026-08-09.
 
 ### 5. Give the orchestrator the basics
 
@@ -260,11 +260,47 @@ making "should I send someone to read the manual?" a real orchestration
 decision with a real opportunity cost, which is precisely the skill under
 measurement.
 
-### 7. Prompt changes
+### 7. Money is a delta, not a balance
+
+Every game starts the player with money — $1,262 in BitNode 1. The
+orchestrator is shown `current_money` as an absolute and told to
+"maximize the team's in-game money", so it reads its own starting
+capital as revenue. Verified across two runs:
+
+- *"Cycle 2 with ~390s left and only $1,262 **earned** — the team is
+  barely producing."*
+- *"90s of 480s gone and only $1262 **banked**."*
+- *"No spending on upgrades/hacknet: at $1262 with 5 minutes left,
+  payback would not arrive before the run ends, so all capital stays in
+  direct hacking throughput."*
+
+Actual earnings in both runs were **$0**. The third quote is the damaging
+one: the orchestrator was weighing precisely the RAM-bootstrap
+investment this design exists to enable, and declined it on a misreading
+of starting capital as revenue.
+
+`GameState` gains `starting_money` (captured once at boot) and
+`money_earned` (`current_money - starting_money`). Both are exposed to
+the orchestrator, and the §3.3 goal sentence changes from "maximize the
+team's in-game money" to maximize money **earned above the starting
+balance**, stating that the balance is a given, not an achievement.
+
+`scrubInput` whitelists exactly four `game_state` keys
+(`prompt.ts:155-160`); the two new fields must be added there or they
+will never reach the model.
+
+**Not changed here:** `RunSummary.final_money` stays absolute, so the 86
+published runs keep parsing. But it means a run that earned nothing is
+published as $1,262 rather than $0 — the "floor" every result sits on is
+starting capital, not score. Adding a `money_earned` column to the
+leaderboard is the honest follow-up and is left to a separate change.
+
+### 8. Prompt changes
 
 Added to the §3.3 system prompt, wording fixed across models:
 
 - the Basic Mechanics text (§5)
+- money earned vs. starting balance (§7)
 - that a new script runs **alongside** unless `replace: true`, and that
   the RAM budget is shared
 - that `kill` stops the subagent's script too
@@ -276,9 +312,9 @@ Added to the §3.3 system prompt, wording fixed across models:
 
 | File | Change |
 |---|---|
-| `harness/types.ts` | `OrchestratorAction.replace?: boolean`; `LiveScript`; `SubagentStatus.live_script?: LiveScript \| null`; `GameController.killScript` |
+| `harness/types.ts` | `OrchestratorAction.replace?: boolean`; `LiveScript`; `SubagentStatus.live_script?: LiveScript \| null`; `GameController.killScript`; `GameState.starting_money` / `money_earned` |
 | `harness/orchestrator/loop.ts` | Honour `replace`; kill script in `handleKill`; thread `live_script` |
-| `harness/orchestrator/prompt.ts` | Basics text; lifecycle + library paragraphs |
+| `harness/orchestrator/prompt.ts` | Basics text; lifecycle + library paragraphs; goal sentence; **add the two money keys to the `scrubInput` whitelist** |
 | `harness/game/dispatcher.js` | Drop `getResetInfo`/`getPlayer`; export running-script stats; support killing a committed script |
 | `harness/game/puppeteer.ts` | `killScript`; push `/doc/*.txt` at boot |
 | `SPEC.md` | §2.1, §3.1, §3.3 |
@@ -307,8 +343,10 @@ formal test framework" is out of date.
    silently re-close the strategy space. This is the test that would have
    caught the original defect.
 8. `/doc/*.txt` is readable by a script for 0 GB.
-9. End-to-end: a subagent script earns, is re-instructed without
-   `replace`, and keeps earning across the boundary.
+9. **`money_earned` reaches the prompt and reads 0 at run start** — the
+   regression guard for the "$1,262 earned" misreading.
+10. End-to-end: a subagent script earns, is re-instructed without
+    `replace`, and keeps earning across the boundary.
 
 ## Comparability
 
