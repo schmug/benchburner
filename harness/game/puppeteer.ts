@@ -313,11 +313,18 @@ export class PuppeteerGame implements GameController {
     script_id,
     subagent_id,
     kind = "probe",
+    replace = false,
     timeout_ms,
   }: {
     script_id: string;
     subagent_id: string;
     kind?: "probe" | "committed";
+    /**
+     * Retire the subagent's previous committed script once this one is
+     * confirmed running. Defaults to false — the dispatcher reads the
+     * flag off the queue entry and evicts only on an explicit `true`.
+     */
+    replace?: boolean;
     /** Probe-result poll budget; defaults to PROBE_RESULT_TIMEOUT_MS. */
     timeout_ms?: number;
   }): Promise<ExecutionResult> {
@@ -332,6 +339,7 @@ export class PuppeteerGame implements GameController {
       path: this.scriptFilename(script_id),
       status: "pending",
       kind,
+      replace,
     });
     await this.rfa!.pushFile("/__queue.json", JSON.stringify(queue), "home");
 
@@ -405,6 +413,32 @@ export class PuppeteerGame implements GameController {
       game_state_snapshot: await this.readState().catch(() => this.withCachedFields(staleState())),
       timestamp: new Date().toISOString(),
     };
+  }
+
+  /**
+   * Ask the dispatcher to stop this subagent's committed script.
+   *
+   * Rides the existing /__queue.json channel rather than adding a second
+   * control file: the dispatcher already reads that file every tick and
+   * already holds the pid, so a flag on the task is the whole mechanism.
+   *
+   * Returns once the request is written, not once the script is dead —
+   * the dispatcher acts on its next tick (≤500 ms) and reports the
+   * outcome through the normal result path with `exit_reason: "killed"`.
+   */
+  async killScript(subagent_id: string): Promise<void> {
+    this.requireReady();
+    const raw = await this.safeGetFile("/__queue.json");
+    if (!raw) return;
+    const queue = safeJsonParseArray(raw);
+    let touched = false;
+    for (const t of queue) {
+      if (t.subagent_id === subagent_id && t.kind === "committed" && t.status === "running") {
+        t.kill_requested = true;
+        touched = true;
+      }
+    }
+    if (touched) await this.rfa!.pushFile("/__queue.json", JSON.stringify(queue), "home");
   }
 
   /**

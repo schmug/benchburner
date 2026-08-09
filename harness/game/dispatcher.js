@@ -60,35 +60,39 @@ export async function main(ns) {
         const startMoney = money();
         task.startMoney = startMoney; // record up-front so writeResult can compute money_gained even on failed_to_start
 
-        // Committed scripts are long-running workers; each subagent
-        // keeps one at a time. When a new committed script for
-        // subagent X arrives, evict X's previous committed script so
-        // home RAM is freed for the new version. Without this, every
-        // DONE commit accumulates, home RAM runs out in 2-3 commits,
-        // and every subsequent script gets failed_to_start.
-        if (task.kind === "committed") {
-          for (const other of queue) {
-            if (other === task) continue;
-            if (other.status !== "running") continue;
-            if (other.kind !== "committed") continue;
-            if (other.subagent_id !== task.subagent_id) continue;
-            try { ns.kill(other.pid); } catch (_) { /* ignore */ }
-            other.status = "done";
-            other.exit_reason = "replaced";
-            other.stderr = "replaced by newer committed script from the same subagent";
-            other.completedAt = Date.now();
-            other.endMoney = money();
-            writeResult(ns, other);
-            changed = true;
-          }
-        }
-
         const pid = ns.run(task.path, 1);
         if (pid > 0) {
           task.pid = pid;
           task.status = "running";
           task.startedAt = Date.now();
           changed = true;
+
+          // Evict the subagent's previous committed script ONLY now that
+          // the replacement is confirmed running, and only if the
+          // orchestrator asked for it. Committing used to evict
+          // unconditionally and BEFORE ns.run: one run restarted its own
+          // four-line earner 1,020 times, and a replacement that failed
+          // to start took the income with it.
+          //
+          // Mirror of harness/game/eviction.ts — this file is pushed into
+          // the game as plain Netscript and cannot import. Keep the two in
+          // step; test/game/dispatcher-runtime.test.ts asserts they agree.
+          if (task.kind === "committed" && task.replace === true) {
+            for (const other of queue) {
+              if (other === task) continue;
+              if (other.status !== "running") continue;
+              if (other.kind !== "committed") continue;
+              if (other.subagent_id !== task.subagent_id) continue;
+              try { ns.kill(other.pid); } catch (_) { /* already gone */ }
+              other.status = "done";
+              other.exit_reason = "replaced";
+              other.stderr = "replaced by a newer committed script from the same subagent";
+              other.completedAt = Date.now();
+              other.endMoney = money();
+              writeResult(ns, other);
+              changed = true;
+            }
+          }
         } else {
           task.status = "done";
           task.completedAt = Date.now();
@@ -99,6 +103,24 @@ export async function main(ns) {
           writeResult(ns, task);
         }
       } else if (task.status === "running") {
+        // The orchestrator killed this task's subagent. Without this the
+        // script outlived its owner: still consuming the shared RAM
+        // budget, still earning, and no longer tracked by anything.
+        // Checked before the liveness/timeout logic so an already-dead
+        // pid still closes the task out instead of being re-killed every
+        // 500 ms forever.
+        if (task.kill_requested) {
+          try { ns.kill(task.pid); } catch (_) { /* already gone */ }
+          task.status = "done";
+          task.exit_reason = "killed";
+          task.stderr = "stopped because the orchestrator killed its subagent";
+          task.completedAt = Date.now();
+          task.endMoney = money();
+          changed = true;
+          writeResult(ns, task);
+          continue;
+        }
+
         const stillRunning = ns.isRunning(task.pid || 0);
         // Probes (agentic-loop RUN turns) are bounded at 120s so one
         // broken probe can't stall the queue. Committed scripts

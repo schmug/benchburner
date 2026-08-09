@@ -40,7 +40,7 @@ Runtime environment (infrastructure, not strategy): your team's code executes in
 
 Scripts take the form "export async function main(ns) { ... }" where ns is the API object the environment provides. When you instruct your subagents, tell them what you want the code to DO; do not tell them which language to use — they already know it must be JavaScript targeting this ns-based runtime.
 
-Committed-script lifecycle: each subagent maintains exactly one committed script at a time. When a subagent returns a new final code, that code runs indefinitely (until run-end) and any previous committed script from the same subagent is automatically killed. Short-lived diagnostic scripts that exit quickly are fine; long-running earning scripts stay alive and accumulate money into game_state. So you can use one subagent as a long-running worker and simply replace its script when you want new behavior.
+Committed-script lifecycle: when a subagent returns final code, it is committed and runs until the run ends. By default it runs ALONGSIDE that subagent's existing committed script — it does NOT replace it. Set "replace": true on an instruct action to retire the old one, which happens only once the new script is confirmed running. All committed scripts share one memory budget, so scripts accumulate until the budget is exhausted, at which point new ones report failed_to_start in last_execution. Killing a subagent also stops its committed script. Short-lived diagnostic scripts that exit quickly are fine; long-running earning scripts stay alive and accumulate money into game_state.
 
 You can only observe what your subagents report back, plus periodic game state snapshots from the backend. You have no other visibility. Execution feedback includes stdout / stderr / exit_reason / money_gained — use them to route around broken subagent output.
 
@@ -55,6 +55,7 @@ Respond ONLY with a JSON object matching this schema:
       "action_type": "spawn" | "kill" | "instruct" | "noop",
       "subagent_id": "string (required for kill/instruct; you choose a new id for spawn)",
       "model_choice": "string (required for spawn; must be from available_subagent_models)",
+      "replace": "boolean (optional, instruct only; default false)",
       "instruction": {
         "task": "string",
         "context": "string",

@@ -169,6 +169,21 @@ export interface OrchestratorAction {
   action_type: OrchestratorActionType;
   subagent_id?: string;
   model_choice?: string;
+  /**
+   * Replace this subagent's currently running committed script with the
+   * one this instruction produces. `instruct` only.
+   *
+   * Defaults to false, and the asymmetry is the reason: an accumulating
+   * script eventually exhausts the shared RAM budget and surfaces as
+   * `failed_to_start` in `last_execution` — loud and attributable —
+   * whereas killing an earner produces no event at all. The silent
+   * failure is the one that ran for seventeen hours undetected.
+   *
+   * It lives on the action rather than on `Instruction` because script
+   * lifecycle is a directive to the harness, not something the subagent
+   * needs in order to write code (SPEC §2.1 is unchanged).
+   */
+  replace?: boolean;
   instruction?: Instruction;
 }
 
@@ -275,7 +290,21 @@ export interface GameController {
     script_id: string;
     subagent_id: string;
     kind?: "probe" | "committed";
+    /**
+     * Retire this subagent's previous committed script — but only once
+     * this one is confirmed running. Defaults to false; see
+     * `OrchestratorAction.replace`. Ignored for probes, which never
+     * occupy the committed slot.
+     */
+    replace?: boolean;
   }): Promise<ExecutionResult>;
+
+  /**
+   * Stop this subagent's committed script, if any. Called when the
+   * orchestrator kills a subagent — otherwise the script outlives its
+   * owner as an orphan that still consumes RAM and earns invisibly.
+   */
+  killScript(subagent_id: string): Promise<void>;
 
   /** Pull current distilled game state (for hourly snapshots). */
   readState(): Promise<GameState>;
