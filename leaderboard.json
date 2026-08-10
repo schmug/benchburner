@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-09T04:25:16.456Z",
+  "generated_at": "2026-08-10T04:28:51.257Z",
   "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad",
   "entries": [
     {
@@ -140,6 +140,23 @@
     },
     {
       "rank": 9,
+      "orchestrator_model": "claude-opus-5-cli",
+      "display_model": "claude-opus-5-cli",
+      "attribution": "public",
+      "run_count": 1,
+      "final_money_mean": 1262,
+      "final_money_std": 0,
+      "final_money_min": 1262,
+      "final_money_max": 1262,
+      "completed_runs": 1,
+      "failed_runs": 0,
+      "latest_run_id": "f2c1b48e-196d-467e-bd6d-1d634a6f95d0",
+      "latest_artifact_url": "runs/f2c1b48e-196d-467e-bd6d-1d634a6f95d0/",
+      "branch": "main",
+      "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad"
+    },
+    {
+      "rank": 10,
       "orchestrator_model": "qwen3.5:4b",
       "display_model": "qwen3.5:4b",
       "attribution": "public",
@@ -156,7 +173,7 @@
       "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad"
     },
     {
-      "rank": 10,
+      "rank": 11,
       "orchestrator_model": "test-hang",
       "display_model": "test-hang",
       "attribution": "public",
@@ -1283,6 +1300,22 @@
       "end_time": "2026-04-23T19:38:28.611Z",
       "duration_hours": 1,
       "artifact_url": "runs/f06a21aa-55db-4dc7-a027-5e3ca0f2de5c/"
+    },
+    {
+      "run_id": "f2c1b48e-196d-467e-bd6d-1d634a6f95d0",
+      "orchestrator_model": "claude-opus-5-cli",
+      "attribution": "public",
+      "final_money": 1262,
+      "bitnodes_completed": 0,
+      "augments_installed": 0,
+      "status": "completed",
+      "failure_reason": null,
+      "bitburner_commit": "a4b0f22a2e5bcf19826c0bb671373c755fc162ad",
+      "start_time": "2026-08-09T17:06:22.543Z",
+      "end_time": "2026-08-09T17:22:03.171Z",
+      "duration_hours": 0.13333333333333333,
+      "duration_seconds": 480,
+      "artifact_url": "runs/f2c1b48e-196d-467e-bd6d-1d634a6f95d0/"
     },
     {
       "run_id": "f3b9cb35-90f1-4456-9858-6b3a54a85fbe",
