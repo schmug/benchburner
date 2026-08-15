@@ -1,8 +1,16 @@
 # PR-triggered checks. Cheap, no game boot, no self-hosted runner.
 #
-# Today this runs the time-awareness smoke (standalone, no Bitburner).
+# Each job id below is a required status context in the `main` ruleset
+# (issue #62): typecheck, test, smoke. Renaming or removing a job means
+# updating the ruleset in the same change, or every PR hangs on a
+# context that never reports. When #40 lands a merge-time RAM-budget
+# job, its context gets added to the ruleset the same way.
+#
 # Other smokes (e.g. harness/game/rfa-smoke.ts) require a live Puppeteer-
 # backed game and belong on the self-hosted runner via run.yml, not here.
+#
+# Actions are pinned to full commit SHAs (issue #62 constraint); the
+# trailing comment is the release tag the SHA was resolved from.
 #
 # Security: this workflow consumes no untrusted user input — no
 # github.event.* interpolation in run blocks. Safe by construction.
@@ -15,33 +23,59 @@ on:
     branches: [main]
 
 jobs:
-  smoke:
+  typecheck:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           submodules: false
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "22"
           cache: "npm"
-
       - name: Install deps
         run: npm ci
         env:
           PUPPETEER_SKIP_DOWNLOAD: "true"
-
       - name: Typecheck
         run: npm run typecheck
 
-      # Was previously absent because `npm test` was `... || true` against
-      # a dist/ path that never existed — it could not fail, so gating on
-      # it was pointless. It reports real failures now.
+  # Was previously absent because `npm test` was `... || true` against
+  # a dist/ path that never existed — it could not fail, so gating on
+  # it was pointless. It reports real failures now.
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          submodules: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Install deps
+        run: npm ci
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
       - name: Unit tests
         run: npm test
 
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          submodules: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Install deps
+        run: npm ci
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
       - name: Time-awareness smoke
         run: npm run smoke:time-awareness
